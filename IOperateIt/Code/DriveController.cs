@@ -22,23 +22,13 @@ namespace IOperateIt
         private const float LIGHT_BRAKELIGHT_INTENSITY = 5.0f;
         private const float LIGHT_REARLIGHT_INTENSITY = 0.5f;
         private const float NEIGHBOR_WHEEL_DIST = 0.2f;
-        //private const float SPRING_DAMP = 6.0f;
-        //private const float SPRING_OFFSET = -0.1f;
         private const float SPRING_MAX_COMPRESS = 0.2f;
-        //private const float MASS_FACTOR = 85.0f;
         private const float DRAG_FACTOR = 0.25f;
         private const float DRAG_WHEEL = 0.04f;
-        //private const float MASS_COM_HEIGHT = 0.1f;
-        //private const float MASS_COM_BIAS = 0.6f;
         private const float MOMENT_WHEEL = 1.5f;
-        //private const float DOWN_FORCE = 5.0f;
-        //private const float DRIVE_BIAS = 0.5f; 
-        //private const float BRAKE_BIAS = 0.7f;
         private const float VALID_INCLINE = 0.5f;
-        //private const float GRIP_OVERMATCH = 0.3f;
-        //private const float GRIP_COEFF = 1.0f;
-        //private const float GRIP_COEFF_K = 0.8f;
-        private const float GRIP_MAX_SLIP = 0.4f;
+        private const float GRIP_MAX_SLIP = 1.0f;
+        private const float GRIP_OPTIM_SLIP = 0.2f;
         private const float ENGINE_PEAK_POWER_RPS = 600.0f;
         private const float ENGINE_GEAR_RATIO = 4.0f;
         private const float ACCEL_G = 10f;
@@ -90,6 +80,7 @@ namespace IOperateIt
             public float tangentImpulse;
             public float compression;
             public float frictionCoeff;
+            public float slip;
             public bool onGround;
             public bool isSimulated     { get => simulated; private set => simulated = value; }
             public bool isPowered       { get => powered; private set => powered = value; }
@@ -128,6 +119,7 @@ namespace IOperateIt
                 w.tangentImpulse = 0.0f;
                 w.compression = 0.0f;
                 w.frictionCoeff = ModSettings.GripCoeffK;
+                w.slip = 0.0f;
                 w.onGround = false;
                 w.isSimulated = isSimulated;
                 w.isPowered = isPowered;
@@ -530,6 +522,7 @@ namespace IOperateIt
 
                 w.onGround = false;
                 w.normalImpulse = 0.0f;
+                w.slip = 1.0f;
                 w.frictionCoeff = ModSettings.GripCoeffK;
                 float normDotUp = Vector3.Dot(w.normal, upVec);
                 if (normDotUp > VALID_INCLINE)
@@ -548,8 +541,8 @@ namespace IOperateIt
                         w.normalImpulse = m_vehicleRigidBody.mass * (-deltaVel) / (Wheel.wheelCount * normDotUp);
                         w.contactPoint = w.gameObject.transform.TransformPoint(new Vector3(0.0f, -w.radius, 0.0f));
                         w.contactVelocity = m_vehicleRigidBody.GetPointVelocity(w.contactPoint);
-                        w.frictionCoeff = Mathf.Lerp(ModSettings.GripCoeffS, ModSettings.GripCoeffK,
-                            Mathf.Clamp(Vector3.Magnitude(w.contactVelocity - (w.radps * w.radius * w.tangent)) / Mathf.Max(w.contactVelocity.magnitude, 1.0f) / GRIP_MAX_SLIP, 0.0f, 1.0f));
+                        w.slip = Mathf.Clamp(Vector3.Magnitude(w.contactVelocity - (w.radps * w.radius * w.tangent)) / Mathf.Max(w.contactVelocity.magnitude, 1.0f) / GRIP_MAX_SLIP, 0.0f, 1.0f);
+                        w.frictionCoeff = Mathf.Lerp(ModSettings.GripCoeffS, ModSettings.GripCoeffK, (w.slip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP));
                     }
                 }
                 else
@@ -594,7 +587,8 @@ namespace IOperateIt
                     float wheelTorque;
                     wheelTorque = m_gear * m_throttle * w.torqueFract * m_torque;
                     w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
-                    wheelTorque = -Mathf.Sign(w.radps) * Mathf.Min(m_brake * w.brakeForce * w.radius, Mathf.Abs(w.radps) * w.moment / Time.fixedDeltaTime);
+                    float absBrake = (w.slip < GRIP_OPTIM_SLIP || !ModSettings.BrakingABS) ? m_brake : 0.0f;
+                    wheelTorque = -Mathf.Sign(w.radps) * Mathf.Min(absBrake * w.brakeForce * w.radius, Mathf.Abs(w.radps) * w.moment / Time.fixedDeltaTime);
                     w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
 
                     float longSpeed = Vector3.Dot(w.contactVelocity, w.tangent);
@@ -602,7 +596,7 @@ namespace IOperateIt
 
                     flatImpulses.y = longComponent;
 
-                    if (w.frictionCoeff < (ModSettings.GripCoeffS + ModSettings.GripCoeffK) / 2.0f)
+                    if (w.slip > GRIP_OPTIM_SLIP)
                     {
                         DebugHelper.DrawDebugMarker(2.0f, w.contactPoint, Color.yellow);
                     }
@@ -795,7 +789,7 @@ namespace IOperateIt
             m_vehicleRigidBody.transform.rotation = rotation;
             m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, m_rideHeight + adjustedBounds.y * ModSettings.MassCenterHeight, (ModSettings.MassCenterBias - 0.5f) * adjustedBounds.z * 0.5f);
             Vector3 squares = new Vector3(adjustedBounds.x * adjustedBounds.x, adjustedBounds.y * adjustedBounds.y, adjustedBounds.z * adjustedBounds.z);
-            m_vehicleRigidBody.inertiaTensor = 1.0f / 12.0f * m_vehicleRigidBody.mass * new Vector3(squares.y + squares.z, squares.x + squares.z, squares.x + squares.y);
+            //m_vehicleRigidBody.inertiaTensor = 1.0f / 12.0f * m_vehicleRigidBody.mass * new Vector3(squares.y + squares.z, squares.x + squares.z, squares.x + squares.y);
             m_vehicleRigidBody.velocity = Vector3.zero;
 
             m_vehicleCollider.size = adjustedBounds;

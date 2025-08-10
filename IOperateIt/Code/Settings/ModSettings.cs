@@ -32,6 +32,11 @@ namespace IOperateIt.Settings
         [XmlIgnore]
         internal static float BrakingForce = 30f;
 
+        [XmlElement("BrakingABS")]
+        public bool XMLBrakingABS { get => BrakingABS; set => BrakingABS = value; }
+        [XmlIgnore]
+        internal static bool BrakingABS = true;
+
         [XmlElement("DownForce")]
         public float XMLDownForce { get => DownForce; set => DownForce = value; }
         [XmlIgnore]
