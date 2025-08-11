@@ -24,13 +24,15 @@ namespace IOperateIt
         private const float NEIGHBOR_WHEEL_DIST = 0.2f;
         private const float SPRING_MAX_COMPRESS = 0.2f;
         private const float DRAG_FACTOR = 0.25f;
-        private const float DRAG_WHEEL = 0.04f;
+        private const float DRAG_DRIVETRAIN = 0.2f;
+        private const float DRAG_WHEEL_POWERED = 0.05f;
+        private const float DRAG_WHEEL = 0.01f;
         private const float MOMENT_WHEEL = 1.5f;
         private const float VALID_INCLINE = 0.5f;
         private const float GRIP_MAX_SLIP = 1.0f;
         private const float GRIP_OPTIM_SLIP = 0.2f;
         private const float ENGINE_PEAK_POWER_RPS = 600.0f;
-        private const float ENGINE_GEAR_RATIO = 4.0f;
+        private const float ENGINE_GEAR_RATIO = 7.0f;
         private const float ACCEL_G = 10f;
         const float MS_TO_KMPH = 3.6f;
         const float UNIT_TO_M = 25.0f / 54.0f;
@@ -83,7 +85,7 @@ namespace IOperateIt
             public float slip;
             public bool onGround;
             public bool isSimulated     { get => simulated; private set => simulated = value; }
-            public bool isPowered       { get => powered; private set => powered = value; }
+            public bool isPowered       { get => powered && (torqueFract > 0.0f); private set => powered = value; }
             public bool isSteerable     { get => steerable; private set => steerable = value; }
             public bool isInvertedSteer { get => inverted; private set => inverted = value; }
             public bool isFront         { get => front; private set => front = value; }
@@ -329,14 +331,13 @@ namespace IOperateIt
             }
             else
             {
-                WheelPhysics(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel);
+                WheelPhysics(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel);     
             }
             
             LimitVelocity();
 
             m_collidersManager.UpdateColliders(m_vehicleRigidBody.transform);
 
-            m_distanceTravelled += invert * Vector3.Magnitude(vehiclePos - m_prevPosition);
             m_prevVelocity = vehicleVel;
             m_prevPosition = vehiclePos;
         }
@@ -391,8 +392,12 @@ namespace IOperateIt
         private void OnGUI()
         {
             if (Logging.DetailLogging)
-                GUI.Label(new Rect(50f, 50f, 500f, 500f), "g: " + m_gear + "\nt: " + m_throttle + "\nb: " + m_brake + 
-                    "\ns: " + m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH + "\nrps: " + m_radps + "\n w: " + Wheel.frontCount + " " + Wheel.rearCount);
+                GUI.Label(new Rect(100f, 100f, 700f, 700f), "g: " + m_gear + "\nt: " + m_throttle + "\nb: " + m_brake + 
+                    "\ns: " + m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH + "\nrps: " + m_radps +
+                    "\nw0: " + m_wheelObjects[0].origin + " " + m_wheelObjects[0].slip + " " + m_wheelObjects[0].radps +
+                    "\nw1: " + m_wheelObjects[1].origin + " " + m_wheelObjects[1].slip + " " + m_wheelObjects[1].radps +
+                    "\nw2: " + m_wheelObjects[2].origin + " " + m_wheelObjects[2].slip + " " + m_wheelObjects[2].radps +
+                    "\nw3: " + m_wheelObjects[3].origin + " " + m_wheelObjects[3].slip + " " + m_wheelObjects[3].radps);
         }
 
         private void FallbackPhysics(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, float invert)
@@ -439,7 +444,7 @@ namespace IOperateIt
             {
                 var relativeVel = m_vehicleRigidBody.transform.InverseTransformDirection(vehicleVel);
 
-                Vector3 longImpulse = Vector3.forward * m_gear * m_throttle * (Settings.ModSettings.EnginePower * KW_TO_W / (vehicleVel.magnitude + 1.0f)) * Time.fixedDeltaTime;
+                Vector3 longImpulse = Vector3.forward * m_gear * m_throttle * (Settings.ModSettings.EnginePower * KW_TO_W * (1.0f - DRAG_DRIVETRAIN) / (vehicleVel.magnitude + 1.0f)) * Time.fixedDeltaTime;
 
                 if (m_gear == 0)
                 {
@@ -453,11 +458,9 @@ namespace IOperateIt
                 relativeVel.z = 0.0f;
                 relativeVel.y = 0.0f;
 
-                Vector3 netImpulse = (1.0f - ModSettings.GripOvermatch) * longImpulse;
-
+                Vector3 netImpulse = longImpulse;
                 netImpulse -= relativeVel * (1.0f - FLOAT_ERROR) * m_vehicleRigidBody.mass;
                 netImpulse = Mathf.Min(netImpulse.magnitude, m_normalImpulse * ModSettings.GripCoeffS) * Vector3.Normalize(netImpulse);
-                netImpulse += ModSettings.GripOvermatch * longImpulse;
                 netImpulse += Vector3.up * m_normalImpulse;
                 netImpulse = m_vehicleRigidBody.transform.TransformDirection(netImpulse);
                 m_vehicleRigidBody.AddForceAtPosition(netImpulse, new Vector3(vehiclePos.x, m_terrainHeight, vehiclePos.z), ForceMode.Impulse);
@@ -470,8 +473,9 @@ namespace IOperateIt
                 m_vehicleRigidBody.AddRelativeTorque(angularTarget, ForceMode.VelocityChange);
             }
 
-
             m_compression = Mathf.Max(m_terrainHeight - (vehiclePos.y + ModSettings.SpringOffset), 0.0f);
+
+            m_distanceTravelled += invert * Vector3.Magnitude(vehiclePos - m_prevPosition);
         }
 
         private void WheelPhysics(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel)
@@ -498,7 +502,7 @@ namespace IOperateIt
                 }
             }
 
-            foreach (Wheel w in m_wheelObjects) // calculate the road normals. apply angular friction from previous tick. calculate normal impulses. Update wheel suspension position.
+            foreach (Wheel w in m_wheelObjects) // calculate the road normals. apply angular friction from previous tick. 
             {
                 if (w.isSteerable)
                 {
@@ -518,8 +522,12 @@ namespace IOperateIt
                     float radDelta = Vector3.Dot(prelimContactVel, w.tangent) / w.radius - w.radps;
                     w.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), w.normalImpulse * w.radius * w.frictionCoeff / w.moment);
                 }
-                w.radps *= 1.0f - (DRAG_WHEEL * Time.fixedDeltaTime);
 
+                w.radps *= 1.0f - ((w.isPowered ? DRAG_WHEEL_POWERED : DRAG_WHEEL) * Time.fixedDeltaTime);
+            }
+
+            foreach(Wheel w in m_wheelObjects) // calculate normal impulses.Update wheel suspension position.
+            {
                 w.onGround = false;
                 w.normalImpulse = 0.0f;
                 w.slip = 1.0f;
@@ -542,7 +550,7 @@ namespace IOperateIt
                         w.contactPoint = w.gameObject.transform.TransformPoint(new Vector3(0.0f, -w.radius, 0.0f));
                         w.contactVelocity = m_vehicleRigidBody.GetPointVelocity(w.contactPoint);
                         w.slip = Mathf.Clamp(Vector3.Magnitude(w.contactVelocity - (w.radps * w.radius * w.tangent)) / Mathf.Max(w.contactVelocity.magnitude, 1.0f) / GRIP_MAX_SLIP, 0.0f, 1.0f);
-                        w.frictionCoeff = Mathf.Lerp(ModSettings.GripCoeffS, ModSettings.GripCoeffK, (w.slip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP));
+                        w.frictionCoeff = Mathf.Lerp(ModSettings.GripCoeffS, ModSettings.GripCoeffK, Mathf.Max((w.slip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP), 0.0f));
                     }
                 }
                 else
@@ -557,14 +565,33 @@ namespace IOperateIt
             float engineRps = 0.0f;
             foreach (Wheel w in m_wheelObjects)
             {
+                m_distanceTravelled += w.radps * w.torqueFract * w.radius * Time.fixedDeltaTime;
                 engineRps += w.radps * w.torqueFract;
             }
             m_radps = engineRps * ENGINE_GEAR_RATIO;
-            m_torque = -ENGINE_GEAR_RATIO * ModSettings.EnginePower * KW_TO_W * (Mathf.Abs(m_radps) - 2.0f * ENGINE_PEAK_POWER_RPS) / (ENGINE_PEAK_POWER_RPS * ENGINE_PEAK_POWER_RPS);
+            m_torque = -ENGINE_GEAR_RATIO * ModSettings.EnginePower * KW_TO_W * (1.0f - DRAG_DRIVETRAIN) * (Mathf.Abs(m_radps) - 2.0f * ENGINE_PEAK_POWER_RPS) / (ENGINE_PEAK_POWER_RPS * ENGINE_PEAK_POWER_RPS);
 
+            float avgFrontRps = 0.0f;
+            float avgRearRps = 0.0f;
+            foreach (Wheel w in m_wheelObjects) // calcuate first pass wheel angular velocity
+            {
+                float wheelTorque = m_gear * m_throttle * w.torqueFract * m_torque;
+                w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
 
+                if (w.isFront)
+                {
+                    avgFrontRps += w.radps;
+                }
+                else
+                {
+                    avgRearRps += w.radps;
+                }
+            }
 
-            foreach(Wheel w in m_wheelObjects) // calculate the lateral and longitudinal forces. Apply all forces.
+            avgFrontRps /= Wheel.frontCount;
+            avgRearRps /= Wheel.rearCount;
+
+            foreach (Wheel w in m_wheelObjects) // calculate the lateral and longitudinal forces. Apply all forces.
             {
                 if (w.onGround)
                 {
@@ -579,22 +606,32 @@ namespace IOperateIt
 
                     Vector2 flatImpulses = Vector2.zero;
 
-                    float lateralSpeed = Vector3.Dot(w.contactVelocity, w.binormal);
-                    float lateralComponent = -normalContribution * m_vehicleRigidBody.mass * lateralSpeed;
-
-                    flatImpulses.x = lateralComponent;
-
-                    float wheelTorque;
-                    wheelTorque = m_gear * m_throttle * w.torqueFract * m_torque;
-                    w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
-                    float absBrake = (w.slip < GRIP_OPTIM_SLIP || !ModSettings.BrakingABS) ? m_brake : 0.0f;
-                    wheelTorque = -Mathf.Sign(w.radps) * Mathf.Min(absBrake * w.brakeForce * w.radius, Mathf.Abs(w.radps) * w.moment / Time.fixedDeltaTime);
-                    w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
-
                     float longSpeed = Vector3.Dot(w.contactVelocity, w.tangent);
+                    float lateralSpeed = Vector3.Dot(w.contactVelocity, w.binormal);
+
+                    // limited slip diff
+                    float radDelta = w.isFront ? avgFrontRps : avgRearRps;
+                    radDelta = (radDelta - w.radps);
+                    w.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), radDelta * radDelta * 10.0f);
+
+                    // braking ABS
+                    float totalBrake = (w.slip < GRIP_OPTIM_SLIP || !ModSettings.BrakingABS) ? m_brake : 0.0f;
+
+                    // basic traction control
+                    float actionableDelta = Mathf.Max(Mathf.Sign(w.radps) * (w.radps - longSpeed / w.radius) - (w.normalImpulse * w.frictionCoeff * Time.fixedDeltaTime * w.radius / w.moment), 0.0f);
+                    totalBrake += actionableDelta * w.moment / (w.radius * Time.fixedDeltaTime * w.brakeForce);
+
+                    totalBrake = Mathf.Clamp(totalBrake, 0.0f, 1.0f);
+                    float wheelTorque = -Mathf.Sign(w.radps) * Mathf.Min(totalBrake * w.brakeForce * w.radius, Mathf.Abs(w.radps) * w.moment / Time.fixedDeltaTime);
+                    w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
+
                     float longComponent = normalContribution * m_vehicleRigidBody.mass * (w.radps * w.radius - longSpeed);
 
                     flatImpulses.y = longComponent;
+
+                    float lateralComponent = -normalContribution * m_vehicleRigidBody.mass * lateralSpeed;
+
+                    flatImpulses.x = lateralComponent;
 
                     if (w.slip > GRIP_OPTIM_SLIP)
                     {
