@@ -834,7 +834,7 @@ namespace IOperateIt
 
             gameObject.GetComponent<MeshFilter>().mesh = gameObject.GetComponent<MeshFilter>().sharedMesh = vehicleMesh;
             gameObject.GetComponent<MeshRenderer>().material = gameObject.GetComponent<MeshRenderer>().sharedMaterial = m_vehicleInfo.m_material;
-            gameObject.GetComponent<MeshRenderer>().sortingLayerID = m_vehicleInfo.m_prefabDataLayer;
+            //gameObject.GetComponent<MeshRenderer>().sortingLayerID = m_vehicleInfo.m_prefabDataLayer;
 
             if (m_setColor)
             {
@@ -891,9 +891,11 @@ namespace IOperateIt
 
         private void OverridePrefabs()
         {
+            // override the underground material for all vehicles.
             for (uint prefabIndex = 0; prefabIndex < PrefabCollection<VehicleInfo>.PrefabCount(); prefabIndex++)
             {
                 VehicleInfo prefabVehicleInfo = PrefabCollection<VehicleInfo>.GetPrefab(prefabIndex);
+                if (prefabVehicleInfo == null) continue;
                 prefabVehicleInfo.m_undergroundMaterial = prefabVehicleInfo.m_material;
                 prefabVehicleInfo.m_undergroundLodMaterial = prefabVehicleInfo.m_lodMaterialCombined;
                 foreach (VehicleInfo.MeshInfo submesh in prefabVehicleInfo.m_subMeshes)
@@ -909,103 +911,115 @@ namespace IOperateIt
 
             int prefabCount = PrefabCollection<NetInfo>.PrefabCount();
 
+            // only modify prefabs with MetroTunnels item layer or underground render layer.
             for (uint prefabIndex = 0; prefabIndex < prefabCount; prefabIndex++)
             {
                 NetInfo prefabNetInfo = PrefabCollection<NetInfo>.GetPrefab(prefabIndex);
-                NetInfo prefabReplaceInfo = null;
+                if (prefabNetInfo == null) continue;
+                NetInfo prefabReplaceInfo = prefabNetInfo;
+                bool bHasUnderground = false;
+                bool bForceUnderground = false;
+
+                for (int index = 0; index < prefabReplaceInfo.m_segments.Length; index++)
+                {
+                    bHasUnderground |= prefabReplaceInfo.m_segments[index].m_layer == MapUtils.LAYER_UNDERGROUND;
+                }
+
+                for (int index = 0; index < prefabReplaceInfo.m_nodes.Length; index++)
+                {
+                    bHasUnderground |= prefabReplaceInfo.m_nodes[index].m_layer == MapUtils.LAYER_UNDERGROUND;
+                }
 
                 if (prefabNetInfo.m_class.m_layer == ItemClass.Layer.MetroTunnels)
                 {
-                    string replaceName;
-                    // get underground to elvated mapping.
-                    if (!m_customUndergroundMappings.TryGetValue(prefabNetInfo.name, out replaceName))
-                    {
-                        replaceName = prefabNetInfo.name.Replace(" Tunnel", " Elevated");
-                    }
+                    bool bCanReplace = true;
 
-                    // find the elevated counterpart prefab to be used as a reference.
-                    for (uint otherPrefabIndex = 0; otherPrefabIndex < prefabCount; otherPrefabIndex++)
+                    foreach (NetInfo.Segment s in prefabNetInfo.m_segments)
                     {
-                        NetInfo tmpInfo = PrefabCollection<NetInfo>.GetPrefab(otherPrefabIndex);
-                        if (tmpInfo.m_class.m_layer == ItemClass.Layer.Default && tmpInfo.name == replaceName)
+                        if (s.m_material && (!s.m_material.shader || s.m_material.shader.name != "Custom/Net/Metro"))
                         {
-                            prefabReplaceInfo = tmpInfo;
-                            break;
+                            bCanReplace = false;
                         }
                     }
 
-                    // replace all underground segments and nodes with the elevated couterparts.
-                    if (prefabReplaceInfo != null)
+                    // replace the prefab with elevated variant if no visible meshes are found.
+                    if (bCanReplace)
                     {
-                        m_backupPrefabData[prefabNetInfo] = new NetInfoBackup(prefabNetInfo.m_nodes, prefabNetInfo.m_segments);
-
-                        NetInfo.Segment[] segments = new NetInfo.Segment[prefabReplaceInfo.m_segments.Length];
-
-                        for (int index = 0; index < prefabReplaceInfo.m_segments.Length; index++)
+                        string replaceName = "";
+                    
+                        // get underground to elvated mapping.
+                        if (!m_customUndergroundMappings.TryGetValue(prefabNetInfo.name, out replaceName))
                         {
-                            NetInfo.Segment newSegment = CopySegment(prefabReplaceInfo.m_segments[index]);
-                            newSegment.m_layer = MapUtils.LAYER_UNDERGROUND;
-                            segments[index] = newSegment;
+                            replaceName = prefabNetInfo.name.Replace(" Tunnel", " Elevated");
                         }
 
-                        NetInfo.Node[] nodes = new NetInfo.Node[prefabReplaceInfo.m_nodes.Length];
-
-                        for (int index = 0; index < prefabReplaceInfo.m_nodes.Length; index++)
+                        // find the elevated counterpart prefab to be used as a reference.
+                        for (uint otherPrefabIndex = 0; otherPrefabIndex < prefabCount; otherPrefabIndex++)
                         {
-                            NetInfo.Node newNode = CopyNode(prefabReplaceInfo.m_nodes[index]);
-                            newNode.m_layer = MapUtils.LAYER_UNDERGROUND;
-                            newNode.m_flagsForbidden = newNode.m_flagsForbidden & ~NetNode.Flags.Underground;
-                            nodes[index] = newNode;
+                            NetInfo tmpInfo = PrefabCollection<NetInfo>.GetPrefab(otherPrefabIndex);
+                            if (tmpInfo.m_class.m_layer == ItemClass.Layer.Default && tmpInfo.name == replaceName)
+                            {
+                                prefabReplaceInfo = tmpInfo;
+                                bForceUnderground = true;
+                                break;
+                            }
                         }
-
-                        prefabNetInfo.m_segments = segments;
-                        prefabNetInfo.m_nodes = nodes;
-                    }
-                    else
-                    {
-                        Logging.Error("Failed to replace " + prefabNetInfo.name + " with " + replaceName);
                     }
                 }
-                else if (prefabNetInfo.name.Contains("Slope")) // only slope components have underground transition elements.
+                
+                
+                if (bHasUnderground)
                 {
                     m_backupPrefabData[prefabNetInfo] = new NetInfoBackup(prefabNetInfo.m_nodes, prefabNetInfo.m_segments);
+                    NetInfo.Segment[] segments = new NetInfo.Segment[prefabReplaceInfo.m_segments.Length];
+                    NetInfo.Node[] nodes = new NetInfo.Node[prefabReplaceInfo.m_nodes.Length];
 
-                    NetInfo.Segment[] segments = new NetInfo.Segment[prefabNetInfo.m_segments.Length];
-
-                    for (int index = 0; index < prefabNetInfo.m_segments.Length; index++)
+                    for (int index = 0; index < prefabReplaceInfo.m_segments.Length; index++)
                     {
-                        NetInfo.Segment currSegment = prefabNetInfo.m_segments[index];
-                        if (currSegment.m_layer == MapUtils.LAYER_UNDERGROUND) // disable slope underground component from rendering.
+                        NetInfo.Segment newSegment = CopySegment(prefabReplaceInfo.m_segments[index]);
+
+                        if (newSegment.m_layer == MapUtils.LAYER_UNDERGROUND)
                         {
-                            NetInfo.Segment newSegment = CopySegment(currSegment);
-                            newSegment.m_forwardForbidden = NetSegment.Flags.All;
-                            newSegment.m_forwardRequired = NetSegment.Flags.None;
-                            newSegment.m_backwardForbidden = NetSegment.Flags.All;
-                            newSegment.m_backwardRequired = NetSegment.Flags.None;
-                            segments[index] = newSegment;
+                            // disable segment underground xray component from rendering.
+                            if (newSegment.m_material && newSegment.m_material.shader && newSegment.m_material.shader.name == "Custom/Net/Metro")
+                            {
+                                newSegment.m_forwardForbidden = NetSegment.Flags.All;
+                                newSegment.m_forwardRequired = NetSegment.Flags.None;
+                                newSegment.m_backwardForbidden = NetSegment.Flags.All;
+                                newSegment.m_backwardRequired = NetSegment.Flags.None;
+                            }
                         }
-                        else
+                        // apply underground layer if the segment is being replaced from an overground component.
+                        else if (bForceUnderground)
                         {
-                            segments[index] = currSegment;
+                            newSegment.m_layer = MapUtils.LAYER_UNDERGROUND;
                         }
+
+                        segments[index] = newSegment;
                     }
 
-                    NetInfo.Node[] nodes = new NetInfo.Node[prefabNetInfo.m_nodes.Length];
-
-                    for (int index = 0; index < prefabNetInfo.m_nodes.Length; index++)
+                    for (int index = 0; index < prefabReplaceInfo.m_nodes.Length; index++)
                     {
-                        NetInfo.Node newNode = CopyNode(prefabNetInfo.m_nodes[index]);
-                        if (newNode.m_layer == MapUtils.LAYER_UNDERGROUND) // disable node underground component from rendering.
+                        NetInfo.Node newNode = CopyNode(prefabReplaceInfo.m_nodes[index]);
+
+                        if (newNode.m_layer == MapUtils.LAYER_UNDERGROUND)
                         {
-                            newNode.m_flagsForbidden = NetNode.Flags.All;
-                            newNode.m_flagsRequired = NetNode.Flags.None;
-                            nodes[index] = newNode;
+                            // disable node underground xray component from rendering.
+                            if (newNode.m_material && newNode.m_material.shader && newNode.m_material.shader.name == "Custom/Net/Metro")
+                            {
+                                newNode.m_flagsForbidden = NetNode.Flags.All;
+                                newNode.m_flagsRequired = NetNode.Flags.None;
+                            }
                         }
-                        else // allow the surface node to be rendered underground.
+                        // apply underground layer if the node is being replaced from an overground component.
+                        else if (bForceUnderground)
                         {
-                            newNode.m_flagsForbidden = newNode.m_flagsForbidden & ~NetNode.Flags.Underground;
-                            nodes[index] = newNode;
+                            newNode.m_layer = MapUtils.LAYER_UNDERGROUND;
                         }
+                        
+                        newNode.m_flagsForbidden = newNode.m_flagsForbidden & ~NetNode.Flags.Underground;
+
+                        nodes[index] = newNode;
                     }
 
                     prefabNetInfo.m_segments = segments;
@@ -1026,6 +1040,7 @@ namespace IOperateIt
             for (uint iter = 0; iter < PrefabCollection<VehicleInfo>.PrefabCount(); iter++)
             {
                 VehicleInfo prefabVehicleInfo = PrefabCollection<VehicleInfo>.GetPrefab(iter);
+                if (prefabVehicleInfo == null) continue;
                 prefabVehicleInfo.m_undergroundMaterial = null;
                 prefabVehicleInfo.m_undergroundLodMaterial = null;
                 foreach (VehicleInfo.MeshInfo submesh in prefabVehicleInfo.m_subMeshes)
@@ -1044,8 +1059,9 @@ namespace IOperateIt
             for (uint prefabIndex = 0; prefabIndex < prefabCount; prefabIndex++)
             {
                 NetInfo prefabNetInfo = PrefabCollection<NetInfo>.GetPrefab(prefabIndex);
+                if (prefabNetInfo == null) continue;
 
-                if (prefabNetInfo.m_class.m_layer == ItemClass.Layer.MetroTunnels || prefabNetInfo.name.Contains("Slope"))
+                if (m_backupPrefabData.ContainsKey(prefabNetInfo))
                 {
                     if (m_backupPrefabData.TryGetValue(prefabNetInfo, out NetInfoBackup backupData))
                     {
