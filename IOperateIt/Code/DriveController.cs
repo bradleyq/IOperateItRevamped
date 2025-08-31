@@ -16,7 +16,7 @@ namespace IOperateIt
         private const float GEAR_RESP = 0.25f;
         private const float PARK_SPEED = 0.5f;
         private const float STEER_MAX = 37.0f;
-        private const float STEER_DECAY = 0.01f;
+        private const float STEER_DECAY = 0.012f;
         private const float ROAD_WALL_HEIGHT = 0.75f;
         private const float LIGHT_HEADLIGHT_INTENSITY = 5.0f;
         private const float LIGHT_BRAKELIGHT_INTENSITY = 5.0f;
@@ -31,6 +31,9 @@ namespace IOperateIt
         private const float VALID_INCLINE = 0.5f;
         private const float GRIP_MAX_SLIP = 1.0f;
         private const float GRIP_OPTIM_SLIP = 0.2f;
+        private const float GRIP_TC_SLIP = 0.3f;
+        private const float DIFF_RESISTANCE = 10.0f;
+        private const float DIFF_RESISTANCE_BIAS = 0.05f;
         private const float ENGINE_PEAK_POWER_RPS = 600.0f;
         private const float ENGINE_GEAR_RATIO = 7.0f;
         private const float ACCEL_G = 10f;
@@ -226,6 +229,7 @@ namespace IOperateIt
         private bool m_isSirenEnabled = false;
         private bool m_isLightEnabled = false;
         private bool m_physicsFallback = false;
+        private bool m_isTurning = false;
 
         private int m_gear = 0;
         private float m_terrainHeight = 0.0f;
@@ -481,8 +485,21 @@ namespace IOperateIt
         private void WheelPhysics(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel)
         {
             Vector3 upVec = m_vehicleRigidBody.transform.TransformDirection(Vector3.up);
+            Vector3 forwardVec = m_vehicleRigidBody.transform.TransformDirection(Vector3.forward);
 
-            m_vehicleRigidBody.AddForce(Vector3.down * (ACCEL_G * m_vehicleRigidBody.mass) - upVec * ModSettings.DownForce * Mathf.Abs(Vector3.Dot(vehicleVel, m_vehicleRigidBody.transform.TransformDirection(Vector3.forward))), ForceMode.Force);
+            if (!m_isTurning)
+            {
+                float rot = Vector3.Dot(vehicleAngularVel, upVec);
+                float dir = Vector3.Dot(vehicleVel, forwardVec);
+
+                if (Mathf.Abs(rot) >= 0.001 && Mathf.Abs(m_steer) < 0.05f)
+                {  
+                    m_steer -= Mathf.Sign(rot * dir) * Mathf.Min(Mathf.Abs(rot) * 40.0f * Time.fixedDeltaTime, 0.05f);
+                }
+            }
+
+
+            m_vehicleRigidBody.AddForce(Vector3.down * (ACCEL_G * m_vehicleRigidBody.mass) - upVec * ModSettings.DownForce * Mathf.Abs(Vector3.Dot(vehicleVel, forwardVec)), ForceMode.Force);
 
             foreach (Wheel w in m_wheelObjects) // first calculate the heights at each wheel to prep for road normal calcs
             {
@@ -575,7 +592,8 @@ namespace IOperateIt
             float avgRearRps = 0.0f;
             foreach (Wheel w in m_wheelObjects) // calcuate first pass wheel angular velocity
             {
-                float wheelTorque = m_gear * m_throttle * w.torqueFract * m_torque;
+                // cut power when slipping. Very simple traction control
+                float wheelTorque = m_gear * m_throttle * (1.0f - w.slip) * w.torqueFract * m_torque;
                 w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
 
                 if (w.isFront)
@@ -611,17 +629,17 @@ namespace IOperateIt
 
                     // limited slip diff
                     float radDelta = w.isFront ? avgFrontRps : avgRearRps;
-                    radDelta = (radDelta - w.radps);
-                    w.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), radDelta * radDelta * 10.0f);
+                    radDelta = radDelta - w.radps;
+                    w.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), radDelta * radDelta * DIFF_RESISTANCE + DIFF_RESISTANCE_BIAS);
 
                     // braking ABS
                     float totalBrake = (w.slip < GRIP_OPTIM_SLIP || !ModSettings.BrakingABS) ? m_brake : 0.0f;
 
-                    // basic traction control
-                    float actionableDelta = Mathf.Max(Mathf.Sign(w.radps) * (w.radps - longSpeed / w.radius) - (w.normalImpulse * w.frictionCoeff * Time.fixedDeltaTime * w.radius / w.moment), 0.0f);
-                    totalBrake += actionableDelta * w.moment / (w.radius * Time.fixedDeltaTime * w.brakeForce);
+                    // brake based traction control
+                    //float actionableDelta = Mathf.Max(Mathf.Sign(w.radps) * (w.radps - longSpeed / w.radius * (1.0f + GRIP_TC_SLIP)) - (w.normalImpulse * w.frictionCoeff * Time.fixedDeltaTime * w.radius / w.moment), 0.0f);
+                    //totalBrake += actionableDelta * w.moment / (w.radius * Time.fixedDeltaTime * w.brakeForce);
+                    //totalBrake = Mathf.Clamp(totalBrake, 0.0f, 1.0f);
 
-                    totalBrake = Mathf.Clamp(totalBrake, 0.0f, 1.0f);
                     float wheelTorque = -Mathf.Sign(w.radps) * Mathf.Min(totalBrake * w.brakeForce * w.radius, Mathf.Abs(w.radps) * w.moment / Time.fixedDeltaTime);
                     w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
 
@@ -1309,19 +1327,19 @@ namespace IOperateIt
                 m_brake = Mathf.Clamp(m_brake - Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
             }
 
-            bool steering = false;
-            float steerLimit = Mathf.Clamp(1.0f - STEER_DECAY * m_vehicleRigidBody.velocity.magnitude, 0.04f, 1.0f);
+            m_isTurning = false;
+            float steerLimit = Mathf.Clamp(1.0f - STEER_DECAY * Vector3.Magnitude(m_vehicleRigidBody.velocity), 0.01f, 1.0f);
             if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveRight.Key))
             {
                 m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime / STEER_RESP, -steerLimit, steerLimit);
-                steering = true;
+                m_isTurning = true;
             }
             if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveLeft.Key))
             {
                 m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime / STEER_RESP, -steerLimit, steerLimit);
-                steering = true;
+                m_isTurning = true;
             }
-            if (!steering)
+            if (!m_isTurning)
             {
                 if (m_steer > 0.0f)
                 {
