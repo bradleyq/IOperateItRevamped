@@ -58,7 +58,7 @@ namespace DriveIt.Utils
                             }
                             else
                             {
-                                ShowToolInfo(true, Translations.Translate("ROAD_SELECT"), netSegment.m_bounds.center);
+                                ShowToolInfo(true, Translations.Translate(DriveCommon.TK_ROAD_SELECT), netSegment.m_bounds.center);
                             }
                         }
                     }

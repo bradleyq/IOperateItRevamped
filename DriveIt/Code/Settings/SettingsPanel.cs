@@ -4,6 +4,7 @@ using AlgernonCommons.Translation;
 using AlgernonCommons.UI;
 using ColossalFramework.UI;
 using DriveIt.Settings;
+using DriveIt.Utils;
 using UnityEngine;
 
 namespace DriveIt
@@ -33,10 +34,10 @@ namespace DriveIt
             var currentY = MediumMargin;
 
             #region General Group
-            UISpacers.AddTitleSpacer(scrollPanel, Margin, currentY, headerWidth, Translations.Translate("SETTINGS_GROUP_GENERAL"));
+            UISpacers.AddTitleSpacer(scrollPanel, Margin, currentY, headerWidth, Translations.Translate(DriveCommon.TK_SETTINGS_GROUP_GENERAL));
             currentY += LargeMargin;
 
-            var language_DropDown = UIDropDowns.AddPlainDropDown(scrollPanel, MediumMargin, currentY, Translations.Translate("LANGUAGE_CHOICE"), Translations.LanguageList, Translations.Index);
+            var language_DropDown = UIDropDowns.AddPlainDropDown(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_LANGUAGE_CHOICE), Translations.LanguageList, Translations.Index);
             language_DropDown.eventSelectedIndexChanged += (control, index) =>
             {
                 Translations.Index = index;
@@ -46,25 +47,25 @@ namespace DriveIt
             language_DropDown.parent.relativePosition = new Vector2(MediumMargin, currentY);
             currentY += language_DropDown.parent.height + MediumMargin;
 
-            var logging_CheckBox = UICheckBoxes.AddPlainCheckBox(scrollPanel, MediumMargin, currentY, Translations.Translate("DETAIL_LOGGING"));
+            var logging_CheckBox = UICheckBoxes.AddPlainCheckBox(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_DETAIL_LOGGING));
             logging_CheckBox.isChecked = Logging.DetailLogging;
             logging_CheckBox.eventCheckChanged += (_, isChecked) => Logging.DetailLogging = isChecked;
             currentY += logging_CheckBox.height + MediumMargin;
             #endregion
 
             #region Vehicle Group
-            UISpacers.AddTitleSpacer(scrollPanel, Margin, currentY, headerWidth, Translations.Translate("SETTINGS_GROUP_VEHICLE"));
+            UISpacers.AddTitleSpacer(scrollPanel, Margin, currentY, headerWidth, Translations.Translate(DriveCommon.TK_SETTINGS_GROUP_VEHICLE));
             currentY += LargeMargin;
 
-            var maxVelocity_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_MAXVELOCITY"), 25f, 300f, 1f, ModSettings.MaxVelocity, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N0", suffix: " km/h"));
+            var maxVelocity_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_MAXVELOCITY), 25f, 300f, 1f, ModSettings.MaxVelocity, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N0", suffix: " km/h"));
             maxVelocity_Slider.eventValueChanged += (_, value) => ModSettings.MaxVelocity = value;
             currentY += maxVelocity_Slider.height + SliderMargin;
 
-            var enginePower_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_ENGINEPOWER"), 10f, 1000f, 1f, ModSettings.EnginePower, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 10, numberFormat: "N0", suffix: " KW"));
+            var enginePower_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_ENGINEPOWER), 10f, 1000f, 1f, ModSettings.EnginePower, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 10, numberFormat: "N0", suffix: " KW"));
             enginePower_Slider.eventValueChanged += (_, value) => ModSettings.EnginePower = value;
             currentY += enginePower_Slider.height + SliderMargin;
 
-            var brakingForce_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_BRAKINGFORCE"), 5f, 200f, 1f, ModSettings.BrakingForce, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N0", suffix: " KN"));
+            var brakingForce_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_BRAKINGFORCE), 5f, 200f, 1f, ModSettings.BrakingForce, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N0", suffix: " KN"));
             brakingForce_Slider.eventValueChanged += (_, value) => ModSettings.BrakingForce = value;
             currentY += brakingForce_Slider.height + SliderMargin;
 
@@ -115,18 +116,18 @@ namespace DriveIt
             #endregion
 
             #region Camera Group
-            UISpacers.AddTitleSpacer(scrollPanel, Margin, currentY, headerWidth, Translations.Translate("SETTINGS_GROUP_CAMERA"));
+            UISpacers.AddTitleSpacer(scrollPanel, Margin, currentY, headerWidth, Translations.Translate(DriveCommon.TK_SETTINGS_GROUP_CAMERA));
             currentY += LargeMargin;
 
-            var cameraX_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_OFFSET_X"), -20f, 20f, 0.1f, ModSettings.Offset.x, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.1f, numberFormat: "N"));
+            var cameraX_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_OFFSET_X), -20f, 20f, 0.1f, ModSettings.Offset.x, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.1f, numberFormat: "N"));
             cameraX_Slider.eventValueChanged += (_, value) => ModSettings.Offset.x = value;
             currentY += cameraX_Slider.height + SliderMargin;
 
-            var cameraY_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_OFFSET_Y"), -20f, 20f, 0.1f, ModSettings.Offset.y, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.1f, numberFormat: "N"));
+            var cameraY_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_OFFSET_Y), -20f, 20f, 0.1f, ModSettings.Offset.y, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.1f, numberFormat: "N"));
             cameraY_Slider.eventValueChanged += (_, value) => ModSettings.Offset.y = value;
             currentY += cameraY_Slider.height + SliderMargin;
 
-            var cameraZ_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_OFFSET_Z"), -20f, 20f, 0.1f, ModSettings.Offset.z, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.1f, numberFormat: "N"));
+            var cameraZ_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_OFFSET_Z), -20f, 20f, 0.1f, ModSettings.Offset.z, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.1f, numberFormat: "N"));
             cameraZ_Slider.eventValueChanged += (_, value) => ModSettings.Offset.z = value;
             currentY += cameraZ_Slider.height + SliderMargin;
 
@@ -152,31 +153,31 @@ namespace DriveIt
             #endregion
 
             #region Game Group
-            UISpacers.AddTitleSpacer(scrollPanel, Margin, currentY, headerWidth, Translations.Translate("SETTINGS_GROUP_GAME"));
+            UISpacers.AddTitleSpacer(scrollPanel, Margin, currentY, headerWidth, Translations.Translate(DriveCommon.TK_SETTINGS_GROUP_GAME));
             currentY += LargeMargin;
 
-            var buildingCollision_CheckBox = UICheckBoxes.AddPlainCheckBox(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_BUILDINGCOLLISION"));
+            var buildingCollision_CheckBox = UICheckBoxes.AddPlainCheckBox(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_BUILDINGCOLLISION));
             buildingCollision_CheckBox.isChecked = ModSettings.BuildingCollision;
             buildingCollision_CheckBox.eventCheckChanged += (_, isChecked) => ModSettings.BuildingCollision = isChecked;
             currentY += buildingCollision_CheckBox.height + Margin;
 
-            var vehicleCollision_CheckBox = UICheckBoxes.AddPlainCheckBox(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_VEHICLECOLLISION"));
+            var vehicleCollision_CheckBox = UICheckBoxes.AddPlainCheckBox(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_VEHICLECOLLISION));
             vehicleCollision_CheckBox.isChecked = ModSettings.VehicleCollision;
             vehicleCollision_CheckBox.eventCheckChanged += (_, isChecked) => ModSettings.VehicleCollision = isChecked;
             currentY += vehicleCollision_CheckBox.height + MediumMargin;
             #endregion
 
             #region Keybind Group
-            UISpacers.AddTitleSpacer(scrollPanel, Margin, currentY, headerWidth, Translations.Translate("SETTINGS_GROUP_KEYS"));
+            UISpacers.AddTitleSpacer(scrollPanel, Margin, currentY, headerWidth, Translations.Translate(DriveCommon.TK_SETTINGS_GROUP_KEYS));
             currentY += LargeMargin;
 
             var keyUUIToggle = Utils.UUISupport.UUIKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY);
             currentY += keyUUIToggle.Panel.height + Margin;
 
-            var keyLightToggle = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_KEYLIGHTTOGGLE"), ModSettings.KeyLightToggle);
+            var keyLightToggle = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYLIGHTTOGGLE), ModSettings.KeyLightToggle);
             currentY += keyLightToggle.Panel.height + Margin;
 
-            var keySirenToggle = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_KEYSIRENTOGGLE"), ModSettings.KeySirenToggle);
+            var keySirenToggle = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYSIRENTOGGLE), ModSettings.KeySirenToggle);
             currentY += keySirenToggle.Panel.height + Margin;
 
             var keyMoveForward = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_KEYMOVEFORWARD"), ModSettings.KeyMoveForward);

@@ -18,12 +18,9 @@ namespace DriveIt.Utils
                 {
                     switch (assembly.GetName().Name)
                     {
-                        case "EnhancedZoom":
-                            conflictModNames.Add("Enhanced Zoom Continued");
-                            break;
-                        case "IINS.AutoWalking":
-                            conflictModNames.Add("First-person Auto-walking");
-                            break;
+                        //case "Assembly Name":
+                        //    conflictModNames.Add("Friendly Name");
+                        //    break;
                     }
                 }
             }

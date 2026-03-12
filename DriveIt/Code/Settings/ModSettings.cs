@@ -4,14 +4,15 @@ using ColossalFramework.IO;
 using System.IO;
 using System.Xml.Serialization;
 using UnityEngine;
+using DriveIt.Utils;
 
 namespace DriveIt.Settings
 {
-    [XmlRoot("DriveIt")]
+    [XmlRoot(DriveCommon.MOD_NAME)]
     public sealed class ModSettings : SettingsXMLBase
     {
         [XmlIgnore]
-        private static readonly string SettingsFileName = Path.Combine(DataLocation.localApplicationData, "DriveIt.xml");
+        private static readonly string SettingsFileName = Path.Combine(DataLocation.localApplicationData, DriveCommon.SETTINGS_PATH);
 
         internal static void Load() => XMLFileUtils.Load<ModSettings>(SettingsFileName);
 

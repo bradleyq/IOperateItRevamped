@@ -1,6 +1,7 @@
 ﻿using AlgernonCommons.Translation;
 using ColossalFramework;
 using ColossalFramework.UI;
+using DriveIt.Utils;
 using UnityEngine;
 
 namespace DriveIt.UI
@@ -21,6 +22,9 @@ namespace DriveIt.UI
         private void Awake()
         {
             instance = this;
+
+            DriveCommon.Initialize();
+
             citizenVehicleInfo_Button = Initialize(ref citizenVehicleInfo_Panel);
             cityServiceVehicleInfo_Button = Initialize(ref cityServiceVehicleInfo_Panel);
             publicTransportVehicleInfo_Button = Initialize(ref publicTransportVehicleInfo_Panel);
@@ -51,17 +55,18 @@ namespace DriveIt.UI
         }
 
         private UIButton CreateDriveButton<T>(T panel) where T : WorldInfoPanel
-        {
-            var button = panel.component.AddUIComponent<UIButton>();
+        {            
+            UIButton button = panel.component.AddUIComponent<UIButton>();
             button.name = panel.component.name + "_Drive";
-            button.tooltip = Translations.Translate("DRIVEBTN_TOOLTIP");
+            button.atlas = DriveCommon.driveCommonAtlas;
+            button.tooltip = Translations.Translate(DriveCommon.TK_DRIVEBTN_TOOLTIP);
             button.size = new Vector2(40f, 40f);
             button.scaleFactor = .8f;
-            button.pressedBgSprite = "OptionBasePressed";
-            button.normalBgSprite = "OptionBase";
-            button.hoveredBgSprite = "OptionBaseHovered";
-            button.disabledBgSprite = "OptionBaseDisabled";
-            button.normalFgSprite = "InfoIconTrafficCongestion";
+            button.normalBgSprite = DriveCommon.TEX_BUTTON_BG;
+            button.pressedBgSprite = DriveCommon.TEX_BUTTON_BG_PRESSED;
+            button.hoveredBgSprite = DriveCommon.TEX_BUTTON_HOVER;
+            button.disabledBgSprite = DriveCommon.TEX_BUTTON_DISABLE;
+            button.normalFgSprite = DriveCommon.TEX_BUTTON_ICON;
             button.textColor = new Color32(255, 255, 255, 255);
             button.disabledTextColor = new Color32(7, 7, 7, 255);
             button.hoveredTextColor = new Color32(255, 255, 255, 255);
@@ -86,11 +91,11 @@ namespace DriveIt.UI
                 }
                 panel.component.isVisible = false;
             };
-            button.AlignTo(panel.component, UIAlignAnchor.BottomRight);
+            button.AlignTo(panel.component, UIAlignAnchor.TopRight);
             button.relativePosition = new Vector2
            (
                 button.relativePosition.x - 5f,
-                button.relativePosition.y - 60f/*Prevent conflict with FPC's button*/);
+                button.relativePosition.y + 45f);
             return button;
         }
         private void UpdateButtonVisibility<T>(T panel, UIButton button) where T : WorldInfoPanel

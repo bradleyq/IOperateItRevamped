@@ -396,12 +396,15 @@ namespace DriveIt
         private void OnGUI()
         {
             if (Logging.DetailLogging)
-                GUI.Label(new Rect(100f, 100f, 700f, 700f), "g: " + m_gear + "\nt: " + m_throttle + "\nb: " + m_brake + 
-                    "\ns: " + m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH + "\nrps: " + m_radps +
-                    "\nw0: " + m_wheelObjects[0].origin + " " + m_wheelObjects[0].slip + " " + m_wheelObjects[0].radps +
-                    "\nw1: " + m_wheelObjects[1].origin + " " + m_wheelObjects[1].slip + " " + m_wheelObjects[1].radps +
-                    "\nw2: " + m_wheelObjects[2].origin + " " + m_wheelObjects[2].slip + " " + m_wheelObjects[2].radps +
-                    "\nw3: " + m_wheelObjects[3].origin + " " + m_wheelObjects[3].slip + " " + m_wheelObjects[3].radps);
+            {
+                string uiString = "g: " + m_gear + "\nt: " + m_throttle + "\nb: " + m_brake + "\ns: " + m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH + "\nrps: " + m_radps;
+                for (int index = 0; index < m_wheelObjects.Count; index++)
+                {
+                    uiString += "\nw" + index + ": " + m_wheelObjects[index].origin + " " + m_wheelObjects[index].slip + " " + m_wheelObjects[index].radps;
+                }
+
+                GUI.Label(new Rect(100f, 100f, 700f, 700f), uiString);
+            }
         }
 
         private void FallbackPhysics(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, float invert)

@@ -72,7 +72,7 @@ namespace DriveIt.UI
 
             currentY += _vehicleList.height + Margin;
 
-            _spawnBtn = UIButtons.AddButton(Panel, (_vehicleList.width - 200f) / 2f, currentY, Translations.Translate("SPAWNBTN_TEXT"), 200f, 40f);
+            _spawnBtn = UIButtons.AddButton(Panel, (_vehicleList.width - 200f) / 2f, currentY, Translations.Translate(DriveCommon.TK_SPAWNBTN_TEXT), 200f, 40f);
             _spawnBtn.isEnabled = false;
             _spawnBtn.playAudioEvents = true;
             _spawnBtn.eventClick += SpawnBtnClickEvent;
@@ -98,7 +98,7 @@ namespace DriveIt.UI
             }
             _mainBtn = UIView.GetAView().AddUIComponent(typeof(UIButton)) as UIButton;
             _mainBtn.name = "MainButton";
-            _mainBtn.tooltip = Translations.Translate("MAINPANELBTN_TOOLTIP");
+            _mainBtn.tooltip = Translations.Translate(DriveCommon.TK_MAINPANELBTN_TOOLTIP);
             _mainBtn.absolutePosition = new Vector3(x, y);
             _mainBtn.size = new Vector2(40f, 40f);
             _mainBtn.scaleFactor = .8f;

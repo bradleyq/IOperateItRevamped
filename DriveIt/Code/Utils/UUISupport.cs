@@ -36,8 +36,8 @@ namespace DriveIt.Utils
                 UUIButton = UUIAPI.Register(
                     name: "MainPanelBtn",
                     groupName: null,
-                    tooltip: Translations.Translate("MAINPANELBTN_TOOLTIP"),
-                    texture: UUIHelpers.LoadTexture(Path.Combine(AssemblyUtils.AssemblyPath, "Resources/Textures/DriveItIcon.png")),
+                    tooltip: Translations.Translate(DriveCommon.TK_MAINPANELBTN_TOOLTIP),
+                    texture: UUIHelpers.LoadTexture(Path.Combine(AssemblyUtils.AssemblyPath, DriveCommon.TEX_BUTTON_ICON_FULL_PATH)),
                     onToggle: (value) =>
                     {
                         if (value)
@@ -87,7 +87,7 @@ namespace DriveIt.Utils
         }
         internal class UnsavedInputKey : UnifiedUI.Helpers.UnsavedInputKey
         {
-            public UnsavedInputKey(string keyName, Keybinding inputKey) : base(keyName, "DriveIt", inputKey.Encode()) { }
+            public UnsavedInputKey(string keyName, Keybinding inputKey) : base(keyName, DriveCommon.MOD_NAME, inputKey.Encode()) { }
             /// <summary>
             /// Used for setting saving.
             /// </summary>
@@ -112,7 +112,7 @@ namespace DriveIt.Utils
             {
                 // Basic setup.
                 var newKeymapping = parent.gameObject.AddComponent<UUIKeymapping>();
-                newKeymapping.Label = Translations.Translate("SETTINGS_KEYUUITOGGLE");
+                newKeymapping.Label = Translations.Translate(DriveCommon.TK_SETTINGS_KEYUUITOGGLE);
                 newKeymapping.Binding = UUIKey.Keybinding;
                 newKeymapping.Panel.relativePosition = new Vector2(xPos, yPos);
 

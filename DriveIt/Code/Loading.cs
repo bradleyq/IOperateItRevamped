@@ -24,7 +24,7 @@ namespace DriveIt
         protected override void LoadedActions(LoadMode mode)
         {
             base.LoadedActions(mode);
-            gameObject = new GameObject("DriveIt");
+            gameObject = new GameObject(Utils.DriveCommon.MOD_NAME);
             gameObject.AddComponent<MainPanel>();
             gameObject.AddComponent<DriveButtons>();
             gameObject.AddComponent<DriveController>();

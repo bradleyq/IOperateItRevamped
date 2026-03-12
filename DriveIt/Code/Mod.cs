@@ -3,15 +3,16 @@ using AlgernonCommons.Notifications;
 using AlgernonCommons.Patching;
 using AlgernonCommons.Translation;
 using ICities;
+using DriveIt.Utils;
 using DriveIt.Settings;
 
 namespace DriveIt
 {
     public sealed class DriveItMod : PatcherMod<SettingsPanel, PatcherBase>, IUserMod
     {
-        public override string BaseName => "DriveIt";
-        public override string HarmonyID => "bradleyq.DriveIt";
-        public string Description => Translations.Translate("MOD_DESCRIPTION");
+        public override string BaseName => DriveCommon.MOD_NAME;
+        public override string HarmonyID => DriveCommon.MOD_HARMONY_ID;
+        public string Description => Translations.Translate(DriveCommon.TK_MOD_DESCRIPTION);
         public override void LoadSettings() => ModSettings.Load();
         public override void SaveSettings() => ModSettings.Save();
         public override WhatsNewMessage[] WhatsNewMessages => new WhatsNewMessage[]
@@ -22,9 +23,9 @@ namespace DriveIt
                 MessagesAreKeys = true,
                 Messages = new string[]
                 {
-                    "WHATSNEW_L1",
-                    "WHATSNEW_L2",
-                    "WHATSNEW_L3"
+                    DriveCommon.TK_WHATSNEW_L1,
+                    DriveCommon.TK_WHATSNEW_L2,
+                    DriveCommon.TK_WHATSNEW_L3,
                 }
             }
         };
