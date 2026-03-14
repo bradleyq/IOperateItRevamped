@@ -31,7 +31,6 @@ namespace DriveIt
         private const float VALID_INCLINE = 0.5f;
         private const float GRIP_MAX_SLIP = 1.0f;
         private const float GRIP_OPTIM_SLIP = 0.2f;
-        private const float GRIP_TC_SLIP = 0.3f;
         private const float DIFF_BIAS_RATIO = 2.5f;
         private const float ENGINE_PEAK_POWER_RPS = 600.0f;
         private const float ENGINE_GEAR_RATIO = 7.0f;
@@ -147,31 +146,19 @@ namespace DriveIt
                 DeRegister();
             }
 
-            public void CalcRoadTBN()
+            public void CalcRoadTBN(float heightThresh)
             {
-                //Vector3 tmp = Vector3.Normalize(Vector3.Cross(xWheel.heightSample - this.heightSample, zWheel.heightSample - this.heightSample));
-                //float dotUp = Vector3.Dot(tmp, Vector3.up);
-                //if (dotUp < -FLOAT_ERROR)
-                //{
-                //    tmp = -tmp;
-                //}
-                //else if (dotUp < FLOAT_ERROR)
-                //{
-                //    tmp = Vector3.up;
-                //}
+                Vector3 pos = this.gameObject.transform.position;
+                Vector3 xdisp = pos;
+                Vector3 zdisp = pos;
 
-                //    this.normal = tmp;
-                //this.binormal = Vector3.Normalize(Vector3.Cross(this.gameObject.transform.TransformDirection(Vector3.forward), this.normal));
-                //this.tangent = Vector3.Normalize(Vector3.Cross(this.normal, this.binormal));
-
-                Vector3 xdisp = this.gameObject.transform.position;
                 xdisp.x += 0.1f;
-                Vector3 zdisp = this.gameObject.transform.position;
                 zdisp.z += 0.1f;
-                xdisp.y = MapUtils.CalculateHeight(xdisp, 2.0f);
-                zdisp.y = MapUtils.CalculateHeight(zdisp, 2.0f);
+                pos.y = MapUtils.CalculateHeight(pos, heightThresh);
+                xdisp.y = MapUtils.CalculateHeight(xdisp, heightThresh);
+                zdisp.y = MapUtils.CalculateHeight(zdisp, heightThresh);
 
-                Vector3 tmp = Vector3.Normalize(Vector3.Cross(xdisp - this.heightSample, zdisp - this.heightSample));
+                Vector3 tmp = Vector3.Normalize(Vector3.Cross(xdisp - pos, zdisp - pos));
                 float dotUp = Vector3.Dot(tmp, Vector3.up);
                 if (dotUp < -FLOAT_ERROR)
                 {
@@ -182,9 +169,9 @@ namespace DriveIt
                     tmp = Vector3.up;
                 }
                 this.normal = tmp;
+                this.heightSample = pos;
                 this.binormal = Vector3.Normalize(Vector3.Cross(this.gameObject.transform.TransformDirection(Vector3.forward), this.normal));
                 this.tangent = Vector3.Normalize(Vector3.Cross(this.normal, this.binormal));
-
             }
 
             private void Register()
@@ -525,11 +512,11 @@ namespace DriveIt
 
             m_vehicleRigidBody.AddForce(Vector3.down * (ACCEL_G * m_vehicleRigidBody.mass) - upVec * ModSettings.DownForce * Mathf.Abs(Vector3.Dot(vehicleVel, forwardVec)), ForceMode.Force);
 
-            foreach (Wheel w in m_wheelObjects) // first calculate the heights at each wheel to prep for road normal calcs
+            foreach (Wheel w in m_wheelObjects) // first calculate the heights and tbn at each wheel.
             {
                 Vector3 wheelPos = w.gameObject.transform.position;
-                w.heightSample = wheelPos;
-                w.heightSample.y = MapUtils.CalculateHeight(wheelPos, m_roofHeight);
+
+                w.CalcRoadTBN(m_roofHeight);
 
                 if (wheelPos.y + ROAD_WALL_HEIGHT < w.heightSample.y)
                 {
@@ -543,7 +530,7 @@ namespace DriveIt
                 }
             }
 
-            foreach (Wheel w in m_wheelObjects) // calculate the road normals. apply angular friction from previous tick. 
+            foreach (Wheel w in m_wheelObjects) // apply angular friction from previous tick. 
             {
                 if (w.isSteerable)
                 {
@@ -553,8 +540,6 @@ namespace DriveIt
                 {
                     w.gameObject.transform.localRotation = Quaternion.Euler(0, 0, 0);
                 }
-
-                w.CalcRoadTBN();
 
                 if (w.onGround)
                 {
@@ -567,7 +552,7 @@ namespace DriveIt
                 w.radps *= 1.0f - ((w.isPowered ? DRAG_WHEEL_POWERED : DRAG_WHEEL) * Time.fixedDeltaTime);
             }
 
-            foreach(Wheel w in m_wheelObjects) // calculate normal impulses.Update wheel suspension position.
+            foreach(Wheel w in m_wheelObjects) // calculate normal impulses. Update wheel suspension position.
             {
                 w.onGround = false;
                 w.normalImpulse = 0.0f;
@@ -677,6 +662,10 @@ namespace DriveIt
                     if (w.slip > GRIP_OPTIM_SLIP)
                     {
                         DebugHelper.DrawDebugMarker(2.0f, w.contactPoint, Quaternion.LookRotation(w.tangent, w.normal), Color.yellow);
+                    }
+                    else
+                    {
+                        DebugHelper.DrawDebugMarker(2.0f, w.contactPoint, Quaternion.LookRotation(w.tangent, w.normal), Color.green);
                     }
 
                     float frictionScale = Mathf.Min(w.normalImpulse * w.frictionCoeff, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, FLOAT_ERROR);
