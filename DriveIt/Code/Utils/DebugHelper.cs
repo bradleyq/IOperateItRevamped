@@ -164,8 +164,13 @@ namespace DriveIt.Utils
             m_debugMeshCube.vertices = vertices;
             m_debugMeshCube.triangles = triangles;
         }
-        
+
         public static void DrawDebugMarker(float size, Vector3 position, Color color = default)
+        {
+            DrawDebugMarker(size, position, Quaternion.identity, color);
+        }
+        
+        public static void DrawDebugMarker(float size, Vector3 position, Quaternion rotation, Color color = default)
         {
             if (!Logging.DetailLogging) return;
 
@@ -178,7 +183,7 @@ namespace DriveIt.Utils
             m_debugMaterialBlock.Clear();
             m_debugMaterialBlock.SetColor("_Color", color);
 
-            Matrix4x4 matrix = Matrix4x4.TRS(position, Quaternion.identity, new Vector3(1.0f, size, 1.0f));
+            Matrix4x4 matrix = Matrix4x4.TRS(position, rotation, new Vector3(1.0f, size, 1.0f));
 
             Graphics.DrawMesh(m_debugMeshMarker, matrix, debugMat, 24, m_mainCamera, 0, m_debugMaterialBlock);
         }
