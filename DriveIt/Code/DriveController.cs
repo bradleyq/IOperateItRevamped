@@ -158,18 +158,8 @@ namespace DriveIt
                 xdisp.y = MapUtils.CalculateHeight(xdisp, heightThresh);
                 zdisp.y = MapUtils.CalculateHeight(zdisp, heightThresh);
 
-                Vector3 tmp = Vector3.Normalize(Vector3.Cross(xdisp - pos, zdisp - pos));
-                float dotUp = Vector3.Dot(tmp, Vector3.up);
-                if (dotUp < -FLOAT_ERROR)
-                {
-                    tmp = -tmp;
-                }
-                else if (dotUp < FLOAT_ERROR)
-                {
-                    tmp = Vector3.up;
-                }
-                this.normal = tmp;
                 this.heightSample = pos;
+                this.normal = Vector3.Normalize(Vector3.Cross(zdisp - pos, xdisp - pos));
                 this.binormal = Vector3.Normalize(Vector3.Cross(this.gameObject.transform.TransformDirection(Vector3.forward), this.normal));
                 this.tangent = Vector3.Normalize(Vector3.Cross(this.normal, this.binormal));
             }
@@ -562,7 +552,7 @@ namespace DriveIt
                 if (normDotUp > VALID_INCLINE)
                 {
                     Vector3 originWheelBottom = m_vehicleRigidBody.transform.TransformPoint(w.origin + Vector3.down * w.radius);
-                    float compression = Mathf.Max((Vector3.Dot(w.heightSample, w.normal) - Vector3.Dot(originWheelBottom, w.normal)) / normDotUp, 0.0f);
+                    float compression = Mathf.Max(Vector3.Dot(w.heightSample - originWheelBottom, w.normal) / Vector3.Dot(upVec, Vector3.up), 0.0f);
                     float springVel = (compression - w.compression) / Time.fixedDeltaTime;
                     float deltaVel = -ModSettings.SpringDamp * Mathf.Exp(-ModSettings.SpringDamp * Time.fixedDeltaTime) * (compression + springVel * Time.fixedDeltaTime) + springVel * Mathf.Exp(-ModSettings.SpringDamp * Time.fixedDeltaTime) - springVel;
 
@@ -572,7 +562,7 @@ namespace DriveIt
                     if (deltaVel < 0.0f)
                     {
                         w.onGround = true;
-                        w.normalImpulse = m_vehicleRigidBody.mass * (-deltaVel) / Wheel.wheelCount;
+                        w.normalImpulse = m_vehicleRigidBody.mass * (-deltaVel) / (normDotUp * Wheel.wheelCount);
                         w.contactPoint = w.gameObject.transform.TransformPoint(new Vector3(0.0f, -w.radius, 0.0f));
                         w.contactVelocity = m_vehicleRigidBody.GetPointVelocity(w.contactPoint);
                         w.slip = Mathf.Clamp(Vector3.Magnitude(w.contactVelocity - (w.radps * w.radius * w.tangent)) / Mathf.Max(w.contactVelocity.magnitude, 1.0f) / GRIP_MAX_SLIP, 0.0f, 1.0f);
@@ -623,10 +613,10 @@ namespace DriveIt
                 }
 
                 // TCS cut power when slipping
-                wheelTorque *= 1.0f - w.slip;
+                wheelTorque *= 1.0f - Mathf.Min(w.slip / GRIP_OPTIM_SLIP, 1.0f);
 
                 // braking ABS
-                float totalBrake = (w.slip < GRIP_OPTIM_SLIP || !ModSettings.BrakingABS || !w.onGround) ? m_brake : 0.0f;
+                float totalBrake = (w.slip < GRIP_OPTIM_SLIP * 0.75f || !ModSettings.BrakingABS || !w.onGround) ? m_brake : 0.0f;
 
                 wheelTorque -= Mathf.Sign(w.radps) * Mathf.Min(totalBrake * w.brakeForce * w.radius, Mathf.Abs(w.radps) * w.moment / Time.fixedDeltaTime);
 
@@ -642,7 +632,7 @@ namespace DriveIt
                     float normalContribution = 0.0f;
                     foreach(Wheel wAlt in m_wheelObjects)
                     {
-                        normalContribution += Vector3.Dot(w.binormal, wAlt.binormal) * wAlt.normalImpulse;
+                        normalContribution += Vector3.Dot(w.normal, wAlt.normal) * wAlt.normalImpulse;
                     }
                     normalContribution = w.normalImpulse / normalContribution;
 
@@ -662,10 +652,6 @@ namespace DriveIt
                     if (w.slip > GRIP_OPTIM_SLIP)
                     {
                         DebugHelper.DrawDebugMarker(2.0f, w.contactPoint, Quaternion.LookRotation(w.tangent, w.normal), Color.yellow);
-                    }
-                    else
-                    {
-                        DebugHelper.DrawDebugMarker(2.0f, w.contactPoint, Quaternion.LookRotation(w.tangent, w.normal), Color.green);
                     }
 
                     float frictionScale = Mathf.Min(w.normalImpulse * w.frictionCoeff, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, FLOAT_ERROR);
@@ -690,7 +676,7 @@ namespace DriveIt
 
                         Vector3 normalVel = Vector3.Dot(w.normal, vehicleVel) * w.normal;
 
-                        m_vehicleRigidBody.AddForce(-(1.0f - FLOAT_ERROR) * normalVel - (vehicleVel - normalVel) * 0.5f * Time.fixedDeltaTime, ForceMode.VelocityChange);
+                        m_vehicleRigidBody.AddForceAtPosition(-(1.0f - FLOAT_ERROR) * normalVel - (vehicleVel - normalVel) * 0.5f * Time.fixedDeltaTime, w.transform.position, ForceMode.VelocityChange);
 
                         m_vehicleRigidBody.AddTorque(-vehicleAngularVel * 0.5f * Time.fixedDeltaTime, ForceMode.VelocityChange);
                         if (vehicleAngularVel.magnitude < 1.0f)
@@ -802,33 +788,6 @@ namespace DriveIt
                         }
                     }
                 }
-
-                foreach (Wheel w in m_wheelObjects)
-                {
-                    float minDistX = float.PositiveInfinity;
-                    float minDistZ = float.PositiveInfinity;
-
-                    foreach(Wheel wAlt in m_wheelObjects)
-                    {
-                        float dist = Vector3.Magnitude(w.origin - wAlt.origin);
-
-                        if (Mathf.Abs(w.origin.x - wAlt.origin.x) > NEIGHBOR_WHEEL_DIST && dist < minDistX)
-                        {
-                            w.xWheel = wAlt;
-                            minDistX = dist;
-                        }
-                        if (Mathf.Abs(w.origin.z - wAlt.origin.z) > NEIGHBOR_WHEEL_DIST && dist < minDistZ)
-                        {
-                            w.zWheel = wAlt;
-                            minDistZ = dist;
-                        }
-                    }
-
-                    if (w.xWheel == null || w.zWheel == null)
-                    {
-                        m_physicsFallback = true;
-                    }
-                }
             }
             else
             {
@@ -850,7 +809,6 @@ namespace DriveIt
             m_vehicleRigidBody.transform.rotation = rotation;
             m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, m_rideHeight + adjustedBounds.y * ModSettings.MassCenterHeight, (ModSettings.MassCenterBias - 0.5f) * adjustedBounds.z * 0.5f);
             Vector3 squares = new Vector3(adjustedBounds.x * adjustedBounds.x, adjustedBounds.y * adjustedBounds.y, adjustedBounds.z * adjustedBounds.z);
-            //m_vehicleRigidBody.inertiaTensor = 1.0f / 12.0f * m_vehicleRigidBody.mass * new Vector3(squares.y + squares.z, squares.x + squares.z, squares.x + squares.y);
             m_vehicleRigidBody.velocity = Vector3.zero;
 
             m_vehicleCollider.size = adjustedBounds;
@@ -858,7 +816,6 @@ namespace DriveIt
 
             gameObject.GetComponent<MeshFilter>().mesh = gameObject.GetComponent<MeshFilter>().sharedMesh = vehicleMesh;
             gameObject.GetComponent<MeshRenderer>().material = gameObject.GetComponent<MeshRenderer>().sharedMaterial = m_vehicleInfo.m_material;
-            //gameObject.GetComponent<MeshRenderer>().sortingLayerID = m_vehicleInfo.m_prefabDataLayer;
 
             if (m_setColor)
             {

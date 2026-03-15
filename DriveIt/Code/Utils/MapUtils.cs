@@ -18,6 +18,7 @@ namespace DriveIt.Utils
         private const float ROAD_RAYCAST_UPPER = 1.5f;
         private const float ROAD_RAYCAST_LOWER = -7.5f;
         private const float ROAD_VALID_LANE_DIST_MULT = 1.25f;
+        private const float ROAD_VALID_LANE_H_DIFF = 0.75f;
         public static bool RayCast(RaycastInput rayCastInput, out RaycastOutput result)
         {
             result = default;
@@ -101,7 +102,7 @@ namespace DriveIt.Utils
                     int lane = 0;
                     ref NetSegment segment = ref Singleton<NetManager>.instance.m_segments.m_buffer[output.m_netSegment];
 
-                    if (GetClosestLanePositionFiltered(ref segment, position, out roadPos, out offset, out lane))
+                    if (GetClosestLanePositionFiltered(ref segment, position, out roadPos, out offset, out lane, true))
                     {
                         height = roadPos.y;
 
@@ -154,7 +155,7 @@ namespace DriveIt.Utils
                         float offset;
                         int lane;
 
-                        if (GetClosestLanePositionFiltered(ref tmpSegment, inPos, out roadPos, out offset, out lane))
+                        if (GetClosestLanePositionFiltered(ref tmpSegment, inPos, out roadPos, out offset, out lane, true))
                         {
                             Vector3 horzOffset = inPos - roadPos;
                             horzOffset.y = 0;
@@ -187,7 +188,7 @@ namespace DriveIt.Utils
             }
         }
 
-        private static bool GetClosestLanePositionFiltered(ref NetSegment segmentIn, Vector3 posIn, out Vector3 posOut, out float offsetOut, out int laneIndex)
+        private static bool GetClosestLanePositionFiltered(ref NetSegment segmentIn, Vector3 posIn, out Vector3 posOut, out float offsetOut, out int laneIndex, bool smooth = default)
         {
             uint lane = segmentIn.m_lanes;
             float dist = 10000.0f;
@@ -195,6 +196,7 @@ namespace DriveIt.Utils
             int index = 0;
             laneIndex = -1;
             NetInfo.LaneType type;
+            Vector3[] lanePos = new Vector3[segmentIn.Info.m_lanes.Length];
 
             posOut = Vector3.zero;
             offsetOut = -1f;
@@ -209,8 +211,8 @@ namespace DriveIt.Utils
                     if ((offsetTmp != 0f && offsetTmp != 1f) || ((type & NetInfo.LaneType.Pedestrian) == 0))
                     {
                         float distTmp = Vector3.Magnitude(posTmp - posIn);
-                        Vector3 dist2D = posTmp - posIn;
-                        dist2D.y = 0;
+                        lanePos[index] = posTmp;
+
                         if (distTmp < dist)
                         {
                             dist = distTmp;
@@ -223,6 +225,43 @@ namespace DriveIt.Utils
                 }
                 lane = Singleton<NetManager>.instance.m_lanes.m_buffer[lane].m_nextLane;
                 index++;
+            }
+
+            if (smooth && found)
+            {
+                Vector3 dist2D = posOut - posIn;
+                Vector3 posAdj = Vector3.zero;
+                bool adjFound = false;
+
+                dist = 10000.0f;
+                dist2D.y = 0.0f;
+
+                for (int adjLane = 0; adjLane < lanePos.Length; adjLane++)
+                {
+                    Vector3 posAdjTmp = lanePos[adjLane];
+
+                    if (adjLane != laneIndex && posAdjTmp != Vector3.zero && Mathf.Abs(posAdjTmp.y - posOut.y) < ROAD_VALID_LANE_H_DIFF)
+                    {
+                        Vector3 dist2DTmp = posAdjTmp - posIn;
+                        float distTmp = Vector3.Magnitude(posAdjTmp - posIn);
+                        dist2DTmp.y = 0.0f;
+                        if (Vector3.Dot(dist2D, dist2DTmp) < 0.0f && distTmp < dist)
+                        {
+                            dist = distTmp;
+                            posAdj = posAdjTmp;
+                            adjFound = true;
+                        }
+                    }
+                }
+
+                if (adjFound) 
+                {
+                    Vector3 distAdj2D = posAdj - posIn;
+                    distAdj2D.y = 0.0f;
+                    float dist2DM = Vector3.Magnitude(dist2D);
+                    float distAdj2DM = Vector3.Magnitude(distAdj2D);
+                    posOut = Vector3.Lerp(posOut, posAdj, dist2DM / (dist2DM + distAdj2DM));
+                }
             }
             return found;
         }
