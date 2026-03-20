@@ -1,7 +1,7 @@
 ﻿using AlgernonCommons;
 using ColossalFramework;
-using DriveIt.Utils;
 using DriveIt.Settings;
+using DriveIt.Utils;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -16,6 +16,7 @@ namespace DriveIt
             TYPE_VEHICLE,
         }
 
+        public SphereCollider SphereCollider;
         public MeshCollider MeshCollider;
         public BoxCollider BoxCollider;
         public Rigidbody Rigidbody;
@@ -27,12 +28,16 @@ namespace DriveIt
         private const int NUM_BUILDING_COLLIDERS = 36;
         private const int NUM_VEHICLE_COLLIDERS = 48;
         private const int NUM_PARKED_VEHICLE_COLLIDERS = 32;
+        private const int NUM_GROUND_COLLIDERS = 8;
         private const float SCAN_DISTANCE = 50f;
         private const float COLLIDER_JUMP_DISTANCE = 10f;
+        private const float GROUND_COLLIDER_RADIUS = 0.5f;
+        private const float GROUND_HEIGHT_THRESH = 0.5f;
 
         private ColliderContainer[] m_BuildingColliders;
         private ColliderContainer[] m_VehicleColliders;
         private ColliderContainer[] m_ParkedVehicleColliders;
+        private ColliderContainer[] m_GroundColliders;
 
         private class MapElem
         {
@@ -59,6 +64,7 @@ namespace DriveIt
             m_BuildingColliders = new ColliderContainer[NUM_BUILDING_COLLIDERS];
             m_VehicleColliders = new ColliderContainer[NUM_VEHICLE_COLLIDERS];
             m_ParkedVehicleColliders = new ColliderContainer[NUM_PARKED_VEHICLE_COLLIDERS];
+            m_GroundColliders = new ColliderContainer[NUM_GROUND_COLLIDERS];
 
             m_VehicleToColliderMap = new Dictionary<ushort, MapElem>();
             m_VehicleQueue = new Queue<ushort>();
@@ -107,6 +113,23 @@ namespace DriveIt
                 m_ParkedVehicleColliders[i] = parkedVehicleCollider;
                 gameObject.SetActive(false);
             }
+
+            for (int i = 0; i < NUM_GROUND_COLLIDERS; i++)
+            {
+                GameObject gameObject = new GameObject("GroundCollider" + i);
+                gameObject.layer = MapUtils.LAYER_IGNORE;
+                var groundCollider = gameObject.AddComponent<ColliderContainer>();
+                groundCollider.SphereCollider = gameObject.AddComponent<SphereCollider>();
+                groundCollider.SphereCollider.radius = GROUND_COLLIDER_RADIUS;
+                groundCollider.SphereCollider.enabled = true;
+                groundCollider.SphereCollider.sharedMaterial = material;
+                groundCollider.Rigidbody = gameObject.AddComponent<Rigidbody>();
+                groundCollider.Rigidbody.isKinematic = true;
+                groundCollider.Rigidbody.interpolation = RigidbodyInterpolation.None;
+                m_GroundColliders[i] = groundCollider;
+                gameObject.SetActive(false);
+            }
+
             yield return null;
         }
         private void SetVehicleCollider(ushort vehicleId, int colliderIndex, bool isParked = false)
@@ -179,6 +202,24 @@ namespace DriveIt
 
             m_updateId++;
         }
+
+        public void UpdateGroundCollider(BoxCollider box)
+        {
+            Vector3 boxSize = box.size;
+
+            for (int i = 0; i < NUM_GROUND_COLLIDERS; i += 1)
+            {
+                float x = (i % 2) - 0.5f;
+                float y = ((i / 2) % 2) - 0.5f;
+                float z = (i / 4) - 0.5f;
+                
+                Vector3 pos = box.transform.TransformPoint(box.center + new Vector3(boxSize.x * x, boxSize.y * y, boxSize.z * z));
+                pos.y = MapUtils.CalculateHeight(pos, GROUND_HEIGHT_THRESH, true) - GROUND_COLLIDER_RADIUS;
+                m_GroundColliders[i].gameObject.SetActive(true);
+                m_GroundColliders[i].Rigidbody.transform.position = pos;
+                DebugHelper.DrawDebugBox(new Vector3(GROUND_COLLIDER_RADIUS, GROUND_COLLIDER_RADIUS, GROUND_COLLIDER_RADIUS) * 2.0f, m_GroundColliders[i].SphereCollider.transform.position, Quaternion.identity, Color.magenta);
+            }
+        }
         private void UpdateBuildingColliders(Transform transform)
         {
             Vector3 segmentVector;
@@ -219,7 +260,6 @@ namespace DriveIt
                 }
             }
         }
-
 
         private void UpdateVehicleColliders(Transform transform)
         {
@@ -352,6 +392,12 @@ namespace DriveIt
             {
                 m_ParkedVehicleColliders[i].gameObject.SetActive(false);
             }
+
+            for (int i = 0; i < NUM_GROUND_COLLIDERS; i++)
+            {
+                m_GroundColliders[i].gameObject.SetActive(false);
+            }
+
             yield return null;
         }
         public void DestroyColliders()
@@ -373,6 +419,14 @@ namespace DriveIt
             }
 
             foreach (var collider in m_ParkedVehicleColliders)
+            {
+                if (collider != null && collider.gameObject != null)
+                {
+                    Object.Destroy(collider.gameObject);
+                }
+            }
+
+            foreach (var collider in m_GroundColliders)
             {
                 if (collider != null && collider.gameObject != null)
                 {

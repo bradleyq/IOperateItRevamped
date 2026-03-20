@@ -8,11 +8,13 @@ namespace DriveIt.Utils
         public const string LAYER_UNDERGROUND_NAME = "MetroTunnels";
         public const string LAYER_BUILDINGS_NAME = "Buildings";
         public const string LAYER_VEHICLES_NAME = "Vehicles";
+        public const string LAYER_IGNORE_NAME = "Ignore";
         public const string LAYER_ROAD_NAME = "Road";
 
         public static readonly int LAYER_UNDERGROUND = LayerMask.NameToLayer(LAYER_UNDERGROUND_NAME); // underground render layer.
         public static readonly int LAYER_BUILDINGS = LayerMask.NameToLayer(LAYER_BUILDINGS_NAME); // building render layer.
         public static readonly int LAYER_VEHICLES = LayerMask.NameToLayer(LAYER_VEHICLES_NAME); // vehicle render layer.
+        public static readonly int LAYER_IGNORE = LayerMask.NameToLayer(LAYER_IGNORE_NAME); // ignore render layer.
         public static readonly int LAYER_ROAD = LayerMask.NameToLayer(LAYER_ROAD_NAME); // road render layer.
 
         private const float ROAD_RAYCAST_UPPER = 1.5f;
@@ -48,7 +50,7 @@ namespace DriveIt.Utils
         }
 
 
-        public static float CalculateHeight(Vector3 position, float objectHeight)
+        public static float CalculateHeight(Vector3 position, float objectHeight, bool ignoreColliders = default)
         {
             bool roadFound = false;
             ToolBase.RaycastInput input;
@@ -57,7 +59,7 @@ namespace DriveIt.Utils
 
             var height = Mathf.Max(Singleton<TerrainManager>.instance.SampleDetailHeightSmooth(position), Singleton<TerrainManager>.instance.WaterLevel(new Vector2(position.x, position.z)));
 
-            if (Physics.Raycast(position + Vector3.up * objectHeight, Vector3.down, out RaycastHit hitInfo, objectHeight - ROAD_RAYCAST_LOWER, LayerMask.GetMask(MapUtils.LAYER_VEHICLES_NAME, MapUtils.LAYER_BUILDINGS_NAME)))
+            if (!ignoreColliders && Physics.Raycast(position + Vector3.up * objectHeight, Vector3.down, out RaycastHit hitInfo, objectHeight - ROAD_RAYCAST_LOWER, LayerMask.GetMask(MapUtils.LAYER_VEHICLES_NAME, MapUtils.LAYER_BUILDINGS_NAME)))
             {
                 height = Mathf.Max(height, hitInfo.point.y);
             }

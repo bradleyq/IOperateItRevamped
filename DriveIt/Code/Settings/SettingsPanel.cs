@@ -192,6 +192,9 @@ namespace DriveIt
             var keyMoveRight = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_KEYMOVERIGHT"), ModSettings.KeyMoveRight);
             currentY += keyMoveRight.Panel.height + Margin;
 
+            var keyResetVehicle = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_RESETVEHICLE"), ModSettings.KeyResetVehicle);
+            currentY += keyMoveRight.Panel.height + Margin;
+
             var keyCamCursorToggle = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_KEYCAMCURSORTOGGLE"), ModSettings.KeyCamCursorToggle);
             currentY += keyCamCursorToggle.Panel.height + Margin;
 

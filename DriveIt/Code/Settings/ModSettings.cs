@@ -21,12 +21,12 @@ namespace DriveIt.Settings
         [XmlElement("MaxVelocity")]
         public float XMLMaxVelocity { get => MaxVelocity; set => MaxVelocity = value; }
         [XmlIgnore]
-        internal static float MaxVelocity = 125f;
+        internal static float MaxVelocity = 200f;
 
         [XmlElement("EnginePower")]
         public float XMLEnginePower { get => EnginePower; set => EnginePower = value; }
         [XmlIgnore]
-        internal static float EnginePower = 225f;
+        internal static float EnginePower = 200f;
 
         [XmlElement("BrakingForce")]
         public float XMLBrakingForce { get => BrakingForce; set => BrakingForce = value; }
@@ -41,7 +41,7 @@ namespace DriveIt.Settings
         [XmlElement("DownForce")]
         public float XMLDownForce { get => DownForce; set => DownForce = value; }
         [XmlIgnore]
-        internal static float DownForce = 5.0f;
+        internal static float DownForce = 10.0f;
 
         [XmlElement("DriveBias")]
         public float XMLDriveBias { get => DriveBias; set => DriveBias = value; }
@@ -56,17 +56,17 @@ namespace DriveIt.Settings
         [XmlElement("GripCoeffS")]
         public float XMLGripCoeffS { get => GripCoeffS; set => GripCoeffS = value; }
         [XmlIgnore]
-        internal static float GripCoeffS = 1.0f;
+        internal static float GripCoeffS = 1.05f;
 
         [XmlElement("GripCoeffK")]
         public float XMLGripCoeffK { get => GripCoeffK; set => GripCoeffK = value; }
         [XmlIgnore]
-        internal static float GripCoeffK = 0.8f;
+        internal static float GripCoeffK = 0.85f;
 
         [XmlElement("SpringDamp")]
         public float XMLSpringDamp { get => SpringDamp; set => SpringDamp = value; }
         [XmlIgnore]
-        internal static float SpringDamp = 6.0f;
+        internal static float SpringDamp = 5.0f;
 
         [XmlElement("SpringOffset")]
         public float XMLSpringOffset { get => SpringOffset; set => SpringOffset = value; }
@@ -86,7 +86,7 @@ namespace DriveIt.Settings
         [XmlElement("MassCenterBias")]
         public float XMLMassCenterBias { get => MassCenterBias; set => MassCenterBias = value; }
         [XmlIgnore]
-        internal static float MassCenterBias = 0.6f;
+        internal static float MassCenterBias = 0.5f;
 
         [XmlElement("Offset")]
         public Vector3 XMLOffset { get => Offset; set => Offset = value; }
@@ -160,6 +160,11 @@ namespace DriveIt.Settings
         public KeyOnlyBinding XMLKeyMoveRight { get => KeyMoveRight; set => KeyMoveRight = value; }
         [XmlIgnore]
         internal static KeyOnlyBinding KeyMoveRight = new KeyOnlyBinding(KeyCode.D);
+
+        [XmlElement("KeyResetVehicle")]
+        public KeyOnlyBinding XMLKeyResetVehicle { get => KeyResetVehicle; set => KeyResetVehicle = value; }
+        [XmlIgnore]
+        internal static KeyOnlyBinding KeyResetVehicle = new KeyOnlyBinding(KeyCode.R);
 
         [XmlElement("KeyCamCursorToggle")]
         public KeyOnlyBinding XMLKeyCamCursorToggle { get => KeyCamCursorToggle; set => KeyCamCursorToggle = value; }
