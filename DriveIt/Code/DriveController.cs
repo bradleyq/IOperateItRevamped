@@ -819,10 +819,9 @@ namespace DriveIt
             m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, m_rideHeight + adjustedBounds.y * ModSettings.MassCenterHeight, (ModSettings.MassCenterBias - 0.5f) * adjustedBounds.z * 0.5f);
             m_vehicleRigidBody.velocity = Vector3.zero;
             //m_vehicleRigidBody.freezeRotation = m_wheelObjects.Count <= 2;
-            Vector3 inertia = m_vehicleRigidBody.inertiaTensor;
             if (m_wheelObjects.Count <= 2)
             {
-                inertia.z = 1.0e25f;
+                m_vehicleRigidBody.constraints = RigidbodyConstraints.FreezeRotationZ;
             }
 
             m_vehicleCollider.size = adjustedBounds;
