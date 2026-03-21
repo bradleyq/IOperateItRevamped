@@ -20,11 +20,9 @@ namespace DriveIt
         private const float PARK_SPEED = 0.5f;
         private const float STEER_MAX = 37.0f;
         private const float STEER_DECAY = 0.012f;
-        private const float ROAD_WALL_HEIGHT = 0.75f;
         private const float LIGHT_HEADLIGHT_INTENSITY = 5.0f;
         private const float LIGHT_BRAKELIGHT_INTENSITY = 5.0f;
         private const float LIGHT_REARLIGHT_INTENSITY = 0.5f;
-        private const float NEIGHBOR_WHEEL_DIST = 0.2f;
         private const float SPRING_MAX_COMPRESS = 0.2f;
         private const float DRAG_FACTOR = 0.25f;
         private const float DRAG_DRIVETRAIN = 0.2f;
@@ -154,9 +152,9 @@ namespace DriveIt
 
                 xdisp.x += 0.1f;
                 zdisp.z += 0.1f;
-                pos.y = MapUtils.CalculateHeight(pos, heightThresh);
-                xdisp.y = MapUtils.CalculateHeight(xdisp, heightThresh);
-                zdisp.y = MapUtils.CalculateHeight(zdisp, heightThresh);
+                pos.y = MapUtils.CalculateHeight(pos, 0.0f);
+                xdisp.y = MapUtils.CalculateHeight(xdisp, 0.0f);
+                zdisp.y = MapUtils.CalculateHeight(zdisp, 0.0f);
 
                 this.heightSample = pos;
                 this.normal = Vector3.Normalize(Vector3.Cross(zdisp - pos, xdisp - pos));
@@ -243,6 +241,7 @@ namespace DriveIt
         private float m_normalImpulse = 0.0f;
         private float m_radps = 0.0f;
         private float m_torque = 0.0f;
+        private float m_tilt = 0.0f;
 
         private void Awake()
         {
@@ -369,7 +368,7 @@ namespace DriveIt
             LimitVelocity();
 
             ColliderContainer container = collision.collider.gameObject.GetComponent<ColliderContainer>();
-            if (container && container.Type == ColliderContainer.ContainerType.TYPE_VEHICLE)
+            if (container?.Type == ColliderContainer.ContainerType.TYPE_VEHICLE)
             {
                 ref Vehicle otherVehicle = ref Singleton<VehicleManager>.instance.m_vehicles.m_buffer[container.ID];
 
@@ -411,14 +410,14 @@ namespace DriveIt
         {
             m_vehicleRigidBody.AddForce(Vector3.down * ACCEL_G, ForceMode.Acceleration);
 
-            float height = MapUtils.CalculateHeight(vehiclePos, m_roofHeight);
+            float height = MapUtils.CalculateHeight(vehiclePos, DriveCommon.ROAD_WALL_HEIGHT);
             bool onGround = vehiclePos.y + ModSettings.SpringOffset < m_terrainHeight;
 
             CalculateSlope(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel, height, onGround);
             m_terrainHeight = height;
 
 
-            if (vehiclePos.y + ROAD_WALL_HEIGHT < m_terrainHeight)
+            if (vehiclePos.y + DriveCommon.ROAD_WALL_HEIGHT < m_terrainHeight)
             {
                 vehiclePos = m_prevPosition;
                 vehicleVel = Vector3.zero;
@@ -512,7 +511,7 @@ namespace DriveIt
 
                 w.CalcRoadTBN(m_roofHeight);
 
-                if (wheelPos.y + ROAD_WALL_HEIGHT < w.heightSample.y)
+                if (wheelPos.y + DriveCommon.ROAD_WALL_HEIGHT < w.heightSample.y)
                 {
                     vehiclePos = m_prevPosition;
                     vehicleVel = -vehicleVel * 0.1f;
@@ -628,6 +627,8 @@ namespace DriveIt
                 w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
             }
 
+            Vector3 netNetImpulse = Vector3.zero;
+
             foreach (Wheel w in m_wheelObjects)
             {
                 // calculate the lateral and longitudinal forces. Apply all forces.
@@ -671,46 +672,31 @@ namespace DriveIt
                     netImpulse += w.binormalImpulse * w.binormal;
                     netImpulse += w.tangentImpulse * w.tangent;
 
+                    netNetImpulse += netImpulse;
+
                     m_vehicleRigidBody.AddForceAtPosition(netImpulse, w.contactPoint, ForceMode.Impulse);
                 }
             }
 
-            //if (false)
-            //{
-            //    // Apply any supplementary forces in flipover scenarios (ground plane replaces this)
-            //    Vector3 nAvg = Vector3.zero;
-            //    float underTotal = 0.0f; // total height underground
-            //    float underHeightMax = 0.0f;
+            if (m_wheelObjects.Count <= 2)
+            {
+                //Vector3 sideVec = Vector3.Cross(m_vehicleRigidBody.transform.forward, Vector3.up).normalized;
+                //float lateralTorque = Vector3.Dot(netNetImpulse * (m_rideHeight + m_vehicleRigidBody.centerOfMass.y), sideVec);
+                //float stabilizingTorque = Vector3.Dot(Vector3.up, m_vehicleRigidBody.transform.right);
+                //stabilizingTorque = Mathf.Sign(stabilizingTorque) * Mathf.Sqrt(Mathf.Abs(stabilizingTorque));
+                //m_vehicleRigidBody.AddTorque(m_vehicleRigidBody.transform.forward * lateralTorque * 1.0f, ForceMode.Impulse);
+                //m_vehicleRigidBody.AddTorque(-m_vehicleRigidBody.transform.forward * stabilizingTorque * 10.0f, ForceMode.Acceleration);
+                //m_vehicleRigidBody.angularDrag = 0.95f;
 
-            //    foreach (Wheel w in m_wheelObjects)
-            //    {
-            //        if (!w.onGround)
-            //        {
-            //            float tireOffset = Mathf.Sqrt(Mathf.Abs(Vector3.Dot(upVec, w.normal)));
-            //            if (w.transform.position.y - w.radius * tireOffset < w.heightSample.y)
-            //            {
-            //                float underHeight = w.heightSample.y - (w.transform.position.y - w.radius * tireOffset);
-            //                Vector3 normalVel = Vector3.Dot(w.normal, vehicleVel) * w.normal;
 
-            //                m_vehicleRigidBody.AddForceAtPosition(-underHeight / (underTotal + 0.0000001f) * normalVel - (vehicleVel - normalVel) * 0.5f * Time.fixedDeltaTime, w.transform.position, ForceMode.VelocityChange);
-
-            //                if (underHeight > underHeightMax)
-            //                {
-            //                    underHeightMax = underHeight;
-            //                }
-            //            }
-            //        }
-
-            //        nAvg += w.normal;
-            //    }
-
-            //    if (vehicleAngularVel.magnitude < 1.0f && vehicleVel.magnitude < 2.0f)
-            //    {
-            //        m_vehicleRigidBody.AddTorque(Vector3.Normalize(Vector3.Cross(upVec, Vector3.Normalize(nAvg))) * 0.25f, ForceMode.VelocityChange);
-            //    }
-
-            //    vehiclePos.y += underHeightMax;
-            //}
+                m_vehicleRigidBody.angularDrag = 0.97f;
+                Vector3 sideVec = Vector3.Cross(m_vehicleRigidBody.transform.forward, Vector3.up).normalized;
+                float lateralTorque = Vector3.Dot(netNetImpulse / m_vehicleRigidBody.mass, sideVec);
+                Vector3 targetNorm = Vector3.Cross(sideVec, m_vehicleRigidBody.transform.forward).normalized;
+                m_tilt = 0.98f * m_tilt + 4.0f * lateralTorque;
+                Quaternion rot = Quaternion.AngleAxis(m_tilt, m_vehicleRigidBody.transform.forward) * Quaternion.LookRotation(m_vehicleRigidBody.transform.forward);
+                m_vehicleRigidBody.transform.rotation = rot;
+            }
         }
 
         private void LimitVelocity()
@@ -821,10 +807,8 @@ namespace DriveIt
 
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
             Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;
-
-            m_roofHeight = adjustedBounds.y;
-
             adjustedBounds.y = adjustedBounds.y - m_rideHeight;
+            m_roofHeight = adjustedBounds.y;
 
             float halfSA = (adjustedBounds.x * adjustedBounds.y + adjustedBounds.x * adjustedBounds.z + adjustedBounds.y * adjustedBounds.z);
             m_vehicleRigidBody.drag = DRAG_FACTOR * adjustedBounds.x * adjustedBounds.y / halfSA;
@@ -833,8 +817,13 @@ namespace DriveIt
             m_vehicleRigidBody.transform.position = position;
             m_vehicleRigidBody.transform.rotation = rotation;
             m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, m_rideHeight + adjustedBounds.y * ModSettings.MassCenterHeight, (ModSettings.MassCenterBias - 0.5f) * adjustedBounds.z * 0.5f);
-            Vector3 squares = new Vector3(adjustedBounds.x * adjustedBounds.x, adjustedBounds.y * adjustedBounds.y, adjustedBounds.z * adjustedBounds.z);
             m_vehicleRigidBody.velocity = Vector3.zero;
+            //m_vehicleRigidBody.freezeRotation = m_wheelObjects.Count <= 2;
+            Vector3 inertia = m_vehicleRigidBody.inertiaTensor;
+            if (m_wheelObjects.Count <= 2)
+            {
+                inertia.z = 1.0e25f;
+            }
 
             m_vehicleCollider.size = adjustedBounds;
             m_vehicleCollider.center = new Vector3(0.0f, 0.5f * adjustedBounds.y + m_rideHeight, 0.0f);

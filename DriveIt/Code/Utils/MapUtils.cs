@@ -17,7 +17,7 @@ namespace DriveIt.Utils
         public static readonly int LAYER_IGNORE = LayerMask.NameToLayer(LAYER_IGNORE_NAME); // ignore render layer.
         public static readonly int LAYER_ROAD = LayerMask.NameToLayer(LAYER_ROAD_NAME); // road render layer.
 
-        private const float ROAD_RAYCAST_UPPER = 1.5f;
+        private const float ROAD_RAYCAST_UPPER = DriveCommon.ROAD_THICKNESS;
         private const float ROAD_RAYCAST_LOWER = -7.5f;
         private const float ROAD_VALID_LANE_DIST_MULT = 1.25f;
         private const float ROAD_VALID_LANE_H_DIFF = 0.75f;

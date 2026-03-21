@@ -16,7 +16,7 @@ namespace DriveIt
             TYPE_VEHICLE,
         }
 
-        public SphereCollider SphereCollider;
+        public CapsuleCollider CapsuleCollider;
         public MeshCollider MeshCollider;
         public BoxCollider BoxCollider;
         public Rigidbody Rigidbody;
@@ -31,8 +31,10 @@ namespace DriveIt
         private const int NUM_GROUND_COLLIDERS = 8;
         private const float SCAN_DISTANCE = 50f;
         private const float COLLIDER_JUMP_DISTANCE = 10f;
-        private const float GROUND_COLLIDER_RADIUS = 0.5f;
-        private const float GROUND_HEIGHT_THRESH = 0.5f;
+        private const float GROUND_COLLIDER_RADIUS = 0.2f;
+        private const float GROUND_COLLIDER_HEIGHT = 50.0f;
+        private const float GROUND_HEIGHT_THRESH = 0.1f;
+        private const float GROUND_DELTA_THRESH = 0.01f;
 
         private ColliderContainer[] m_BuildingColliders;
         private ColliderContainer[] m_VehicleColliders;
@@ -119,10 +121,11 @@ namespace DriveIt
                 GameObject gameObject = new GameObject("GroundCollider" + i);
                 gameObject.layer = MapUtils.LAYER_IGNORE;
                 var groundCollider = gameObject.AddComponent<ColliderContainer>();
-                groundCollider.SphereCollider = gameObject.AddComponent<SphereCollider>();
-                groundCollider.SphereCollider.radius = GROUND_COLLIDER_RADIUS;
-                groundCollider.SphereCollider.enabled = true;
-                groundCollider.SphereCollider.sharedMaterial = material;
+                groundCollider.CapsuleCollider = gameObject.AddComponent<CapsuleCollider>();
+                groundCollider.CapsuleCollider.radius = GROUND_COLLIDER_RADIUS;
+                groundCollider.CapsuleCollider.height = GROUND_COLLIDER_HEIGHT;
+                groundCollider.CapsuleCollider.enabled = true;
+                groundCollider.CapsuleCollider.sharedMaterial = material;
                 groundCollider.Rigidbody = gameObject.AddComponent<Rigidbody>();
                 groundCollider.Rigidbody.isKinematic = true;
                 groundCollider.Rigidbody.interpolation = RigidbodyInterpolation.None;
@@ -214,10 +217,13 @@ namespace DriveIt
                 float z = (i / 4) - 0.5f;
                 
                 Vector3 pos = box.transform.TransformPoint(box.center + new Vector3(boxSize.x * x, boxSize.y * y, boxSize.z * z));
-                pos.y = MapUtils.CalculateHeight(pos, GROUND_HEIGHT_THRESH, true) - GROUND_COLLIDER_RADIUS;
-                m_GroundColliders[i].gameObject.SetActive(true);
-                m_GroundColliders[i].Rigidbody.transform.position = pos;
-                DebugHelper.DrawDebugBox(new Vector3(GROUND_COLLIDER_RADIUS, GROUND_COLLIDER_RADIUS, GROUND_COLLIDER_RADIUS) * 2.0f, m_GroundColliders[i].SphereCollider.transform.position, Quaternion.identity, Color.magenta);
+                pos.y = MapUtils.CalculateHeight(pos, GROUND_HEIGHT_THRESH, true) - GROUND_COLLIDER_HEIGHT * 0.5f;
+                if ((m_GroundColliders[i].Rigidbody.transform.position - pos).magnitude > GROUND_DELTA_THRESH)
+                {
+                    m_GroundColliders[i].gameObject.SetActive(true);
+                    m_GroundColliders[i].Rigidbody.transform.position = pos;
+                    DebugHelper.DrawDebugBox(new Vector3(GROUND_COLLIDER_RADIUS * 2.0f, GROUND_COLLIDER_HEIGHT, GROUND_COLLIDER_RADIUS * 2.0f), m_GroundColliders[i].CapsuleCollider.transform.position, Quaternion.identity, Color.magenta);
+                }
             }
         }
         private void UpdateBuildingColliders(Transform transform)

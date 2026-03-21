@@ -57,6 +57,14 @@ namespace DriveIt.Utils
         public const string TK_ROAD_SELECT                 = "ROAD_SELECT";
         #endregion
 
+        #region DriveIt General Constants
+        public const float ROAD_WALL_HEIGHT = 0.75f;    // per tick height delta before the slope is considered a wall
+        public const float ROAD_THICKNESS = 1.5f;       // height delta below road surface to be considered still part of the road
+
+
+        #endregion
+
+
         public const string SETTINGS_PATH               = "DriveIt.xml";
 
         public const string TEX_BUTTON_ICON             = "Textures/DriveItIcon";
