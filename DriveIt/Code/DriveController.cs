@@ -34,7 +34,8 @@ namespace DriveIt
         private const float GRIP_OPTIM_SLIP = 0.2f;
         private const float DIFF_BIAS_RATIO = 2.5f;
         private const float ENGINE_PEAK_POWER_RPS = 600.0f;
-        private const float ENGINE_GEAR_RATIO = 7.0f;
+        private const float ENGINE_IDLE_RPS = 80.0f;
+        private static readonly float[] ENGINE_GEAR_RATIOS = { -20.0f, 0.0f, 20.0f, 14.0f, 10.0f, 7.0f, 5.0f, 4.0f };
         private const float ACCEL_G = 10f;
         const float MS_TO_KMPH = 3.6f;
         const float UNIT_TO_M = 25.0f / 54.0f;
@@ -406,6 +407,38 @@ namespace DriveIt
             }
         }
 
+        private void FeedbackWheelAndEngine()
+        {
+            float engineRps = 0.0f;
+            foreach (Wheel w in m_wheelObjects)
+            {
+                w.radps *= 1.0f - ((w.isPowered ? DRAG_WHEEL_POWERED : DRAG_WHEEL) * Time.fixedDeltaTime);
+                m_distanceTravelled += w.radps * w.torqueFract * w.radius * Time.fixedDeltaTime;
+                engineRps += w.radps * w.torqueFract;
+            }
+            m_radps = engineRps * ENGINE_GEAR_RATIOS[m_gear];
+        }
+
+        private void SelectGear(int gear)
+        {
+            if (gear > -2)
+            {
+                
+            }
+        }
+
+        private static float GetTorque(float radps, int gear)
+        {
+            float k = 3.0f / 4.0f * ENGINE_PEAK_POWER_RPS;
+            float absRadPS = Mathf.Abs(radps);
+            return -ENGINE_GEAR_RATIOS[gear + 1] * ModSettings.EnginePower * KW_TO_W * (1.0f - DRAG_DRIVETRAIN) * (absRadPS - 2.0f * k) * absRadPS / (k * k * k) * 27.0f / 32.0f;
+        }
+
+        private static float GetPower(float radps, int gear)
+        {
+            return GetTorque(radps, gear) * Mathf.Abs(radps);
+        }
+
         private void FallbackPhysics(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, float invert)
         {
             m_vehicleRigidBody.AddForce(Vector3.down * ACCEL_G, ForceMode.Acceleration);
@@ -543,8 +576,6 @@ namespace DriveIt
                     w.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), w.normalImpulse * w.radius * w.frictionCoeff / w.moment);
                 }
 
-                w.radps *= 1.0f - ((w.isPowered ? DRAG_WHEEL_POWERED : DRAG_WHEEL) * Time.fixedDeltaTime);
-
                 // calculate fist pass normal impulses. Update wheel suspension position.
                 w.onGround = false;
                 w.normalImpulse = 0.0f;
@@ -579,14 +610,8 @@ namespace DriveIt
             }
 
             // calculate new engine angular velocity
-            float engineRps = 0.0f;
-            foreach (Wheel w in m_wheelObjects) 
-            {
-                m_distanceTravelled += w.radps * w.torqueFract * w.radius * Time.fixedDeltaTime;
-                engineRps += w.radps * w.torqueFract;
-            }
-            m_radps = engineRps * ENGINE_GEAR_RATIO;
-            m_torque = -ENGINE_GEAR_RATIO * ModSettings.EnginePower * KW_TO_W * (1.0f - DRAG_DRIVETRAIN) * (Mathf.Abs(m_radps) - 2.0f * ENGINE_PEAK_POWER_RPS) / (ENGINE_PEAK_POWER_RPS * ENGINE_PEAK_POWER_RPS);
+            FeedbackWheelAndEngine();
+
 
             float maxFrontTorque = m_torque;
             float maxRearTorque = m_torque;
@@ -680,15 +705,6 @@ namespace DriveIt
 
             if (m_wheelObjects.Count <= 2)
             {
-                //Vector3 sideVec = Vector3.Cross(m_vehicleRigidBody.transform.forward, Vector3.up).normalized;
-                //float lateralTorque = Vector3.Dot(netNetImpulse * (m_rideHeight + m_vehicleRigidBody.centerOfMass.y), sideVec);
-                //float stabilizingTorque = Vector3.Dot(Vector3.up, m_vehicleRigidBody.transform.right);
-                //stabilizingTorque = Mathf.Sign(stabilizingTorque) * Mathf.Sqrt(Mathf.Abs(stabilizingTorque));
-                //m_vehicleRigidBody.AddTorque(m_vehicleRigidBody.transform.forward * lateralTorque * 1.0f, ForceMode.Impulse);
-                //m_vehicleRigidBody.AddTorque(-m_vehicleRigidBody.transform.forward * stabilizingTorque * 10.0f, ForceMode.Acceleration);
-                //m_vehicleRigidBody.angularDrag = 0.95f;
-
-
                 m_vehicleRigidBody.angularDrag = 0.97f;
                 Vector3 sideVec = Vector3.Cross(m_vehicleRigidBody.transform.forward, Vector3.up).normalized;
                 float lateralTorque = Vector3.Dot(netNetImpulse / m_vehicleRigidBody.mass, sideVec);
