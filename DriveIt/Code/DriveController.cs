@@ -33,9 +33,18 @@ namespace DriveIt
         private const float GRIP_MAX_SLIP = 1.0f;
         private const float GRIP_OPTIM_SLIP = 0.2f;
         private const float DIFF_BIAS_RATIO = 2.5f;
-        private const float ENGINE_PEAK_POWER_RPS = 600.0f;
+        private const float ENGINE_PEAK_RPS = 900.0f;
         private const float ENGINE_IDLE_RPS = 80.0f;
+        private const float ENGINE_INERTIA = 0.5f;
         private static readonly float[] ENGINE_GEAR_RATIOS = { -20.0f, 0.0f, 20.0f, 14.0f, 10.0f, 7.0f, 5.0f, 4.0f };
+        private const int ENGINE_GEAR_REVERSE = 0;
+        private const int ENGINE_GEAR_NEUTRAL = 1;
+        private const int ENGINE_GEAR_FORWARD_START = 2;
+        private const int ENGINE_GEAR_FORWARD_END = 7;
+        private const int ENGINE_MODE_REVERSE = -1;
+        private const int ENGINE_MODE_NEUTRAL = 0;
+        private const int ENGINE_MODE_FORWARD = 1;
+        private const float ENGINE_AUTO_SHIFT_THRESH = 0.1f;
         private const float ACCEL_G = 10f;
         const float MS_TO_KMPH = 3.6f;
         const float UNIT_TO_M = 25.0f / 54.0f;
@@ -78,8 +87,8 @@ namespace DriveIt
             public float torqueFract;
             public float radps;
             public float brakeForce;
-            public float normalImpulse;
             public float normalFract;
+            public float normalImpulse;
             public float binormalImpulse;
             public float tangentImpulse;
             public float compression;
@@ -116,6 +125,7 @@ namespace DriveIt
                 w.torqueFract = torque;
                 w.radps = 0.0f;
                 w.brakeForce = brakeForce;
+                w.normalFract = 0.0f;
                 w.normalImpulse = 0.0f;
                 w.binormalImpulse = 0.0f;
                 w.tangentImpulse = 0.0f;
@@ -229,6 +239,7 @@ namespace DriveIt
         private bool m_isTurning = false;
 
         private int m_gear = 0;
+        private int m_driveMode = ENGINE_MODE_NEUTRAL;
         private float m_lastReset = 0.0f;
         private float m_terrainHeight = 0.0f;
         private float m_distanceTravelled = 0.0f;
@@ -241,7 +252,8 @@ namespace DriveIt
         private float m_prevGearChange = 0.0f;
         private float m_normalImpulse = 0.0f;
         private float m_radps = 0.0f;
-        private float m_torque = 0.0f;
+        private float m_prevRadps = 0.0f;
+        private float m_radpsTrans = 0.0f;
         private float m_tilt = 0.0f;
 
         private void Awake()
@@ -279,7 +291,6 @@ namespace DriveIt
             m_customUndergroundMappings["Metro Station Below Ground Bypass"]         = "Metro Station Track Elevated Bypass";
             m_customUndergroundMappings["Metro Station Below Ground Dual Island"]    = "Metro Station Track Elevated Dual Island";
             m_customUndergroundMappings["Metro Station Below Ground Island"]         = "Metro Station Track Elevated Island Platform";
-
         }
         private void Update()
         {
@@ -395,126 +406,108 @@ namespace DriveIt
 
         private void OnGUI()
         {
-            if (Logging.DetailLogging)
+            if (true || Logging.DetailLogging)
             {
-                string uiString = "g: " + m_gear + "\nt: " + m_throttle + "\nb: " + m_brake + "\ns: " + m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH + "\nrps: " + m_radps;
+                string uiString = "dm: " + m_driveMode + 
+                                  "\ng: " + (m_gear - 1) + 
+                                  "\nt: " + m_throttle + 
+                                  "\nb: " + m_brake + 
+                                  "\ns: " + m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH + 
+                                  "\nrps: " + m_radps +
+                                  "\nrpst: " + m_radpsTrans;
                 for (int index = 0; index < m_wheelObjects.Count; index++)
                 {
                     uiString += "\nw" + index + ": " + m_wheelObjects[index].origin + " " + m_wheelObjects[index].slip + " " + m_wheelObjects[index].radps;
                 }
 
-                GUI.Label(new Rect(100f, 100f, 700f, 700f), uiString);
+                GUIStyle m_style = new GUIStyle(GUI.skin.label);
+                m_style.fontSize = 20;
+                m_style.normal.textColor = Color.white;
+
+                GUI.Label(new Rect(100f, 100f, 700f, 700f), uiString, m_style);
             }
         }
 
         private void FeedbackWheelAndEngine()
         {
             float engineRps = 0.0f;
+
             foreach (Wheel w in m_wheelObjects)
             {
-                w.radps *= 1.0f - ((w.isPowered ? DRAG_WHEEL_POWERED : DRAG_WHEEL) * Time.fixedDeltaTime);
+                // record distance travelled from previous tick
                 m_distanceTravelled += w.radps * w.torqueFract * w.radius * Time.fixedDeltaTime;
+
+                // apply wheel drag from previous tick
+                w.radps *= 1.0f - ((w.isPowered ? DRAG_WHEEL_POWERED : DRAG_WHEEL) * Time.fixedDeltaTime);
+
                 engineRps += w.radps * w.torqueFract;
             }
-            m_radps = engineRps * ENGINE_GEAR_RATIOS[m_gear];
+
+            m_radpsTrans = engineRps;
+
+            if (m_gear == ENGINE_GEAR_NEUTRAL)
+            {
+                float decay = (1.0f - ENGINE_INERTIA) * Time.fixedDeltaTime;
+                engineRps = (1.0f - decay) * m_radps + decay * m_throttle * ENGINE_PEAK_RPS;
+            }
+            else
+            {
+                engineRps *= ENGINE_GEAR_RATIOS[m_gear];
+            }
+            m_prevRadps = m_radps;
+            m_radps = Mathf.Max(engineRps, ENGINE_IDLE_RPS);
         }
 
-        private void SelectGear(int gear)
+        private void SelectGear()
         {
-            if (gear > -2)
+            if (m_driveMode == ENGINE_MODE_FORWARD)
             {
-                
+                int chosenGear = Mathf.Max(m_gear, ENGINE_GEAR_FORWARD_START);
+                float currTorque = ENGINE_GEAR_RATIOS[chosenGear] * GetTorque(m_radpsTrans * ENGINE_GEAR_RATIOS[chosenGear]);
+
+                for (int gear = ENGINE_GEAR_FORWARD_START; gear <= ENGINE_GEAR_FORWARD_END; gear++)
+                {
+                    float tmpTorque = ENGINE_GEAR_RATIOS[gear] * GetTorque(m_radpsTrans * ENGINE_GEAR_RATIOS[gear]);
+                    if (tmpTorque > currTorque * (1.0f + ENGINE_AUTO_SHIFT_THRESH))
+                    {
+                        chosenGear = gear;
+                        currTorque = tmpTorque;
+                    }
+                }
+
+                m_gear = chosenGear;
+            }
+            else if (m_driveMode == ENGINE_MODE_REVERSE)
+            {
+                m_gear = ENGINE_GEAR_REVERSE;
+            }
+            else
+            {
+                m_gear = ENGINE_GEAR_NEUTRAL;
             }
         }
 
-        private static float GetTorque(float radps, int gear)
+        private float GetTransmissionTorque()
         {
-            float k = 3.0f / 4.0f * ENGINE_PEAK_POWER_RPS;
-            float absRadPS = Mathf.Abs(radps);
-            return -ENGINE_GEAR_RATIOS[gear + 1] * ModSettings.EnginePower * KW_TO_W * (1.0f - DRAG_DRIVETRAIN) * (absRadPS - 2.0f * k) * absRadPS / (k * k * k) * 27.0f / 32.0f;
+            return ENGINE_GEAR_RATIOS[m_gear] * GetTorque(m_radps);
         }
 
-        private static float GetPower(float radps, int gear)
+        private static float GetTorque(float radps) // Torque curve 27x(k-x)/(4k^3)
         {
-            return GetTorque(radps, gear) * Mathf.Abs(radps);
+            // Check https://www.desmos.com/calculator/fp0csjaazj for formulation.
+            float k = ENGINE_PEAK_RPS;
+            float x = Mathf.Max(radps, ENGINE_IDLE_RPS);
+            return ModSettings.EnginePower * KW_TO_W * (1.0f - DRAG_DRIVETRAIN) * 27.0f * x * (k - x) / (4.0f * k * k * k);
+        }
+
+        private static float GetPower(float radps) // Power curve 27x^2(k-x)/(4k^3)
+        {
+            return GetTorque(radps) * Mathf.Max(radps, ENGINE_IDLE_RPS);
         }
 
         private void FallbackPhysics(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, float invert)
         {
-            m_vehicleRigidBody.AddForce(Vector3.down * ACCEL_G, ForceMode.Acceleration);
-
-            float height = MapUtils.CalculateHeight(vehiclePos, DriveCommon.ROAD_WALL_HEIGHT);
-            bool onGround = vehiclePos.y + ModSettings.SpringOffset < m_terrainHeight;
-
-            CalculateSlope(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel, height, onGround);
-            m_terrainHeight = height;
-
-
-            if (vehiclePos.y + DriveCommon.ROAD_WALL_HEIGHT < m_terrainHeight)
-            {
-                vehiclePos = m_prevPosition;
-                vehicleVel = Vector3.zero;
-                m_vehicleRigidBody.transform.position = vehiclePos;
-                m_vehicleRigidBody.velocity = vehicleVel;
-            }
-            else if (onGround)
-            {
-                if (vehiclePos.y + SPRING_MAX_COMPRESS < m_terrainHeight)
-                {
-                    vehiclePos = new Vector3(vehiclePos.x, m_terrainHeight - SPRING_MAX_COMPRESS, vehiclePos.z);
-                    m_vehicleRigidBody.transform.position = vehiclePos;
-                }
-
-                float compression = Mathf.Max(m_terrainHeight - (vehiclePos.y + ModSettings.SpringOffset), 0.0f);
-                float springVel = (compression - m_compression) / Time.fixedDeltaTime;
-                float deltaVel = -ModSettings.SpringDamp * Mathf.Exp(-ModSettings.SpringDamp * Time.fixedDeltaTime) * (compression + springVel * Time.fixedDeltaTime) + springVel * Mathf.Exp(-ModSettings.SpringDamp * Time.fixedDeltaTime) - springVel;
-
-                if (deltaVel < 0.0f)
-                {
-                    m_normalImpulse = -deltaVel * m_vehicleRigidBody.mass;
-                }
-                else
-                {
-                    m_normalImpulse = 0.0f;
-                }
-            }
-
-            if (onGround)
-            {
-                var relativeVel = m_vehicleRigidBody.transform.InverseTransformDirection(vehicleVel);
-
-                Vector3 longImpulse = Vector3.forward * m_gear * m_throttle * (Settings.ModSettings.EnginePower * KW_TO_W * (1.0f - DRAG_DRIVETRAIN) / (vehicleVel.magnitude + 1.0f)) * Time.fixedDeltaTime;
-
-                if (m_gear == 0)
-                {
-                    longImpulse -= Vector3.forward * Mathf.Sign(relativeVel.z) * Mathf.Min(m_brake * (Settings.ModSettings.BrakingForce * KN_TO_N) * Time.fixedDeltaTime, Mathf.Abs(relativeVel.z) * m_vehicleRigidBody.mass);
-                }
-                else
-                {
-                    longImpulse -= Vector3.forward * m_gear * m_brake * (Settings.ModSettings.BrakingForce * KN_TO_N) * Time.fixedDeltaTime;
-                }
-
-                relativeVel.z = 0.0f;
-                relativeVel.y = 0.0f;
-
-                Vector3 netImpulse = longImpulse;
-                netImpulse -= relativeVel * (1.0f - FLOAT_ERROR) * m_vehicleRigidBody.mass;
-                netImpulse = Mathf.Min(netImpulse.magnitude, m_normalImpulse * ModSettings.GripCoeffS) * Vector3.Normalize(netImpulse);
-                netImpulse += Vector3.up * m_normalImpulse;
-                netImpulse = m_vehicleRigidBody.transform.TransformDirection(netImpulse);
-                m_vehicleRigidBody.AddForceAtPosition(netImpulse, new Vector3(vehiclePos.x, m_terrainHeight, vehiclePos.z), ForceMode.Impulse);
-
-                float speedsteer = Mathf.Min(Mathf.Max(vehicleVel.magnitude * 80f / m_vehicleCollider.size.z, 0f), 60f);
-                speedsteer = Mathf.Sign(m_steer) * Mathf.Min(Mathf.Abs(60f * m_steer), speedsteer);
-
-                Vector3 angularTarget = (1.0f - FLOAT_ERROR) * (Vector3.up * invert * speedsteer * Time.fixedDeltaTime) - m_vehicleRigidBody.transform.InverseTransformDirection(vehicleAngularVel);
-
-                m_vehicleRigidBody.AddRelativeTorque(angularTarget, ForceMode.VelocityChange);
-            }
-
-            m_compression = Mathf.Max(m_terrainHeight - (vehiclePos.y + ModSettings.SpringOffset), 0.0f);
-
-            m_distanceTravelled += invert * Vector3.Magnitude(vehiclePos - m_prevPosition);
+           
         }
 
         private void WheelPhysics(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel)
@@ -533,7 +526,6 @@ namespace DriveIt
                     m_steer -= Mathf.Sign(rot * dir) * Mathf.Min(Mathf.Abs(rot) * 20.0f * Time.fixedDeltaTime, 0.05f);
                 }
             }
-
 
             m_vehicleRigidBody.AddForce(Vector3.down * (ACCEL_G * m_vehicleRigidBody.mass) - upVec * ModSettings.DownForce * Mathf.Abs(Vector3.Dot(vehicleVel, forwardVec)), ForceMode.Force);
 
@@ -611,10 +603,12 @@ namespace DriveIt
 
             // calculate new engine angular velocity
             FeedbackWheelAndEngine();
+            SelectGear();
+            float engineTorque = GetTransmissionTorque();
 
 
-            float maxFrontTorque = m_torque;
-            float maxRearTorque = m_torque;
+            float maxFrontTorque = Mathf.Abs(engineTorque);
+            float maxRearTorque = Mathf.Abs(engineTorque);
 
             foreach (Wheel w in m_wheelObjects) 
             {
@@ -631,15 +625,18 @@ namespace DriveIt
             foreach (Wheel w in m_wheelObjects)
             {
                 // calcuate wheel angular velocity along with any assists.
-                float wheelTorque;
+                float wheelTorque = Mathf.Abs(engineTorque);
+                float wheelTorqueSign = Mathf.Sign(engineTorque);
+
                 if (w.isFront)
                 {
-                    wheelTorque = Mathf.Min(m_gear * m_throttle * w.torqueFract * m_torque, maxFrontTorque);
+                    wheelTorque = Mathf.Min(m_throttle * w.torqueFract * wheelTorque, maxFrontTorque);
                 }
                 else
                 {
-                    wheelTorque = Mathf.Min(m_gear * m_throttle * w.torqueFract * m_torque, maxRearTorque);
+                    wheelTorque = Mathf.Min(m_throttle * w.torqueFract * wheelTorque, maxRearTorque);
                 }
+                wheelTorque *= wheelTorqueSign;
 
                 // TCS cut power when slipping
                 wheelTorque *= 1.0f - Mathf.Min(w.slip, 1.0f);
@@ -766,7 +763,7 @@ namespace DriveIt
             m_prevVelocity = Vector3.zero;
             m_lightState = Vector4.zero;
             m_vehicleInfo = vehicleInfo;
-            m_gear = 0;
+            m_driveMode = ENGINE_MODE_NEUTRAL;
             m_terrainHeight = 0.0f;
             m_distanceTravelled = 0.0f;
             m_steer = 0.0f;
@@ -886,7 +883,7 @@ namespace DriveIt
             m_isSirenEnabled = false;
             m_isLightEnabled = false;
             m_physicsFallback = false;
-            m_gear = 0;
+            m_driveMode = ENGINE_MODE_NEUTRAL;
             m_terrainHeight = 0.0f;
             m_distanceTravelled = 0.0f;
             m_steer = 0.0f;
@@ -1171,85 +1168,6 @@ namespace DriveIt
 
         //    return retval;
         //}
-        private void CalculateSlope(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, float height, bool onGround) // TODO: fix slope calculation
-        {
-            Vector3 tangent = Vector3.forward;
-            Vector3 binorm = Vector3.right;
-            Vector3 lateral = m_vehicleRigidBody.transform.TransformDirection(Vector3.right);
-            Vector3 forward = m_vehicleRigidBody.transform.TransformDirection(Vector3.forward);
-
-            int slopeMode = onGround ? 2 : 1;
-
-            if (slopeMode == 2)
-            {
-                tangent = vehiclePos - m_prevPosition;
-                if (Vector3.Dot(tangent, forward) < 0.0f)
-                {
-                    tangent = -tangent;
-                }
-                tangent.y = height - m_terrainHeight;
-                tangent = tangent - Vector3.Dot(tangent, lateral) * lateral;
-                tangent = Vector3.Normalize(tangent);
-                if (tangent.magnitude < 0.5f || Mathf.Abs(Vector3.Dot(tangent, Vector3.up)) < FLOAT_ERROR)
-                {
-                    slopeMode = 0;
-                }
-            }
-
-            if (slopeMode == 1)
-            {
-                tangent = vehicleVel;
-                if (Vector3.Dot(tangent, forward) < 0.0f)
-                {
-                    tangent = -tangent;
-                }
-                Vector3.Normalize(tangent - Vector3.Dot(tangent, lateral) * lateral);
-                if (tangent.magnitude < 0.5f || Mathf.Abs(Vector3.Dot(tangent, Vector3.up)) < FLOAT_ERROR)
-                {
-                    slopeMode = 0;
-                }
-            }
-
-            if (slopeMode == 0)
-            {
-                tangent = m_tangent;
-            }
-
-            binorm = Vector3.Normalize(Vector3.Cross(Vector3.up, tangent));
-
-            if (binorm.magnitude < 0.5f)
-            {
-                binorm = m_binormal;
-            }
-
-            Quaternion lookRot = Quaternion.LookRotation(tangent);
-
-            m_vehicleRigidBody.MoveRotation(lookRot);
-
-            //Vector3 torquet = Vector3.Cross(forward, tangent);
-            //Vector3 torqueb = Vector3.Cross(lateral, binorm);
-
-            //if (Vector3.Dot(forward, tangent) < 0.0f)
-            //{
-            //    torquet = Vector3.Normalize(torquet);
-            //}
-
-            //if (Vector3.Dot(lateral, binorm) < 0.0f)
-            //{
-            //    torqueb = Vector3.Normalize(torqueb);
-            //}
-
-            //m_vehicleRigidBody.AddTorque(-vehicleAngularVel * 0.5f * Time.fixedDeltaTime, ForceMode.VelocityChange); // scuffed as all hell
-            //if (vehicleAngularVel.magnitude < 1.0f)
-            //{
-            //    if (torquet.magnitude > FLOAT_ERROR) m_vehicleRigidBody.AddTorque(60.0f * torquet * Time.fixedDeltaTime, ForceMode.VelocityChange);
-            //    if (torqueb.magnitude > FLOAT_ERROR) m_vehicleRigidBody.AddTorque(60.0f * torqueb * Time.fixedDeltaTime, ForceMode.VelocityChange);
-            //}
-
-
-            m_tangent = tangent;
-            m_binormal = binorm;
-        }
 
         private void HandleInputOnFixedUpdate(int invert)
         {
@@ -1259,20 +1177,20 @@ namespace DriveIt
             {
                 if (invert < 0)
                 {
-                    if (m_gear <= 0)
+                    if (m_driveMode <= ENGINE_MODE_NEUTRAL)
                     {
                         m_throttle = 0.0f;
                         m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
                         braking = true;
                     }
                 }
-                else if (m_throttle == 0.0f && Time.time > m_prevGearChange + GEAR_RESP && m_gear <= 0)
+                else if (m_throttle == 0.0f && Time.time > m_prevGearChange + GEAR_RESP && m_driveMode <= ENGINE_MODE_NEUTRAL)
                 {
-                    m_gear++;
+                    m_driveMode++;
                     m_prevGearChange = Time.time;
                 }
 
-                if (m_gear > 0)
+                if (m_driveMode > ENGINE_MODE_NEUTRAL)
                 {
                     m_brake = 0.0f;
                     m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
@@ -1283,29 +1201,29 @@ namespace DriveIt
             {
                 if (invert > 0)
                 {
-                    if (m_gear >= 0)
+                    if (m_driveMode >= ENGINE_MODE_NEUTRAL)
                     {
                         m_throttle = 0.0f;
                         m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
                         braking = true;
                     }
                 }
-                else if (m_throttle == 0.0f && Time.time > m_prevGearChange + GEAR_RESP && m_gear >= 0)
+                else if (m_throttle == 0.0f && Time.time > m_prevGearChange + GEAR_RESP && m_driveMode >= ENGINE_MODE_NEUTRAL)
                 {
-                    m_gear--;
+                    m_driveMode--;
                     m_prevGearChange = Time.time;
                 }
 
-                if (m_gear < 0)
+                if (m_driveMode < ENGINE_MODE_NEUTRAL)
                 {
                     m_brake = 0.0f;
                     m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
                     throttling = true;
                 }
             }
-            else if (invert == 0 && m_throttle == 0.0f && Time.time > m_prevGearChange + GEAR_RESP && m_gear >= 0)
+            else if (invert == 0 && m_throttle == 0.0f && Time.time > m_prevGearChange + GEAR_RESP && m_driveMode >= ENGINE_MODE_NEUTRAL)
             {
-                m_gear = 0;
+                m_driveMode = ENGINE_MODE_NEUTRAL;
                 m_prevGearChange = Time.time;
                 m_brake = 1.0f;
                 braking = true;
@@ -1404,7 +1322,7 @@ namespace DriveIt
 
             foreach (var regularEffect in m_regularEffects)
             {
-                regularEffect.PlayEffect(default, area, velocity, acceleration, 1f, listenerInfo, audioGroup);
+                regularEffect.PlayEffect(default, area, 0.11f * m_radps * Vector3.up, 0.11f * (m_radps - m_prevRadps) / Time.fixedDeltaTime, 1.0f + 1.0f * m_throttle, listenerInfo, audioGroup);
             }
             if (m_isLightEnabled)
                 foreach (var light in m_lightEffects)
