@@ -17,6 +17,14 @@ namespace DriveIt.Utils
         public static readonly int LAYER_IGNORE = LayerMask.NameToLayer(LAYER_IGNORE_NAME); // ignore render layer.
         public static readonly int LAYER_ROAD = LayerMask.NameToLayer(LAYER_ROAD_NAME); // road render layer.
 
+        public enum COLLISION_TYPE
+        {
+            GROUND = 0,
+            WATER = 1,
+            COLLIDER = 2,
+            ROAD = 3,
+        }
+
         private const float ROAD_RAYCAST_UPPER = DriveCommon.ROAD_THICKNESS;
         private const float ROAD_RAYCAST_LOWER = -7.5f;
         private const float ROAD_VALID_LANE_DIST_MULT = 1.25f;
@@ -50,18 +58,30 @@ namespace DriveIt.Utils
         }
 
 
-        public static float CalculateHeight(Vector3 position, float objectHeight, bool ignoreColliders = default)
+        public static float CalculateHeight(Vector3 position, float objectHeight, out COLLISION_TYPE collisionType, bool ignoreColliders = default)
         {
             bool roadFound = false;
             ToolBase.RaycastInput input;
             ToolBase.RaycastOutput output;
             Vector3 roadPos;
 
-            var height = Mathf.Max(Singleton<TerrainManager>.instance.SampleDetailHeightSmooth(position), Singleton<TerrainManager>.instance.WaterLevel(new Vector2(position.x, position.z)));
+            collisionType = COLLISION_TYPE.GROUND;
 
-            if (!ignoreColliders && Physics.Raycast(position + Vector3.up * objectHeight, Vector3.down, out RaycastHit hitInfo, objectHeight - ROAD_RAYCAST_LOWER, LayerMask.GetMask(MapUtils.LAYER_VEHICLES_NAME, MapUtils.LAYER_BUILDINGS_NAME)))
+            float height = Singleton<TerrainManager>.instance.SampleDetailHeightSmooth(position);
+            float tmpHeight = Singleton<TerrainManager>.instance.WaterLevel(new Vector2(position.x, position.z));
+
+            if (tmpHeight > height)
             {
-                height = Mathf.Max(height, hitInfo.point.y);
+                collisionType = COLLISION_TYPE.WATER;
+                height = tmpHeight;
+            }
+
+            if (!ignoreColliders 
+                && Physics.Raycast(position + Vector3.up * objectHeight, Vector3.down, out RaycastHit hitInfo, objectHeight - ROAD_RAYCAST_LOWER, LayerMask.GetMask(MapUtils.LAYER_VEHICLES_NAME, MapUtils.LAYER_BUILDINGS_NAME)) 
+                && hitInfo.point.y > height)
+            {
+                collisionType = COLLISION_TYPE.COLLIDER;
+                height = hitInfo.point.y;
             }
 
             input = GetRaycastInput(position, ROAD_RAYCAST_LOWER, objectHeight + ROAD_RAYCAST_UPPER); // Configure raycast input parameters.
@@ -107,6 +127,16 @@ namespace DriveIt.Utils
                     if (GetClosestLanePositionFiltered(ref segment, position, out roadPos, out offset, out lane, true))
                     {
                         height = roadPos.y;
+
+                        // special case ignore setting road status for gravel. Use ground instead.
+                        if ((segment.Info.m_setVehicleFlags & Vehicle.Flags.OnGravel) > 0)
+                        {
+                            collisionType = COLLISION_TYPE.GROUND;
+                        }
+                        else
+                        {
+                            collisionType = COLLISION_TYPE.ROAD;
+                        }
 
                         if (offset == 0f || offset == 1f)
                         {

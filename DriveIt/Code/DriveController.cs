@@ -14,8 +14,8 @@ namespace DriveIt
         private const float RESET_SCAN_HEIGHT = 2.0f;
         private const float RESET_HEIGHT = 0.5f;
         private const float RESET_FREQ = 2.0f;
-        private const float THROTTLE_RESP = 0.5f;
-        private const float STEER_RESP = 0.5f;
+        private const float THROTTLE_RESP = 0.25f;
+        private const float STEER_RESP = 0.25f;
         private const float GEAR_RESP = 0.25f;
         private const float PARK_SPEED = 0.5f;
         private const float STEER_MAX = 37.0f;
@@ -36,7 +36,7 @@ namespace DriveIt
         private const float ENGINE_PEAK_RPS = 900.0f;
         private const float ENGINE_IDLE_RPS = 80.0f;
         private const float ENGINE_INERTIA = 0.5f;
-        private static readonly float[] ENGINE_GEAR_RATIOS = { -20.0f, 0.0f, 20.0f, 14.0f, 10.0f, 7.0f, 5.0f, 4.0f };
+        private static readonly float[] ENGINE_GEAR_RATIOS = { -24.0f, 0.0f, 24.0f, 12.0f, 8.0f, 6.0f, 4.8f, 4.0f };
         private const int ENGINE_GEAR_REVERSE = 0;
         private const int ENGINE_GEAR_NEUTRAL = 1;
         private const int ENGINE_GEAR_FORWARD_START = 2;
@@ -95,6 +95,7 @@ namespace DriveIt
             public float frictionCoeff;
             public float slip;
             public bool onGround;
+            public MapUtils.COLLISION_TYPE groundType;
             public bool isSimulated     { get => simulated; private set => simulated = value; }
             public bool isPowered       { get => powered && (torqueFract > 0.0f); private set => powered = value; }
             public bool isSteerable     { get => steerable; private set => steerable = value; }
@@ -155,7 +156,7 @@ namespace DriveIt
                 DeRegister();
             }
 
-            public void CalcRoadTBN(float heightThresh)
+            public void CalcRoadState(float heightThresh)
             {
                 Vector3 pos = this.gameObject.transform.position;
                 Vector3 xdisp = pos;
@@ -163,9 +164,9 @@ namespace DriveIt
 
                 xdisp.x += 0.1f;
                 zdisp.z += 0.1f;
-                pos.y = MapUtils.CalculateHeight(pos, 0.0f);
-                xdisp.y = MapUtils.CalculateHeight(xdisp, 0.0f);
-                zdisp.y = MapUtils.CalculateHeight(zdisp, 0.0f);
+                pos.y = MapUtils.CalculateHeight(pos, 0.0f, out this.groundType);
+                xdisp.y = MapUtils.CalculateHeight(xdisp, 0.0f, out var _);
+                zdisp.y = MapUtils.CalculateHeight(zdisp, 0.0f, out var _);
 
                 this.heightSample = pos;
                 this.normal = Vector3.Normalize(Vector3.Cross(zdisp - pos, xdisp - pos));
@@ -216,11 +217,13 @@ namespace DriveIt
         private bool            m_setColor;
         private VehicleInfo     m_vehicleInfo;
 
-        private List<Wheel>         m_wheelObjects      = new List<Wheel>();
+        private List<Wheel>             m_wheelObjects          = new List<Wheel>();
 
-        private List<LightEffect>   m_lightEffects      = new List<LightEffect>();
-        private List<EffectInfo>    m_regularEffects    = new List<EffectInfo>();
-        private List<EffectInfo>    m_specialEffects    = new List<EffectInfo>();
+        private List<LightEffect>       m_lightEffects          = new List<LightEffect>();
+        private List<EngineSoundEffect> m_engineSoundEffects    = new List<EngineSoundEffect>();
+        private List<EffectInfo>        m_regularEffects        = new List<EffectInfo>();
+        private List<EffectInfo>        m_dustEffects           = new List<EffectInfo>();
+        private List<EffectInfo>        m_specialEffects        = new List<EffectInfo>();
 
         private Dictionary<string, string> m_customUndergroundMappings = new Dictionary<string, string>();
         private Dictionary<NetInfo, NetInfoBackup> m_backupPrefabData = new Dictionary<NetInfo, NetInfoBackup>();
@@ -235,6 +238,7 @@ namespace DriveIt
         private Vector4 m_lightState;
         private bool m_isSirenEnabled = false;
         private bool m_isLightEnabled = false;
+        private bool m_isDusty = false;
         private bool m_physicsFallback = false;
         private bool m_isTurning = false;
 
@@ -534,7 +538,7 @@ namespace DriveIt
                 // first calculate the heights and tbn at each wheel.
                 Vector3 wheelPos = w.gameObject.transform.position;
 
-                w.CalcRoadTBN(m_roofHeight);
+                w.CalcRoadState(m_roofHeight);
 
                 if (wheelPos.y + DriveCommon.ROAD_WALL_HEIGHT < w.heightSample.y)
                 {
@@ -650,6 +654,7 @@ namespace DriveIt
             }
 
             Vector3 netNetImpulse = Vector3.zero;
+            int dustyWheels = 0;
 
             foreach (Wheel w in m_wheelObjects)
             {
@@ -697,8 +702,16 @@ namespace DriveIt
                     netNetImpulse += netImpulse;
 
                     m_vehicleRigidBody.AddForceAtPosition(netImpulse, w.contactPoint, ForceMode.Impulse);
+
+                    // check for effects
+                    if (w.groundType == MapUtils.COLLISION_TYPE.GROUND)
+                    {
+                        dustyWheels++;
+                    }
                 }
             }
+
+            m_isDusty = dustyWheels >= m_wheelObjects.Count / 2;
 
             if (m_wheelObjects.Count <= 2)
             {
@@ -1180,7 +1193,7 @@ namespace DriveIt
                     if (m_driveMode <= ENGINE_MODE_NEUTRAL)
                     {
                         m_throttle = 0.0f;
-                        m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                        m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
                         braking = true;
                     }
                 }
@@ -1193,7 +1206,7 @@ namespace DriveIt
                 if (m_driveMode > ENGINE_MODE_NEUTRAL)
                 {
                     m_brake = 0.0f;
-                    m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                    m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
                     throttling = true;
                 }
             }
@@ -1204,7 +1217,7 @@ namespace DriveIt
                     if (m_driveMode >= ENGINE_MODE_NEUTRAL)
                     {
                         m_throttle = 0.0f;
-                        m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                        m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
                         braking = true;
                     }
                 }
@@ -1217,7 +1230,7 @@ namespace DriveIt
                 if (m_driveMode < ENGINE_MODE_NEUTRAL)
                 {
                     m_brake = 0.0f;
-                    m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                    m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
                     throttling = true;
                 }
             }
@@ -1230,34 +1243,34 @@ namespace DriveIt
             }
             if (!throttling)
             {
-                m_throttle = Mathf.Clamp(m_throttle - Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                m_throttle = Mathf.Clamp(m_throttle - Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
             }
             if (!braking)
             {
-                m_brake = Mathf.Clamp(m_brake - Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                m_brake = Mathf.Clamp(m_brake - Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
             }
 
             m_isTurning = false;
             float steerLimit = Mathf.Clamp(1.0f - STEER_DECAY * Vector3.Magnitude(m_vehicleRigidBody.velocity), 0.01f, 1.0f);
             if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveRight.Key))
             {
-                m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime / STEER_RESP, -steerLimit, steerLimit);
+                m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * STEER_RESP, -steerLimit, steerLimit);
                 m_isTurning = true;
             }
             if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveLeft.Key))
             {
-                m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime / STEER_RESP, -steerLimit, steerLimit);
+                m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * STEER_RESP, -steerLimit, steerLimit);
                 m_isTurning = true;
             }
             if (!m_isTurning)
             {
                 if (m_steer > 0.0f)
                 {
-                    m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime / STEER_RESP, 0.0f, steerLimit);
+                    m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * STEER_RESP, 0.0f, steerLimit);
                 }
                 if (m_steer < 0.0f)
                 {
-                    m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime / STEER_RESP, -steerLimit, 0.0f);
+                    m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * STEER_RESP, -steerLimit, 0.0f);
                 }
             }
 
@@ -1265,7 +1278,7 @@ namespace DriveIt
             {
                 Quaternion rot = Quaternion.LookRotation(m_vehicleRigidBody.transform.TransformDirection(Vector3.forward));
                 Vector3 pos = m_vehicleRigidBody.transform.position;
-                pos.y = MapUtils.CalculateHeight(pos, RESET_SCAN_HEIGHT) + RESET_HEIGHT;
+                pos.y = MapUtils.CalculateHeight(pos, RESET_SCAN_HEIGHT, out var _) + RESET_HEIGHT;
                 m_vehicleRigidBody.transform.SetPositionAndRotation(pos, rot);
                 m_lastReset = Time.time;
             }
@@ -1290,14 +1303,34 @@ namespace DriveIt
                         {
                             if (effect.m_vehicleFlagsRequired.IsFlagSet(Vehicle.Flags.Emergency1 | Vehicle.Flags.Emergency2))
                                 m_specialEffects.Add(effect.m_effect);
+                            else if(effect.m_vehicleFlagsRequired.IsFlagSet(Vehicle.Flags.OnGravel))
+                                {
+                                m_dustEffects.Add(effect.m_effect);
+                            }
+                            else if (effect.m_effect is EngineSoundEffect esEffect0)
+                            {
+                                m_engineSoundEffects.Add(esEffect0);
+                            }
+                            else if (effect.m_effect is MultiEffect multiEffect)
+                            {
+                                foreach (var sub in multiEffect.m_effects)
+                                {
+                                    if (sub.m_effect is LightEffect lightEffect)
+                                    {
+                                        m_lightEffects.Add(lightEffect);
+                                    }
+                                    else if (sub.m_effect is EngineSoundEffect esEffect1)
+                                    {
+                                        m_engineSoundEffects.Add(esEffect1);
+                                    }
+                                    else
+                                    {
+                                        m_regularEffects.Add(effect.m_effect);
+                                    }
+                                }
+                            }
                             else
                             {
-                                if (effect.m_effect is MultiEffect multiEffect)
-                                {
-                                    foreach (var sub in multiEffect.m_effects)
-                                        if (sub.m_effect is LightEffect lightEffect)
-                                            m_lightEffects.Add(lightEffect);
-                                }
                                 m_regularEffects.Add(effect.m_effect);
                             }
                         }
@@ -1322,20 +1355,35 @@ namespace DriveIt
 
             foreach (var regularEffect in m_regularEffects)
             {
-                regularEffect.PlayEffect(default, area, 0.11f * m_radps * Vector3.up, 0.11f * (m_radps - m_prevRadps) / Time.fixedDeltaTime, 1.0f + 1.0f * m_throttle, listenerInfo, audioGroup);
+                regularEffect.PlayEffect(default, area, velocity, acceleration, 1f, listenerInfo, audioGroup);
+            }
+            foreach (var engineEffect in m_engineSoundEffects)
+            {
+                engineEffect.PlayEffect(default, area, 0.11f * m_radps * Vector3.up, 0.11f * (m_radps - m_prevRadps) / Time.fixedDeltaTime, (1.0f + (m_radps / ENGINE_PEAK_RPS)) * (1.0f + m_throttle), listenerInfo, audioGroup);
             }
             if (m_isLightEnabled)
+            {
                 foreach (var light in m_lightEffects)
                 {
                     light.RenderEffect(default, area2, velocity, acceleration, 1f, -1f, Singleton<SimulationManager>.instance.m_simulationTimeDelta, Singleton<RenderManager>.instance.CurrentCameraInfo);
                 }
+            }
 
             if (m_isSirenEnabled)
+            {
                 foreach (var specialEffect in m_specialEffects)
                 {
                     specialEffect.RenderEffect(default, area2, velocity, acceleration, 1f, -1f, Singleton<SimulationManager>.instance.m_simulationTimeDelta, Singleton<RenderManager>.instance.CurrentCameraInfo);
                     specialEffect.PlayEffect(default, area, velocity, acceleration, 1f, listenerInfo, audioGroup);
                 }
+            }
+            if (m_isDusty)
+            {
+                foreach (var dustEffect in m_dustEffects)
+                {
+                    dustEffect.RenderEffect(default, area2, velocity, acceleration, 1f, -1f, Singleton<SimulationManager>.instance.m_simulationTimeDelta, Singleton<RenderManager>.instance.CurrentCameraInfo);
+                }
+            }
         }
 
         private void RemoveEffects()

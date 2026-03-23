@@ -217,7 +217,7 @@ namespace DriveIt
                 float z = (i / 4) - 0.5f;
                 
                 Vector3 pos = box.transform.TransformPoint(box.center + new Vector3(boxSize.x * x, boxSize.y * y, boxSize.z * z));
-                pos.y = MapUtils.CalculateHeight(pos, GROUND_HEIGHT_THRESH, true) - GROUND_COLLIDER_HEIGHT * 0.5f;
+                pos.y = MapUtils.CalculateHeight(pos, GROUND_HEIGHT_THRESH, out var _, true) - GROUND_COLLIDER_HEIGHT * 0.5f;
                 if ((m_GroundColliders[i].Rigidbody.transform.position - pos).magnitude > GROUND_DELTA_THRESH)
                 {
                     m_GroundColliders[i].gameObject.SetActive(true);
