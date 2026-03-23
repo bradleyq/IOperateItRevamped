@@ -14,12 +14,12 @@ namespace DriveIt
         private const float RESET_SCAN_HEIGHT = 2.0f;
         private const float RESET_HEIGHT = 0.5f;
         private const float RESET_FREQ = 2.0f;
-        private const float THROTTLE_RESP = 0.5f;
-        private const float STEER_RESP = 0.5f;
+        private const float THROTTLE_RESP = 1.0f;
+        private const float STEER_RESP = 1.5f;
         private const float GEAR_RESP = 0.25f;
         private const float PARK_SPEED = 0.5f;
         private const float STEER_MAX = 37.0f;
-        private const float STEER_DECAY = 0.012f;
+        private const float STEER_DECAY = 0.01f;
         private const float LIGHT_HEADLIGHT_INTENSITY = 5.0f;
         private const float LIGHT_BRAKELIGHT_INTENSITY = 5.0f;
         private const float LIGHT_REARLIGHT_INTENSITY = 0.5f;
@@ -36,7 +36,7 @@ namespace DriveIt
         private const float ENGINE_PEAK_RPS = 900.0f;
         private const float ENGINE_IDLE_RPS = 80.0f;
         private const float ENGINE_INERTIA = 0.5f;
-        private static readonly float[] ENGINE_GEAR_RATIOS = { -20.0f, 0.0f, 20.0f, 14.0f, 10.0f, 7.0f, 5.0f, 4.0f };
+        private static readonly float[] ENGINE_GEAR_RATIOS = { -24.0f, 0.0f, 24.0f, 12.0f, 8.0f, 6.0f, 4.8f, 4.0f };
         private const int ENGINE_GEAR_REVERSE = 0;
         private const int ENGINE_GEAR_NEUTRAL = 1;
         private const int ENGINE_GEAR_FORWARD_START = 2;
@@ -516,16 +516,16 @@ namespace DriveIt
             Vector3 forwardVec = m_vehicleRigidBody.transform.TransformDirection(Vector3.forward);
 
             // Steering assist
-            if (!m_isTurning)
-            {
-                float rot = Vector3.Dot(vehicleAngularVel, upVec);
-                float dir = Vector3.Dot(vehicleVel, forwardVec);
+            //if (!m_isTurning)
+            //{
+            //    float rot = Vector3.Dot(vehicleAngularVel, upVec);
+            //    float dir = Vector3.Dot(vehicleVel, forwardVec);
 
-                if (Mathf.Abs(rot) >= 0.001 && Mathf.Abs(m_steer) < 0.05f)
-                {
-                    m_steer -= Mathf.Sign(rot * dir) * Mathf.Min(Mathf.Abs(rot) * 20.0f * Time.fixedDeltaTime, 0.05f);
-                }
-            }
+            //    if (Mathf.Abs(rot) >= 0.001 && Mathf.Abs(m_steer) < 0.05f)
+            //    {
+            //        m_steer -= Mathf.Sign(rot * dir) * Mathf.Min(Mathf.Abs(rot) * 20.0f * Time.fixedDeltaTime, 0.05f);
+            //    }
+            //}
 
             m_vehicleRigidBody.AddForce(Vector3.down * (ACCEL_G * m_vehicleRigidBody.mass) - upVec * ModSettings.DownForce * Mathf.Abs(Vector3.Dot(vehicleVel, forwardVec)), ForceMode.Force);
 
@@ -670,7 +670,8 @@ namespace DriveIt
                     float longSpeed = Vector3.Dot(w.contactVelocity, w.tangent);
                     float lateralSpeed = Vector3.Dot(w.contactVelocity, w.binormal);
 
-                    float longComponent = normalContribution * m_vehicleRigidBody.mass * (w.radps * w.radius - longSpeed);
+                    float longComponent = w.moment * (w.radps - longSpeed / w.radius) / w.radius;
+                    //float longComponent = normalContribution * m_vehicleRigidBody.mass * (w.radps * w.radius - longSpeed);
 
                     flatImpulses.y = longComponent;
 
@@ -1180,7 +1181,7 @@ namespace DriveIt
                     if (m_driveMode <= ENGINE_MODE_NEUTRAL)
                     {
                         m_throttle = 0.0f;
-                        m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                        m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
                         braking = true;
                     }
                 }
@@ -1193,7 +1194,7 @@ namespace DriveIt
                 if (m_driveMode > ENGINE_MODE_NEUTRAL)
                 {
                     m_brake = 0.0f;
-                    m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                    m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
                     throttling = true;
                 }
             }
@@ -1204,7 +1205,7 @@ namespace DriveIt
                     if (m_driveMode >= ENGINE_MODE_NEUTRAL)
                     {
                         m_throttle = 0.0f;
-                        m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                        m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
                         braking = true;
                     }
                 }
@@ -1217,7 +1218,7 @@ namespace DriveIt
                 if (m_driveMode < ENGINE_MODE_NEUTRAL)
                 {
                     m_brake = 0.0f;
-                    m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                    m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
                     throttling = true;
                 }
             }
@@ -1230,34 +1231,36 @@ namespace DriveIt
             }
             if (!throttling)
             {
-                m_throttle = Mathf.Clamp(m_throttle - Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                m_throttle = Mathf.Clamp(m_throttle - Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
             }
             if (!braking)
             {
-                m_brake = Mathf.Clamp(m_brake - Time.fixedDeltaTime / THROTTLE_RESP, 0.0f, 1.0f);
+                m_brake = Mathf.Clamp(m_brake - Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
             }
 
             m_isTurning = false;
             float steerLimit = Mathf.Clamp(1.0f - STEER_DECAY * Vector3.Magnitude(m_vehicleRigidBody.velocity), 0.01f, 1.0f);
             if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveRight.Key))
             {
-                m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime / STEER_RESP, -steerLimit, steerLimit);
+                int boost = (m_steer < 0.0f) ? 2 : 1;
+                m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * STEER_RESP * boost, -steerLimit, steerLimit);
                 m_isTurning = true;
             }
             if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveLeft.Key))
             {
-                m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime / STEER_RESP, -steerLimit, steerLimit);
+                int boost = (m_steer > 0.0f) ? 2 : 1;
+                m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * STEER_RESP * boost, -steerLimit, steerLimit);
                 m_isTurning = true;
             }
             if (!m_isTurning)
             {
                 if (m_steer > 0.0f)
                 {
-                    m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime / STEER_RESP, 0.0f, steerLimit);
+                    m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * STEER_RESP, 0.0f, steerLimit);
                 }
                 if (m_steer < 0.0f)
                 {
-                    m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime / STEER_RESP, -steerLimit, 0.0f);
+                    m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * STEER_RESP, -steerLimit, 0.0f);
                 }
             }
 
@@ -1322,7 +1325,7 @@ namespace DriveIt
 
             foreach (var regularEffect in m_regularEffects)
             {
-                regularEffect.PlayEffect(default, area, 0.11f * m_radps * Vector3.up, 0.11f * (m_radps - m_prevRadps) / Time.fixedDeltaTime, 1.0f + 1.0f * m_throttle, listenerInfo, audioGroup);
+                regularEffect.PlayEffect(default, area, 0.11f * m_radps * Vector3.up, 0.11f * (m_radps - m_prevRadps) / Time.fixedDeltaTime, (1.0f + m_radps / ENGINE_PEAK_RPS) * (1.0f + m_throttle), listenerInfo, audioGroup);
             }
             if (m_isLightEnabled)
                 foreach (var light in m_lightEffects)
