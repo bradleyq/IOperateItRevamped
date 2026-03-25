@@ -14,19 +14,23 @@ namespace DriveIt
         private const float RESET_SCAN_HEIGHT = 2.0f;
         private const float RESET_HEIGHT = 0.5f;
         private const float RESET_FREQ = 2.0f;
-        private const float THROTTLE_RESP = 1.0f;
+        private const float THROTTLE_RESP = 2.0f;
+        private const float THROTTLE_REST = 2.0f;
         private const float STEER_RESP = 1.5f;
+        private const float STEER_REST = 1.5f;
         private const float GEAR_RESP = 0.25f;
         private const float PARK_SPEED = 0.5f;
         private const float STEER_MAX = 37.0f;
-        private const float STEER_DECAY = 0.01f;
-        private const float LIGHT_HEADLIGHT_INTENSITY = 5.0f;
-        private const float LIGHT_BRAKELIGHT_INTENSITY = 5.0f;
-        private const float LIGHT_REARLIGHT_INTENSITY = 0.5f;
+        private const float STEER_DECAY = 0.0075f;
+        private const float LIGHT_HEADLIGHT_INTENSITY = 3.0f;
+        private const float LIGHT_HEADLIGHT_RANGE = 125.0f;
+        private const float LIGHT_HEADLIGHT_ANGLE = 60.0f;
+        private const float LIGHT_TEXTURE_INTENSITY = 5.0f;
+        private const float LIGHT_TEXTURE_IDLE_INTENSITY = 0.5f;
         private const float SPRING_MAX_COMPRESS = 0.2f;
         private const float DRAG_FACTOR = 0.25f;
-        private const float DRAG_DRIVETRAIN = 0.2f;
-        private const float DRAG_FREEZE = 0.97f;
+        private const float DRAG_DRIVETRAIN = 0.15f;
+        private const float DRAG_FREEZE = 0.9f;
         private const float DRAG_WHEEL_POWERED = 0.05f;
         private const float DRAG_WHEEL = 0.01f;
         private const float MOMENT_WHEEL = 1.5f;
@@ -35,14 +39,16 @@ namespace DriveIt
         private const float GRIP_OPTIM_SLIP = 0.2f;
         private const float DIFF_BIAS_RATIO = 2.5f;
         private const float ENGINE_PEAK_RPS = 900.0f;
+        private const float ENGINE_OVER_RPS = 1200.0f;
         private const float ENGINE_IDLE_RPS = 90.0f;
-        private const float ENGINE_INERTIA = 0.5f;
+        private const float ENGINE_INERTIA = 0.005f;
         private const float ENGINE_PITCH = 0.11f;
-        private static readonly float[] ENGINE_GEAR_RATIOS = { -24.0f, 0.0f, 24.0f, 12.0f, 8.0f, 6.0f, 4.8f, 4.0f, 3.4f };
+        private static readonly float[] ENGINE_GEAR_RATIOS = { -25.0f, 0.0f, 25.0f, 12.5f, 8.333f, 6.25f, 5.0f, 4.167f, 3.571f, 3.125f };
+        private static readonly string[] ENGINE_GEAR_NAMES = { "R", "N", "1", "2", "3", "4", "5", "6", "7", "8" };
         private const int ENGINE_GEAR_REVERSE = 0;
         private const int ENGINE_GEAR_NEUTRAL = 1;
         private const int ENGINE_GEAR_FORWARD_START = 2;
-        private const int ENGINE_GEAR_FORWARD_END = 8;
+        private const int ENGINE_GEAR_FORWARD_END = 9;
         private const int ENGINE_MODE_REVERSE = -1;
         private const int ENGINE_MODE_NEUTRAL = 0;
         private const int ENGINE_MODE_FORWARD = 1;
@@ -54,6 +60,10 @@ namespace DriveIt
         const float UNIT_TO_MPH = UNIT_TO_M * 2.23694f;
         const float KN_TO_N = 1000f;
         const float KW_TO_W = 1000f;
+
+        private static float s_engine_inertia;
+        private static float s_drag_wheel_powered;
+        private static float s_drag_wheel;
 
         private struct NetInfoBackup
         {
@@ -218,6 +228,9 @@ namespace DriveIt
         private Color           m_vehicleColor;
         private bool            m_setColor;
         private VehicleInfo     m_vehicleInfo;
+        private Light           m_headlight;
+        private GUIStyle        m_speedoStyle;
+        private GUIStyle        m_gearStyle;
 
         private List<Wheel>             m_wheelObjects          = new List<Wheel>();
 
@@ -230,6 +243,7 @@ namespace DriveIt
         private Dictionary<string, string> m_customUndergroundMappings = new Dictionary<string, string>();
         private Dictionary<NetInfo, NetInfoBackup> m_backupPrefabData = new Dictionary<NetInfo, NetInfoBackup>();
         private Material m_backupUndergroundMaterial = null;
+        private Material m_glMaterial;
 
         private DriveColliders m_collidersManager = new DriveColliders();
         private Vector3 m_prevPosition;
@@ -284,7 +298,14 @@ namespace DriveIt
             m_vehicleCollider = gameObject.AddComponent<BoxCollider>();
             m_vehicleCollider.material = material;
 
-            //m_suspensionCollider = gameObject.AddComponent<SphereCollider>();
+            m_headlight = gameObject.AddComponent<Light>();
+            m_headlight.type = LightType.Spot;
+            m_headlight.intensity = LIGHT_HEADLIGHT_INTENSITY;
+            m_headlight.range = LIGHT_HEADLIGHT_RANGE;
+            m_headlight.spotAngle = LIGHT_HEADLIGHT_ANGLE;
+            m_headlight.transform.parent = m_vehicleRigidBody.transform;
+            m_headlight.color = Color.white;
+            m_headlight.enabled = false;
 
             StartCoroutine(m_collidersManager.InitializeColliders());
             gameObject.SetActive(false);
@@ -298,6 +319,24 @@ namespace DriveIt
             m_customUndergroundMappings["Metro Station Below Ground Bypass"]         = "Metro Station Track Elevated Bypass";
             m_customUndergroundMappings["Metro Station Below Ground Dual Island"]    = "Metro Station Track Elevated Dual Island";
             m_customUndergroundMappings["Metro Station Below Ground Island"]         = "Metro Station Track Elevated Island Platform";
+
+            m_speedoStyle = new GUIStyle();
+            m_speedoStyle.fontSize = 90;
+            m_speedoStyle.normal.textColor = Color.white;
+            m_speedoStyle.alignment = TextAnchor.MiddleCenter;
+            m_gearStyle = new GUIStyle();
+            m_gearStyle.fontSize = 60;
+            m_gearStyle.normal.textColor = Color.white;
+            m_gearStyle.alignment = TextAnchor.LowerCenter;
+
+
+            Shader shader = Shader.Find("Hidden/Internal-Colored");
+            m_glMaterial = new Material(shader);
+            m_glMaterial.hideFlags = HideFlags.HideAndDontSave;
+            m_glMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m_glMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m_glMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            m_glMaterial.SetInt("_ZWrite", 0);
         }
         private void Update()
         {
@@ -314,22 +353,21 @@ namespace DriveIt
             tyrePosition.w = 0f;
             materialBlock.SetVector(Singleton<VehicleManager>.instance.ID_TyrePosition, tyrePosition);
 
-            m_lightState.x = m_isLightEnabled ? LIGHT_HEADLIGHT_INTENSITY : 0.0f;
-            m_lightState.y = m_brake > 0.0f ? LIGHT_BRAKELIGHT_INTENSITY : (m_isLightEnabled ? LIGHT_REARLIGHT_INTENSITY : 0.0f);
+            m_lightState.x = m_isLightEnabled ? LIGHT_TEXTURE_INTENSITY : 0.0f;
+            m_lightState.y = m_brake > 0.0f ? LIGHT_TEXTURE_INTENSITY : (m_isLightEnabled ? LIGHT_TEXTURE_IDLE_INTENSITY : 0.0f);
             materialBlock.SetVector(Singleton<VehicleManager>.instance.ID_LightState, m_lightState);
             if (m_setColor)
             {
                 materialBlock.SetColor(Singleton<VehicleManager>.instance.ID_Color, m_vehicleColor);
             }
 
-            if (false) // TODO: visual suspension
+            float avgCompression = 0.0f;
+            foreach(Wheel w in m_wheelObjects)
             {
-                materialBlock.SetMatrix(Singleton < VehicleManager >.instance.ID_TyreMatrix, Matrix4x4.TRS(new Vector3(0.0f, Mathf.Clamp(m_terrainHeight - m_vehicleRigidBody.transform.position.y, ModSettings.SpringOffset, 0.0f), 0.0f), Quaternion.identity, Vector3.one));
+                avgCompression += w.compression;
             }
-            else
-            {
-                materialBlock.SetMatrix(Singleton<VehicleManager>.instance.ID_TyreMatrix, Matrix4x4.identity);
-            }
+            avgCompression = ModSettings.SpringOffset + avgCompression / Wheel.wheelCount;
+            materialBlock.SetMatrix(Singleton < VehicleManager >.instance.ID_TyreMatrix, Matrix4x4.TRS(new Vector3(0.0f, Mathf.Clamp(avgCompression, ModSettings.SpringOffset, 0.0f), 0.0f), Quaternion.identity, Vector3.one));
 
             gameObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
 
@@ -404,9 +442,64 @@ namespace DriveIt
             LimitVelocity();
         }
 
+        void DrawAnnulusSegment(Rect rect, float fillPercent, Color color, Material mat)
+        {
+            int segments = 80;
+            float filled = Mathf.Clamp01(fillPercent);
+
+            float outerRadius = rect.width / 2f;
+            float innerRadius = outerRadius * 0.75f;
+
+            rect.y = Screen.height - rect.y - outerRadius;
+            rect.x = rect.x + outerRadius;
+
+            Vector2 center = new Vector2(rect.x, rect.y);
+
+            float startAngle = 1.333f * Mathf.PI;
+            float endAngle = -0.333f * Mathf.PI;
+            float totalAngle = endAngle - startAngle;
+
+            float filledAngle = totalAngle * filled;
+
+            GL.PushMatrix();
+            GL.LoadPixelMatrix();
+
+            mat.SetPass(0);
+
+            GL.Begin(GL.TRIANGLES);
+            GL.Color(color);
+
+            for (int i = 0; i < segments * filled; i++)
+            {
+                float t0 = i / (float)segments;
+                float t1 = (i + 1) / (float)segments;
+
+                float a0 = startAngle + filledAngle * t0;
+                float a1 = startAngle + filledAngle * t1;
+
+                Vector2 o0 = center + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * outerRadius;
+                Vector2 o1 = center + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * outerRadius;
+
+                Vector2 i0 = center + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * innerRadius;
+                Vector2 i1 = center + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * innerRadius;
+
+                // Two triangles per segment
+                GL.Vertex3(i0.x, i0.y, 0);
+                GL.Vertex3(o0.x, o0.y, 0);
+                GL.Vertex3(o1.x, o1.y, 0);
+
+                GL.Vertex3(i0.x, i0.y, 0);
+                GL.Vertex3(o1.x, o1.y, 0);
+                GL.Vertex3(i1.x, i1.y, 0);
+            }
+
+            GL.End();
+            GL.PopMatrix();
+        }
+
         private void OnGUI()
         {
-            if (true || Logging.DetailLogging)
+            if (Logging.DetailLogging)
             {
                 string uiString = "dm: " + m_driveMode + 
                                   "\ng: " + (m_gear - 1) + 
@@ -415,7 +508,7 @@ namespace DriveIt
                                   "\ns: " + m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH + 
                                   "\nrps: " + m_radps +
                                   "\nrpst: " + m_radpsTrans;
-                for (int index = 0; index < m_wheelObjects.Count; index++)
+                for (int index = 0; index < Wheel.wheelCount; index++)
                 {
                     uiString += "\nw" + index + ": " + m_wheelObjects[index].origin + " " + m_wheelObjects[index].slip + " " + m_wheelObjects[index].radps;
                 }
@@ -426,6 +519,27 @@ namespace DriveIt
 
                 GUI.Label(new Rect(100f, 100f, 700f, 700f), uiString, m_style);
             }
+
+            float size = 250f;
+            float border = 30.0f;
+            float offset = 60.0f;
+            float x = Screen.width - size - offset;
+            float y = Screen.height - size - offset;
+
+            Rect area = new Rect(x, y, size, size);
+            Rect bgarea = new Rect(x - border, y - border, size + 2.0f * border, size + 2.0f * border);
+
+            // Background
+            GUI.color = new Color(0, 0, 0, 0.4f);
+            GUI.DrawTexture(bgarea, Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            // text
+            GUI.Label(area, Mathf.RoundToInt(m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH).ToString(), m_speedoStyle);
+            GUI.Label(area, ENGINE_GEAR_NAMES[m_gear], m_gearStyle);
+
+            // Draw tach arc
+            DrawAnnulusSegment(area, m_radps / ENGINE_PEAK_RPS, Color.white, m_glMaterial);
         }
 
         private void FeedbackWheelAndEngine()
@@ -438,7 +552,7 @@ namespace DriveIt
                 m_distanceTravelled += w.radps * w.torqueFract * w.radius * Time.fixedDeltaTime;
 
                 // apply wheel drag from previous tick
-                w.radps *= 1.0f - ((w.isPowered ? DRAG_WHEEL_POWERED : DRAG_WHEEL) * Time.fixedDeltaTime);
+                w.radps *= 1.0f - (w.isPowered ? s_drag_wheel_powered : s_drag_wheel);
 
                 engineRps += w.radps * w.torqueFract;
             }
@@ -447,15 +561,21 @@ namespace DriveIt
 
             if (m_gear == ENGINE_GEAR_NEUTRAL)
             {
-                float decay = (1.0f - ENGINE_INERTIA) * Time.fixedDeltaTime;
-                engineRps = (1.0f - decay) * m_radps + decay * m_throttle * ENGINE_PEAK_RPS;
+                engineRps = m_throttle * ENGINE_PEAK_RPS;
             }
             else
             {
                 engineRps *= ENGINE_GEAR_RATIOS[m_gear];
             }
+
             m_prevRadps = m_radps;
-            m_radps = Mathf.Max(engineRps, ENGINE_IDLE_RPS);
+            engineRps = Mathf.Clamp(engineRps, ENGINE_IDLE_RPS, ENGINE_OVER_RPS);
+            m_radps = Mathf.Lerp(engineRps, m_radps, s_engine_inertia);
+
+            if (m_radps > ENGINE_PEAK_RPS)
+            {
+                m_throttle = 1.0f;
+            }
         }
 
         private void SelectGear()
@@ -475,7 +595,11 @@ namespace DriveIt
                     }
                 }
 
-                m_gear = chosenGear;
+                if (m_gear != chosenGear && Time.time > m_prevGearChange + GEAR_RESP)
+                {
+                    m_gear = chosenGear;
+                    m_prevGearChange = Time.time;
+                }
             }
             else if (m_driveMode == ENGINE_MODE_REVERSE)
             {
@@ -598,7 +722,10 @@ namespace DriveIt
 
             // calculate new engine angular velocity
             FeedbackWheelAndEngine();
-            SelectGear();
+            if (ModSettings.AutoTrans)
+            {
+                SelectGear();
+            }
             float engineTorque = GetTransmissionTorque();
 
 
@@ -667,7 +794,7 @@ namespace DriveIt
                     float lateralSpeed = Vector3.Dot(w.contactVelocity, w.binormal);
 
                     float longComponent = w.moment * (w.radps - longSpeed / w.radius) / w.radius;
-                    if (longSpeed < 1.0f) // exaggerated torque at very low speeds for better stop and start
+                    if (longSpeed < 1.0f || w.radps <0.01f) // exaggerated torque at very low speeds for better stop and start
                     {
                         longComponent = Mathf.Lerp(normalContribution * m_vehicleRigidBody.mass * (w.radps * w.radius - longSpeed), longComponent, longSpeed);
                     }
@@ -706,9 +833,9 @@ namespace DriveIt
                 }
             }
 
-            m_isDusty = dustyWheels >= m_wheelObjects.Count / 2;
+            m_isDusty = dustyWheels >= Wheel.wheelCount / 2;
 
-            if (m_wheelObjects.Count <= 2)
+            if (m_isConstrainedZ)
             {
                 Vector3 sideVec = Vector3.Cross(m_vehicleRigidBody.transform.forward, Vector3.up).normalized;
                 float lateralTorque = Vector3.Dot(netNetImpulse / m_vehicleRigidBody.mass, sideVec);
@@ -763,6 +890,11 @@ namespace DriveIt
         }
         private void SpawnVehicle(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Color vehicleColor, bool setColor)
         {
+            s_engine_inertia = (float) System.Math.Pow(ENGINE_INERTIA, Time.fixedDeltaTime);
+            s_drag_wheel_powered = (float) (1.0 - System.Math.Pow(1.0 - DRAG_WHEEL_POWERED, Time.fixedDeltaTime));
+            s_drag_wheel = (float) (1.0 - System.Math.Pow(1.0 - DRAG_WHEEL, Time.fixedDeltaTime));
+
+
             m_setColor = setColor;
             m_vehicleColor = vehicleColor;
             m_vehicleColor.a = 0; // Make sure blinking is not set.
@@ -837,6 +969,9 @@ namespace DriveIt
             }
 
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
+            Vector3 fullBounds = vehicleMesh.bounds.size;
+            m_headlight.transform.localPosition = new Vector3(0.0f, fullBounds.y * 0.5f, fullBounds.z * 0.5f + FLOAT_ERROR);
+
             Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;
             adjustedBounds.y = adjustedBounds.y - m_rideHeight;
             m_roofHeight = adjustedBounds.y;
@@ -1206,101 +1341,110 @@ namespace DriveIt
             bool braking = false;
             if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveForward.Key))
             {
-                if (invert < 0)
+                if (ModSettings.AutoTrans)
                 {
-                    if (m_driveMode <= ENGINE_MODE_NEUTRAL)
+                    if (invert < 0)
                     {
-                        m_throttle = 0.0f;
-                        m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
-                        braking = true;
+                        if (m_driveMode <= ENGINE_MODE_NEUTRAL)
+                        {
+                            m_throttle = 0.0f;
+                            m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                            braking = true;
+                        }
+                    }
+                    else if (m_throttle == 0.0f && Time.time > m_prevGearChange + GEAR_RESP && m_driveMode <= ENGINE_MODE_NEUTRAL)
+                    {
+                        m_driveMode++;
+                        m_prevGearChange = Time.time;
+                    }
+                    if (m_driveMode > ENGINE_MODE_NEUTRAL)
+                    {
+                        m_brake = 0.0f;
+                        m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                        throttling = true;
                     }
                 }
-                else if (m_throttle == 0.0f && Time.time > m_prevGearChange + GEAR_RESP && m_driveMode <= ENGINE_MODE_NEUTRAL)
+                else // ManualTrans
                 {
-                    m_driveMode++;
-                    m_prevGearChange = Time.time;
-                }
-
-                if (m_driveMode > ENGINE_MODE_NEUTRAL)
-                {
-                    m_brake = 0.0f;
                     m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
                     throttling = true;
                 }
+
             }
-            else if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveBackward.Key))
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveBackward.Key))
             {
-                if (invert > 0)
+                if (ModSettings.AutoTrans)
                 {
-                    if (m_driveMode >= ENGINE_MODE_NEUTRAL)
+                    if (invert > 0)
                     {
-                        m_throttle = 0.0f;
-                        m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
-                        braking = true;
+                        if (m_driveMode >= ENGINE_MODE_NEUTRAL)
+                        {
+                            m_throttle = 0.0f;
+                            m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                            braking = true;
+                        }
+                    }
+                    else if (m_throttle == 0.0f && Time.time > m_prevGearChange + GEAR_RESP && m_driveMode >= ENGINE_MODE_NEUTRAL)
+                    {
+                        m_driveMode--;
+                        m_prevGearChange = Time.time;
+                    }
+                    if (m_driveMode < ENGINE_MODE_NEUTRAL)
+                    {
+                        m_brake = 0.0f;
+                        m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                        throttling = true;
                     }
                 }
-                else if (m_throttle == 0.0f && Time.time > m_prevGearChange + GEAR_RESP && m_driveMode >= ENGINE_MODE_NEUTRAL)
+                else // ManualTrans
                 {
-                    m_driveMode--;
-                    m_prevGearChange = Time.time;
-                }
-
-                if (m_driveMode < ENGINE_MODE_NEUTRAL)
-                {
-                    m_brake = 0.0f;
-                    m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
-                    throttling = true;
+                    m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                    braking = true;
                 }
             }
-            else if (invert == 0 && m_throttle == 0.0f && Time.time > m_prevGearChange + GEAR_RESP && m_driveMode >= ENGINE_MODE_NEUTRAL)
+            if (ModSettings.AutoTrans && invert == 0 && m_throttle == 0.0f)
             {
-                m_driveMode = ENGINE_MODE_NEUTRAL;
-                m_prevGearChange = Time.time;
+                if (Time.time > m_prevGearChange + GEAR_RESP)
+                {
+                    m_driveMode = ENGINE_MODE_NEUTRAL;
+                    m_prevGearChange = Time.time;
+                }
                 m_brake = 1.0f;
                 braking = true;
             }
             if (!throttling)
             {
-                m_throttle = Mathf.Clamp(m_throttle - Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                m_throttle = Mathf.Clamp(m_throttle - Time.fixedDeltaTime * THROTTLE_REST, 0.0f, 1.0f);
             }
             if (!braking)
             {
-                m_brake = Mathf.Clamp(m_brake - Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                m_brake = Mathf.Clamp(m_brake - Time.fixedDeltaTime * THROTTLE_REST, 0.0f, 1.0f);
             }
 
             m_isTurning = false;
             float steerLimit = Mathf.Clamp(1.0f - STEER_DECAY * Vector3.Magnitude(m_vehicleRigidBody.velocity), 0.01f, 1.0f);
             if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveRight.Key))
             {
-                int boost = (m_steer < 0.0f) ? 2 : 1;
-                m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * STEER_RESP * boost, -steerLimit, steerLimit);
+                float factor = (m_steer < 0.0f) ? STEER_RESP + STEER_REST : STEER_RESP;
+                m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * factor, -steerLimit, steerLimit);
                 m_isTurning = true;
             }
             if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveLeft.Key))
             {
-                int boost = (m_steer > 0.0f) ? 2 : 1;
-                m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * STEER_RESP * boost, -steerLimit, steerLimit);
+                float factor = (m_steer > 0.0f) ? STEER_RESP + STEER_REST : STEER_RESP;
+                m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * factor, -steerLimit, steerLimit);
                 m_isTurning = true;
             }
             if (!m_isTurning)
             {
                 if (m_steer > 0.0f)
                 {
-                    m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * STEER_RESP, 0.0f, steerLimit);
+                    m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * STEER_REST, 0.0f, steerLimit);
                 }
                 if (m_steer < 0.0f)
                 {
-                    m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * STEER_RESP, -steerLimit, 0.0f);
+                    m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * STEER_REST, -steerLimit, 0.0f);
                 }
-            }
-
-            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyResetVehicle.Key) && m_lastReset + RESET_FREQ < Time.time)
-            {
-                Quaternion rot = Quaternion.LookRotation(m_vehicleRigidBody.transform.TransformDirection(Vector3.forward));
-                Vector3 pos = m_vehicleRigidBody.transform.position;
-                pos.y = MapUtils.CalculateHeight(pos, RESET_SCAN_HEIGHT, out var _) + RESET_HEIGHT;
-                m_vehicleRigidBody.transform.SetPositionAndRotation(pos, rot);
-                m_lastReset = Time.time;
             }
         }
 
@@ -1311,6 +1455,25 @@ namespace DriveIt
 
             if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeySirenToggle.Key))
                 m_isSirenEnabled = !m_isSirenEnabled;
+
+            if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyResetVehicle.Key) && m_lastReset + RESET_FREQ < Time.time)
+            {
+                Quaternion rot = Quaternion.LookRotation(m_vehicleRigidBody.transform.TransformDirection(Vector3.forward));
+                Vector3 pos = m_vehicleRigidBody.transform.position;
+                pos.y = MapUtils.CalculateHeight(pos, RESET_SCAN_HEIGHT, out var _) + RESET_HEIGHT;
+                m_vehicleRigidBody.transform.SetPositionAndRotation(pos, rot);
+                m_lastReset = Time.time;
+            }
+            if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyGearUp.Key) && m_prevGearChange + GEAR_RESP < Time.time && m_gear < ENGINE_GEAR_FORWARD_END)
+            {
+                m_gear += 1;
+                m_prevGearChange = Time.time;
+            }
+            if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyGearDown.Key) && m_prevGearChange + GEAR_RESP < Time.time && m_gear > 0)
+            {
+                m_gear -= 1;
+                m_prevGearChange = Time.time;
+            }
         }
         private void AddEffects()
         {
@@ -1323,7 +1486,7 @@ namespace DriveIt
                         {
                             if (effect.m_vehicleFlagsRequired.IsFlagSet(Vehicle.Flags.Emergency1 | Vehicle.Flags.Emergency2))
                                 m_specialEffects.Add(effect.m_effect);
-                            else if(effect.m_vehicleFlagsRequired.IsFlagSet(Vehicle.Flags.OnGravel))
+                            else if (effect.m_vehicleFlagsRequired.IsFlagSet(Vehicle.Flags.OnGravel))
                                 {
                                 m_dustEffects.Add(effect.m_effect);
                             }
@@ -1357,6 +1520,13 @@ namespace DriveIt
                     }
                 }
             }
+
+            if (m_lightEffects.Count > 0)
+            {
+                LightEffect le = m_lightEffects[0];
+                Light l = le.gameObject.GetComponent<Light>();
+                m_headlight.color = l.color;
+            }
         }
         private void PlayEffects()
         {
@@ -1379,8 +1549,11 @@ namespace DriveIt
             }
             foreach (var engineEffect in m_engineSoundEffects)
             {
-                engineEffect.PlayEffect(default, area, ENGINE_PITCH * m_radps * Vector3.up, ENGINE_PITCH * (m_radps - m_prevRadps) / Time.fixedDeltaTime, 2.0f + 0.5f * m_radps / ENGINE_PEAK_RPS + 0.5f * m_throttle, listenerInfo, audioGroup);
+                engineEffect.PlayEffect(default, area, ENGINE_PITCH * m_radps * Vector3.up, ENGINE_PITCH * (m_radps - m_prevRadps) / Time.fixedDeltaTime, 1.0f + 0.25f * m_radps / ENGINE_PEAK_RPS + 0.25f * m_throttle, listenerInfo, audioGroup);
             }
+
+            m_headlight.enabled = m_isLightEnabled;
+
             if (m_isLightEnabled)
             {
                 foreach (var light in m_lightEffects)

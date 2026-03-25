@@ -88,7 +88,7 @@ namespace DriveIt.Utils
             input.m_netService.m_service = ItemClass.Service.Road;
             input.m_netService.m_itemLayers = ItemClass.Layer.Default |// ItemClass.Layer.PublicTransport is only for TransportLine, not for Road.
                                               ItemClass.Layer.MetroTunnels;
-            input.m_netService2.m_service = ItemClass.Service.Beautification; // For paths
+            //input.m_netService2.m_service = ItemClass.Service.Beautification; // For paths
 
             input.m_ignoreSegmentFlags = NetSegment.Flags.Deleted |
                                          NetSegment.Flags.Collapsed |

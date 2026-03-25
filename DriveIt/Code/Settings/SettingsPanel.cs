@@ -74,6 +74,11 @@ namespace DriveIt
             brakingABS_CheckBox.eventCheckChanged += (_, isChecked) => ModSettings.BrakingABS = isChecked;
             currentY += brakingABS_CheckBox.height + Margin;
 
+            var AutoTrans_CheckBox = UICheckBoxes.AddPlainCheckBox(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_AUTOTRANS"));
+            AutoTrans_CheckBox.isChecked = ModSettings.AutoTrans;
+            AutoTrans_CheckBox.eventCheckChanged += (_, isChecked) => ModSettings.AutoTrans = isChecked;
+            currentY += AutoTrans_CheckBox.height + Margin;
+
             var downForce_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_DOWNFORCE"), 0.0f, 50.0f, 1f, ModSettings.DownForce, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N"));
             downForce_Slider.eventValueChanged += (_, value) => ModSettings.DownForce = value;
             currentY += downForce_Slider.height + SliderMargin;
@@ -98,7 +103,7 @@ namespace DriveIt
             springDamp_Slider.eventValueChanged += (_, value) => ModSettings.SpringDamp = value;
             currentY += springDamp_Slider.height + SliderMargin;
 
-            var springOffset_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_SPRINGOFFSET"), -2.0f, 2.0f, 0.1f, ModSettings.SpringOffset, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.1f, numberFormat: "N"));
+            var springOffset_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_SPRINGOFFSET"), -2.0f, 2.0f, 0.05f, ModSettings.SpringOffset, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.1f, numberFormat: "N"));
             springOffset_Slider.eventValueChanged += (_, value) => ModSettings.SpringOffset = value;
             currentY += springOffset_Slider.height + SliderMargin;
 
@@ -193,7 +198,13 @@ namespace DriveIt
             currentY += keyMoveRight.Panel.height + Margin;
 
             var keyResetVehicle = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_RESETVEHICLE"), ModSettings.KeyResetVehicle);
-            currentY += keyMoveRight.Panel.height + Margin;
+            currentY += keyResetVehicle.Panel.height + Margin;
+
+            var keyGearUp = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_GEARUP"), ModSettings.KeyGearUp);
+            currentY += keyGearUp.Panel.height + Margin;
+
+            var keyGearDown = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_GEARDOWN"), ModSettings.KeyGearDown);
+            currentY += keyGearDown.Panel.height + Margin;
 
             var keyCamCursorToggle = OptionsKeymapping.AddKeymapping(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_KEYCAMCURSORTOGGLE"), ModSettings.KeyCamCursorToggle);
             currentY += keyCamCursorToggle.Panel.height + Margin;

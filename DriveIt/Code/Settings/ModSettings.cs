@@ -38,6 +38,11 @@ namespace DriveIt.Settings
         [XmlIgnore]
         internal static bool BrakingABS = true;
 
+        [XmlElement("AutoTrans")]
+        public bool XMLAutoTrans { get => AutoTrans; set => AutoTrans = value; }
+        [XmlIgnore]
+        internal static bool AutoTrans = true;
+
         [XmlElement("DownForce")]
         public float XMLDownForce { get => DownForce; set => DownForce = value; }
         [XmlIgnore]
@@ -106,7 +111,7 @@ namespace DriveIt.Settings
         [XmlElement("CamFieldOfView")]
         public float XMLCamFieldOfView { get => CamFieldOfView; set => CamFieldOfView = value; }
         [XmlIgnore]
-        internal static float CamFieldOfView = 45f;
+        internal static float CamFieldOfView = 75f;
 
         [XmlElement("CamMaxPitchDeg")]
         public float XMLCamMaxPitchDeg { get => CamMaxPitchDeg; set => CamMaxPitchDeg = value; }
@@ -165,6 +170,16 @@ namespace DriveIt.Settings
         public KeyOnlyBinding XMLKeyResetVehicle { get => KeyResetVehicle; set => KeyResetVehicle = value; }
         [XmlIgnore]
         internal static KeyOnlyBinding KeyResetVehicle = new KeyOnlyBinding(KeyCode.R);
+
+        [XmlElement("KeyGearUp")]
+        public KeyOnlyBinding XMLKeyGearUp { get => KeyGearUp; set => KeyGearUp = value; }
+        [XmlIgnore]
+        internal static KeyOnlyBinding KeyGearUp = new KeyOnlyBinding(KeyCode.Quote);
+
+        [XmlElement("KeyGearDown")]
+        public KeyOnlyBinding XMLKeyGearDown { get => KeyGearDown; set => KeyGearDown = value; }
+        [XmlIgnore]
+        internal static KeyOnlyBinding KeyGearDown = new KeyOnlyBinding(KeyCode.Slash);
 
         [XmlElement("KeyCamCursorToggle")]
         public KeyOnlyBinding XMLKeyCamCursorToggle { get => KeyCamCursorToggle; set => KeyCamCursorToggle = value; }
