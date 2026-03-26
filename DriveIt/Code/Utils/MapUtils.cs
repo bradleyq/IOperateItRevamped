@@ -60,7 +60,7 @@ namespace DriveIt.Utils
 
         public static float CalculateHeight(Vector3 position, float objectHeight, out COLLISION_TYPE collisionType, bool ignoreColliders = default)
         {
-            bool roadFound = false;
+            ushort segmentId = 65535;
             ToolBase.RaycastInput input;
             ToolBase.RaycastOutput output;
             Vector3 roadPos;
@@ -85,68 +85,68 @@ namespace DriveIt.Utils
             }
 
             input = GetRaycastInput(position, ROAD_RAYCAST_LOWER, objectHeight + ROAD_RAYCAST_UPPER); // Configure raycast input parameters.
-            input.m_netService.m_service = ItemClass.Service.Road;
-            input.m_netService.m_itemLayers = ItemClass.Layer.Default |// ItemClass.Layer.PublicTransport is only for TransportLine, not for Road.
-                                              ItemClass.Layer.MetroTunnels;
-            //input.m_netService2.m_service = ItemClass.Service.Beautification; // For paths
-
+            input.m_ignoreTerrain = true;
             input.m_ignoreSegmentFlags = NetSegment.Flags.Deleted |
                                          NetSegment.Flags.Collapsed |
                                          NetSegment.Flags.Flooded;
-            input.m_ignoreTerrain = true;
 
-            // Perform the raycast and check for a result:
+            input.m_netService.m_service = ItemClass.Service.Road;  // General roads
+            input.m_netService.m_itemLayers =   ItemClass.Layer.Default |
+                                                ItemClass.Layer.MetroTunnels;
+            input.m_netService2.m_service = ItemClass.Service.PublicTransport; // For tracks
+            input.m_netService2.m_itemLayers =  ItemClass.Layer.Default |
+                                                ItemClass.Layer.MetroTunnels;
+
             if (RayCast(input, out output))
             {
                 height = Mathf.Max(height, output.m_hitPos.y);
-                roadFound = true;
+                segmentId = output.m_netSegment;
             }
 
-            // If no result, change the service to ItemClass.Service.PublicTransport (for tracks).
-            if (!roadFound)
-            {
-                input.m_netService.m_service = ItemClass.Service.PublicTransport;
+            input.m_netService.m_service = ItemClass.Service.Beautification; // For paths, quays, pedestrian bridges
+            input.m_netService.m_service = ItemClass.Service.None; // No secondary raycast
 
-                // Perform the raycast again:
-                if (RayCast(input, out output))
+            if (RayCast(input, out output))
+            {
+                ref NetSegment segment = ref Singleton<NetManager>.instance.m_segments.m_buffer[output.m_netSegment];
+
+                // Try again without Beautification (some items do not require renderers)
+                if (segment.Info.m_requireSegmentRenderers && (segmentId == 65535 || height < output.m_hitPos.y))
                 {
                     height = Mathf.Max(height, output.m_hitPos.y);
-                    roadFound = true;
+                    segmentId = output.m_netSegment;
                 }
             }
 
             // If a road was found, try to find a lane and find the precise height.
-            if (roadFound)
+            if (segmentId != 65535)
             {
-                if (output.m_netSegment != 0)
+                float offset = 0f;
+                int lane = 0;
+                ref NetSegment segment = ref Singleton<NetManager>.instance.m_segments.m_buffer[segmentId];
+
+                if (GetClosestLanePositionFiltered(ref segment, position, out roadPos, out offset, out lane, true))
                 {
-                    float offset = 0f;
-                    int lane = 0;
-                    ref NetSegment segment = ref Singleton<NetManager>.instance.m_segments.m_buffer[output.m_netSegment];
+                    height = roadPos.y;
 
-                    if (GetClosestLanePositionFiltered(ref segment, position, out roadPos, out offset, out lane, true))
+                    // special case ignore setting road status for gravel. Use ground instead.
+                    if ((segment.Info.m_setVehicleFlags & Vehicle.Flags.OnGravel) > 0)
                     {
-                        height = roadPos.y;
+                        collisionType = COLLISION_TYPE.GROUND;
+                    }
+                    else
+                    {
+                        collisionType = COLLISION_TYPE.ROAD;
+                    }
 
-                        // special case ignore setting road status for gravel. Use ground instead.
-                        if ((segment.Info.m_setVehicleFlags & Vehicle.Flags.OnGravel) > 0)
+                    if (offset == 0f || offset == 1f)
+                    {
+                        ushort nodeId = offset == 0f ? segment.m_startNode : segment.m_endNode;
+                        ref NetNode node = ref Singleton<NetManager>.instance.m_nodes.m_buffer[nodeId];
+                        if (node.CountSegments() > 1)
                         {
-                            collisionType = COLLISION_TYPE.GROUND;
-                        }
-                        else
-                        {
-                            collisionType = COLLISION_TYPE.ROAD;
-                        }
-
-                        if (offset == 0f || offset == 1f)
-                        {
-                            ushort nodeId = offset == 0f ? segment.m_startNode : segment.m_endNode;
-                            ref NetNode node = ref Singleton<NetManager>.instance.m_nodes.m_buffer[nodeId];
-                            if (node.CountSegments() > 1)
-                            {
-                                GetClosestLanePositionOnNodeFiltered(nodeId, output.m_netSegment, (ushort)lane, position, ref roadPos);
-                                height = roadPos.y;
-                            }
+                            GetClosestLanePositionOnNodeFiltered(nodeId, segmentId, (ushort)lane, position, ref roadPos);
+                            height = roadPos.y;
                         }
                     }
                 }
@@ -169,7 +169,7 @@ namespace DriveIt.Utils
             {
                 ushort altSegmentId = node.GetSegment(iter);
 
-                if (altSegmentId != 0)
+                if (altSegmentId != 65535)
                 {
                     ref NetSegment tmpSegment = ref Singleton<NetManager>.instance.m_segments.m_buffer[altSegmentId];
 
@@ -295,6 +295,8 @@ namespace DriveIt.Utils
                     posOut = Vector3.Lerp(posOut, posAdj, dist2DM / (dist2DM + distAdj2DM));
                 }
             }
+
+            DebugHelper.DrawDebugMarker(1.0f, posOut, Color.red);
             return found;
         }
     }
