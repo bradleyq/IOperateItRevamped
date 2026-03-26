@@ -296,7 +296,6 @@ namespace DriveIt.Utils
                 }
             }
 
-            DebugHelper.DrawDebugMarker(1.0f, posOut, Color.red);
             return found;
         }
     }

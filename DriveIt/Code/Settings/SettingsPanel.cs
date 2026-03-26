@@ -103,7 +103,7 @@ namespace DriveIt
             springDamp_Slider.eventValueChanged += (_, value) => ModSettings.SpringDamp = value;
             currentY += springDamp_Slider.height + SliderMargin;
 
-            var springOffset_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_SPRINGOFFSET"), -2.0f, 2.0f, 0.05f, ModSettings.SpringOffset, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.1f, numberFormat: "N"));
+            var springOffset_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_SPRINGOFFSET"), -2.0f, 2.0f, 0.05f, ModSettings.SpringOffset, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
             springOffset_Slider.eventValueChanged += (_, value) => ModSettings.SpringOffset = value;
             currentY += springOffset_Slider.height + SliderMargin;
 

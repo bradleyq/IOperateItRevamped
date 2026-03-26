@@ -18,6 +18,8 @@ namespace DriveIt
         private const float THROTTLE_REST = 2.0f;
         private const float STEER_RESP = 1.5f;
         private const float STEER_REST = 1.5f;
+        private const float STEER_TILT_INERTIA = 0.1f;
+        private const float STEER_TILT_STRENGTH = 4.5f;
         private const float GEAR_RESP = 0.25f;
         private const float PARK_SPEED = 0.5f;
         private const float STEER_MAX = 37.0f;
@@ -25,9 +27,11 @@ namespace DriveIt
         private const float LIGHT_HEADLIGHT_INTENSITY = 3.0f;
         private const float LIGHT_HEADLIGHT_RANGE = 125.0f;
         private const float LIGHT_HEADLIGHT_ANGLE = 60.0f;
+        private const float LIGHT_TAILLIGHT_INTENSITY = 1.0f;
+        private const float LIGHT_TAILLIGHT_IDLE_INTENSITY = 0.5f;
+        private const float LIGHT_TAILLIGHT_RANGE = 15.0f;
         private const float LIGHT_TEXTURE_INTENSITY = 5.0f;
         private const float LIGHT_TEXTURE_IDLE_INTENSITY = 0.5f;
-        private const float SPRING_MAX_COMPRESS = 0.2f;
         private const float DRAG_FACTOR = 0.25f;
         private const float DRAG_DRIVETRAIN = 0.15f;
         private const float DRAG_FREEZE = 0.9f;
@@ -62,6 +66,7 @@ namespace DriveIt
         const float KW_TO_W = 1000f;
 
         private static float s_engine_inertia;
+        private static float s_steer_tilt_inertia;
         private static float s_drag_wheel_powered;
         private static float s_drag_wheel;
 
@@ -228,7 +233,10 @@ namespace DriveIt
         private Color           m_vehicleColor;
         private bool            m_setColor;
         private VehicleInfo     m_vehicleInfo;
+        private GameObject      m_headlightObject;
+        private GameObject      m_taillightObject;
         private Light           m_headlight;
+        private Light           m_taillight;
         private GUIStyle        m_speedoStyle;
         private GUIStyle        m_gearStyle;
 
@@ -298,7 +306,8 @@ namespace DriveIt
             m_vehicleCollider = gameObject.AddComponent<BoxCollider>();
             m_vehicleCollider.material = material;
 
-            m_headlight = gameObject.AddComponent<Light>();
+            m_headlightObject = new GameObject();
+            m_headlight = m_headlightObject.AddComponent<Light>();
             m_headlight.type = LightType.Spot;
             m_headlight.intensity = LIGHT_HEADLIGHT_INTENSITY;
             m_headlight.range = LIGHT_HEADLIGHT_RANGE;
@@ -306,6 +315,15 @@ namespace DriveIt
             m_headlight.transform.parent = m_vehicleRigidBody.transform;
             m_headlight.color = Color.white;
             m_headlight.enabled = false;
+
+            m_taillightObject = new GameObject();
+            m_taillight = m_taillightObject.AddComponent<Light>();
+            m_taillight.type = LightType.Point;
+            m_taillight.intensity = LIGHT_TAILLIGHT_IDLE_INTENSITY;
+            m_taillight.range = LIGHT_TAILLIGHT_RANGE;
+            m_taillight.transform.parent = m_vehicleRigidBody.transform;
+            m_taillight.color = Color.red;
+            m_taillight.enabled = false;
 
             StartCoroutine(m_collidersManager.InitializeColliders());
             gameObject.SetActive(false);
@@ -359,6 +377,20 @@ namespace DriveIt
             if (m_setColor)
             {
                 materialBlock.SetColor(Singleton<VehicleManager>.instance.ID_Color, m_vehicleColor);
+            }
+
+            m_headlight.enabled = m_isLightEnabled;
+
+            float tailIntensity = m_isLightEnabled ? LIGHT_TEXTURE_IDLE_INTENSITY : 0.0f;
+            tailIntensity = m_brake > 0.0f ? LIGHT_TAILLIGHT_INTENSITY : tailIntensity;
+            if (tailIntensity > 0.0f)
+            {
+                m_taillight.intensity = tailIntensity;
+                m_taillight.enabled = true;
+            }
+            else
+            {
+                m_taillight.enabled = false;
             }
 
             float avgCompression = 0.0f;
@@ -696,7 +728,7 @@ namespace DriveIt
                 if (normDotUp > VALID_INCLINE)
                 {
                     Vector3 originWheelBottom = m_vehicleRigidBody.transform.TransformPoint(w.origin + Vector3.down * w.radius);
-                    float compression = Mathf.Max(Vector3.Dot(w.heightSample - originWheelBottom, w.normal) / Vector3.Dot(upVec, Vector3.up), 0.0f);
+                    float compression = Mathf.Max(Vector3.Dot(w.heightSample - originWheelBottom, w.normal) / normDotUp, 0.0f);
                     float springVel = (compression - w.compression) / Time.fixedDeltaTime;
                     float deltaVel = -ModSettings.SpringDamp * Mathf.Exp(-ModSettings.SpringDamp * Time.fixedDeltaTime) * (compression + springVel * Time.fixedDeltaTime) + springVel * Mathf.Exp(-ModSettings.SpringDamp * Time.fixedDeltaTime) - springVel;
 
@@ -840,7 +872,7 @@ namespace DriveIt
                 Vector3 sideVec = Vector3.Cross(m_vehicleRigidBody.transform.forward, Vector3.up).normalized;
                 float lateralTorque = Vector3.Dot(netNetImpulse / m_vehicleRigidBody.mass, sideVec);
                 Vector3 targetNorm = Vector3.Cross(sideVec, m_vehicleRigidBody.transform.forward).normalized;
-                m_tilt = 0.98f * m_tilt + 4.0f * lateralTorque;
+                m_tilt = s_steer_tilt_inertia * m_tilt + STEER_TILT_STRENGTH * lateralTorque;
                 Quaternion rot = Quaternion.AngleAxis(m_tilt, m_vehicleRigidBody.transform.forward) * Quaternion.LookRotation(m_vehicleRigidBody.transform.forward);
                 m_vehicleRigidBody.transform.rotation = rot;
             }
@@ -891,6 +923,7 @@ namespace DriveIt
         private void SpawnVehicle(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Color vehicleColor, bool setColor)
         {
             s_engine_inertia = (float) System.Math.Pow(ENGINE_INERTIA, Time.fixedDeltaTime);
+            s_steer_tilt_inertia = (float) System.Math.Pow(STEER_TILT_INERTIA, Time.fixedDeltaTime);
             s_drag_wheel_powered = (float) (1.0 - System.Math.Pow(1.0 - DRAG_WHEEL_POWERED, Time.fixedDeltaTime));
             s_drag_wheel = (float) (1.0 - System.Math.Pow(1.0 - DRAG_WHEEL, Time.fixedDeltaTime));
 
@@ -971,6 +1004,7 @@ namespace DriveIt
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
             Vector3 fullBounds = vehicleMesh.bounds.size;
             m_headlight.transform.localPosition = new Vector3(0.0f, fullBounds.y * 0.5f, fullBounds.z * 0.5f + FLOAT_ERROR);
+            m_taillight.transform.localPosition = new Vector3(0.0f, fullBounds.y * 0.5f, -fullBounds.z * 0.5f - FLOAT_ERROR);
 
             Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;
             adjustedBounds.y = adjustedBounds.y - m_rideHeight;
@@ -1520,13 +1554,6 @@ namespace DriveIt
                     }
                 }
             }
-
-            if (m_lightEffects.Count > 0)
-            {
-                LightEffect le = m_lightEffects[0];
-                Light l = le.gameObject.GetComponent<Light>();
-                m_headlight.color = l.color;
-            }
         }
         private void PlayEffects()
         {
@@ -1551,8 +1578,6 @@ namespace DriveIt
             {
                 engineEffect.PlayEffect(default, area, ENGINE_PITCH * m_radps * Vector3.up, ENGINE_PITCH * (m_radps - m_prevRadps) / Time.fixedDeltaTime, 1.0f + 0.25f * m_radps / ENGINE_PEAK_RPS + 0.25f * m_throttle, listenerInfo, audioGroup);
             }
-
-            m_headlight.enabled = m_isLightEnabled;
 
             if (m_isLightEnabled)
             {
