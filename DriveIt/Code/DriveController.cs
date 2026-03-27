@@ -61,6 +61,7 @@ namespace DriveIt
         private const float UI_SIZE = 1.0f / 4.0f;
         private const float UI_OFFSET = 1.0f / 12.0f;
         private const float UI_FILL = 1.0f;
+        private const int TIRE_TRAIL_POOL = 128;
         private static readonly Color UI_BG_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
         private static readonly Color UI_FG_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
         const float MS_TO_KMPH = 3.6f;
@@ -89,7 +90,6 @@ namespace DriveIt
 
         private class Wheel : MonoBehaviour
         {
-            //public TrailRenderer skidTrail;
             public static int wheelCount { get => wheels; private set => wheels = value; }
             public static int frontCount { get => fronts; private set => fronts = value; }
             public static int rearCount { get => wheels - fronts; }
@@ -97,6 +97,7 @@ namespace DriveIt
             private static int wheels = 0;
             private static int fronts = 0;
 
+            public TrailRenderer skidTrail;
             public Vector3 tangent;
             public Vector3 binormal;
             public Vector3 normal;
@@ -132,10 +133,11 @@ namespace DriveIt
             private bool registered;
             public static Wheel InstanceWheel(Transform parent, Vector3 localpos, float moment, float radius, bool isSimulated = true, bool isPowered = true, float torque = 0.0f, float brakeForce = 0.0f, bool isSteerable = false, bool isInvertedSteer = false)
             {
-                GameObject go = new GameObject("Wheel");
-                Wheel w = go.AddComponent<Wheel>();
-                go.transform.SetParent(parent);
-                go.transform.localPosition = localpos;
+                GameObject wheelObject = new GameObject("Wheel");
+                Wheel w = wheelObject.AddComponent<Wheel>();
+                wheelObject.transform.SetParent(parent);
+                wheelObject.transform.localPosition = localpos;
+                w.skidTrail = null;
                 w.tangent = Vector3.zero;
                 w.binormal = Vector3.zero;
                 w.normal = Vector3.zero;   
@@ -244,19 +246,23 @@ namespace DriveIt
         private Light           m_taillight;
         private GUIStyle        m_speedoStyle;
         private GUIStyle        m_gearStyle;
+        private GameObject      m_tireTrailRefObject;
+        private TrailRenderer   m_tireTrailRef;
+        private Material        m_backupUndergroundMaterial = null;
+        private Material        m_uiMaterial = null;
+        private Material        m_renderMaterial = null;
+        private Material        m_basicRenderMaterial = null;
 
         private List<Wheel>             m_wheelObjects          = new List<Wheel>();
-
         private List<LightEffect>       m_lightEffects          = new List<LightEffect>();
         private List<EngineSoundEffect> m_engineSoundEffects    = new List<EngineSoundEffect>();
         private List<EffectInfo>        m_regularEffects        = new List<EffectInfo>();
         private List<EffectInfo>        m_dustEffects           = new List<EffectInfo>();
         private List<EffectInfo>        m_specialEffects        = new List<EffectInfo>();
+        private Queue<TrailRenderer>    m_tireTrails            = new Queue<TrailRenderer>();
 
         private Dictionary<string, string> m_customUndergroundMappings = new Dictionary<string, string>();
         private Dictionary<NetInfo, NetInfoBackup> m_backupPrefabData = new Dictionary<NetInfo, NetInfoBackup>();
-        private Material m_backupUndergroundMaterial = null;
-        private Material m_glMaterial = null;
 
         private DriveColliders m_collidersManager = new DriveColliders();
         private Vector3 m_prevPosition;
@@ -343,6 +349,26 @@ namespace DriveIt
             m_customUndergroundMappings["Metro Station Below Ground Dual Island"]    = "Metro Station Track Elevated Dual Island";
             m_customUndergroundMappings["Metro Station Below Ground Island"]         = "Metro Station Track Elevated Island Platform";
 
+            RenderManager rm = Singleton<RenderManager>.instance;
+            m_backupUndergroundMaterial = rm.m_groupLayerMaterials[MapUtils.LAYER_UNDERGROUND];
+            m_renderMaterial = rm.m_groupLayerMaterials[MapUtils.LAYER_ROAD];
+
+            Shader diffuseShader = Shader.Find("Hidden/Internal-Colored");
+            m_basicRenderMaterial = new Material(diffuseShader);
+            m_basicRenderMaterial.hideFlags = HideFlags.HideAndDontSave;
+            m_basicRenderMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m_basicRenderMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m_basicRenderMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            m_basicRenderMaterial.SetInt("_ZWrite", 0);
+
+            Shader flatShader = Shader.Find("Hidden/Internal-Colored");
+            m_uiMaterial = new Material(flatShader);
+            m_uiMaterial.hideFlags = HideFlags.HideAndDontSave;
+            m_uiMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m_uiMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m_uiMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            m_uiMaterial.SetInt("_ZWrite", 0);
+
             m_speedoStyle = new GUIStyle();
             m_speedoStyle.fontSize = (int) (Screen.height * UI_SIZE * 0.3f);
             m_speedoStyle.normal.textColor = Color.white;
@@ -356,14 +382,21 @@ namespace DriveIt
             m_gearStyle.fontStyle = FontStyle.Italic;
             m_gearStyle.padding.right = m_gearStyle.fontSize / 8;
 
+            m_tireTrailRefObject = new GameObject();
+            m_tireTrailRef = m_tireTrailRefObject.AddComponent<TrailRenderer>();
+            m_tireTrailRef.sharedMaterial = m_basicRenderMaterial;
+            m_tireTrailRef.widthMultiplier = 1.0f;
+            m_tireTrailRef.startColor = new Color(0.0f, 0.0f, 0.0f, 0.4f);
+            m_tireTrailRef.endColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
+            m_tireTrailRef.alignment = LineAlignment.Local;
+            m_tireTrailRef.time = Mathf.Infinity;
+            m_tireTrailRef.enabled = false;
 
-            Shader shader = Shader.Find("Hidden/Internal-Colored");
-            m_glMaterial = new Material(shader);
-            m_glMaterial.hideFlags = HideFlags.HideAndDontSave;
-            m_glMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            m_glMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            m_glMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-            m_glMaterial.SetInt("_ZWrite", 0);
+            for (int i = 0; i < TIRE_TRAIL_POOL; i++)
+            {
+                m_tireTrails.Enqueue(GameObject.Instantiate(m_tireTrailRefObject).GetComponent<TrailRenderer>());
+            }
+
         }
         private void Update()
         {
@@ -411,6 +444,30 @@ namespace DriveIt
             materialBlock.SetMatrix(Singleton < VehicleManager >.instance.ID_TyreMatrix, Matrix4x4.TRS(new Vector3(0.0f, Mathf.Clamp(avgCompression, ModSettings.SpringOffset, 0.0f), 0.0f), Quaternion.identity, Vector3.one));
 
             gameObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
+
+            foreach(Wheel w in m_wheelObjects)
+            {
+                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && w.slip > GRIP_MAX_SLIP)
+                {
+                    if (!w.skidTrail)
+                    {
+                        w.skidTrail = m_tireTrails.Dequeue();
+                        w.skidTrail.transform.position = w.contactPoint;
+                        w.skidTrail.transform.rotation = Quaternion.LookRotation(w.normal);
+                        w.skidTrail.widthMultiplier = w.radius * 0.5f;
+                        w.skidTrail.Clear();
+                        w.skidTrail.enabled = true;
+                    }
+
+                    w.skidTrail.gameObject.transform.position = w.contactPoint + +0.01f * w.normal;
+                    w.skidTrail.gameObject.transform.rotation = Quaternion.LookRotation(-w.normal);
+                }
+                else if (w.skidTrail)
+                {
+                    m_tireTrails.Enqueue(w.skidTrail);
+                    w.skidTrail = null;
+                }
+            }
 
             DebugHelper.DrawDebugBox(m_vehicleCollider.size, m_vehicleCollider.transform.TransformPoint(m_vehicleCollider.center), m_vehicleCollider.transform.rotation, Color.magenta);
         }
@@ -533,7 +590,7 @@ namespace DriveIt
                     fillPx * 0.5f, fillPx * 0.5f * 0.9f,
                     Mathf.PI * 5.0f / 4.0f, -Mathf.PI / 4.0f,
                     m_radps / ENGINE_PEAK_RPS,
-                    UI_FG_COLOR, m_glMaterial);
+                    UI_FG_COLOR, m_uiMaterial);
             }
         }
 
@@ -1207,8 +1264,7 @@ namespace DriveIt
 
             // replace the distant LOD material for underground and update LOD render groups.
             RenderManager rm = Singleton<RenderManager>.instance;
-            m_backupUndergroundMaterial = rm.m_groupLayerMaterials[MapUtils.LAYER_UNDERGROUND];
-            rm.m_groupLayerMaterials[MapUtils.LAYER_UNDERGROUND] = rm.m_groupLayerMaterials[MapUtils.LAYER_ROAD];
+            rm.m_groupLayerMaterials[MapUtils.LAYER_UNDERGROUND] = m_renderMaterial;
             rm.UpdateGroups(MapUtils.LAYER_UNDERGROUND);
         }
 
@@ -1256,7 +1312,6 @@ namespace DriveIt
             // restore the distant LOD material for underground and update LOD render groups.
             RenderManager rm = Singleton<RenderManager>.instance;
             rm.m_groupLayerMaterials[MapUtils.LAYER_UNDERGROUND] = m_backupUndergroundMaterial;
-            m_backupUndergroundMaterial = null;
             rm.UpdateGroups(MapUtils.LAYER_UNDERGROUND);
         }
 
