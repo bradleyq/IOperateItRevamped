@@ -16,8 +16,8 @@ namespace DriveIt
         private const float RESET_FREQ = 2.0f;
         private const float THROTTLE_RESP = 2.0f;
         private const float THROTTLE_REST = 2.0f;
-        private const float STEER_RESP = 1.5f;
-        private const float STEER_REST = 1.5f;
+        private const float STEER_RESP = 1.75f;
+        private const float STEER_REST = 1.75f;
         private const float STEER_TILT_INERTIA = 0.1f;
         private const float STEER_TILT_STRENGTH = 4.5f;
         private const float GEAR_RESP = 0.25f;
@@ -46,7 +46,7 @@ namespace DriveIt
         private const float ENGINE_OVER_RPS = 1200.0f;
         private const float ENGINE_IDLE_RPS = 90.0f;
         private const float ENGINE_INERTIA = 0.005f;
-        private const float ENGINE_PITCH = 0.11f;
+        private const float ENGINE_PITCH = 0.15f;
         private static readonly float[] ENGINE_GEAR_RATIOS = { -25.0f, 0.0f, 25.0f, 12.5f, 8.333f, 6.25f, 5.0f, 4.167f, 3.571f, 3.125f };
         private static readonly string[] ENGINE_GEAR_NAMES = { "R", "N", "1", "2", "3", "4", "5", "6", "7", "8" };
         private const int ENGINE_GEAR_REVERSE = 0;
@@ -58,6 +58,11 @@ namespace DriveIt
         private const int ENGINE_MODE_FORWARD = 1;
         private const float ENGINE_AUTO_SHIFT_THRESH = 0.1f;
         private const float ACCEL_G = 10f;
+        private const float UI_SIZE = 1.0f / 4.0f;
+        private const float UI_OFFSET = 1.0f / 12.0f;
+        private const float UI_FILL = 1.0f;
+        private static readonly Color UI_BG_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
+        private static readonly Color UI_FG_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
         const float MS_TO_KMPH = 3.6f;
         const float UNIT_TO_M = 25.0f / 54.0f;
         const float M_TO_UNIT = 54.0f / 25.0f;
@@ -251,7 +256,7 @@ namespace DriveIt
         private Dictionary<string, string> m_customUndergroundMappings = new Dictionary<string, string>();
         private Dictionary<NetInfo, NetInfoBackup> m_backupPrefabData = new Dictionary<NetInfo, NetInfoBackup>();
         private Material m_backupUndergroundMaterial = null;
-        private Material m_glMaterial;
+        private Material m_glMaterial = null;
 
         private DriveColliders m_collidersManager = new DriveColliders();
         private Vector3 m_prevPosition;
@@ -267,7 +272,7 @@ namespace DriveIt
         private bool m_isConstrainedX = false;
         private bool m_isConstrainedZ = false;
 
-        private int m_gear = 0;
+        private int m_gear = ENGINE_GEAR_NEUTRAL;
         private int m_driveMode = ENGINE_MODE_NEUTRAL;
         private float m_lastReset = 0.0f;
         private float m_terrainHeight = 0.0f;
@@ -339,13 +344,17 @@ namespace DriveIt
             m_customUndergroundMappings["Metro Station Below Ground Island"]         = "Metro Station Track Elevated Island Platform";
 
             m_speedoStyle = new GUIStyle();
-            m_speedoStyle.fontSize = 90;
+            m_speedoStyle.fontSize = (int) (Screen.height * UI_SIZE * 0.3f);
             m_speedoStyle.normal.textColor = Color.white;
-            m_speedoStyle.alignment = TextAnchor.MiddleCenter;
+            m_speedoStyle.alignment = TextAnchor.LowerCenter;
+            m_speedoStyle.fontStyle = FontStyle.Italic;
+            m_speedoStyle.padding.right = m_speedoStyle.fontSize / 8;
             m_gearStyle = new GUIStyle();
-            m_gearStyle.fontSize = 60;
+            m_gearStyle.fontSize = (int)(Screen.height * UI_SIZE * 0.2f);
             m_gearStyle.normal.textColor = Color.white;
-            m_gearStyle.alignment = TextAnchor.LowerCenter;
+            m_gearStyle.alignment = TextAnchor.MiddleCenter;
+            m_gearStyle.fontStyle = FontStyle.Italic;
+            m_gearStyle.padding.right = m_gearStyle.fontSize / 8;
 
 
             Shader shader = Shader.Find("Hidden/Internal-Colored");
@@ -404,7 +413,6 @@ namespace DriveIt
             gameObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
 
             DebugHelper.DrawDebugBox(m_vehicleCollider.size, m_vehicleCollider.transform.TransformPoint(m_vehicleCollider.center), m_vehicleCollider.transform.rotation, Color.magenta);
-
         }
         private void FixedUpdate()
         {
@@ -474,104 +482,59 @@ namespace DriveIt
             LimitVelocity();
         }
 
-        void DrawAnnulusSegment(Rect rect, float fillPercent, Color color, Material mat)
-        {
-            int segments = 80;
-            float filled = Mathf.Clamp01(fillPercent);
-
-            float outerRadius = rect.width / 2f;
-            float innerRadius = outerRadius * 0.75f;
-
-            rect.y = Screen.height - rect.y - outerRadius;
-            rect.x = rect.x + outerRadius;
-
-            Vector2 center = new Vector2(rect.x, rect.y);
-
-            float startAngle = 1.333f * Mathf.PI;
-            float endAngle = -0.333f * Mathf.PI;
-            float totalAngle = endAngle - startAngle;
-
-            float filledAngle = totalAngle * filled;
-
-            GL.PushMatrix();
-            GL.LoadPixelMatrix();
-
-            mat.SetPass(0);
-
-            GL.Begin(GL.TRIANGLES);
-            GL.Color(color);
-
-            for (int i = 0; i < segments * filled; i++)
-            {
-                float t0 = i / (float)segments;
-                float t1 = (i + 1) / (float)segments;
-
-                float a0 = startAngle + filledAngle * t0;
-                float a1 = startAngle + filledAngle * t1;
-
-                Vector2 o0 = center + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * outerRadius;
-                Vector2 o1 = center + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * outerRadius;
-
-                Vector2 i0 = center + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * innerRadius;
-                Vector2 i1 = center + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * innerRadius;
-
-                // Two triangles per segment
-                GL.Vertex3(i0.x, i0.y, 0);
-                GL.Vertex3(o0.x, o0.y, 0);
-                GL.Vertex3(o1.x, o1.y, 0);
-
-                GL.Vertex3(i0.x, i0.y, 0);
-                GL.Vertex3(o1.x, o1.y, 0);
-                GL.Vertex3(i1.x, i1.y, 0);
-            }
-
-            GL.End();
-            GL.PopMatrix();
-        }
-
         private void OnGUI()
         {
-            if (Logging.DetailLogging)
+            if (Event.current.type == EventType.Repaint)
             {
-                string uiString = "dm: " + m_driveMode + 
-                                  "\ng: " + (m_gear - 1) + 
-                                  "\nt: " + m_throttle + 
-                                  "\nb: " + m_brake + 
-                                  "\ns: " + m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH + 
-                                  "\nrps: " + m_radps +
-                                  "\nrpst: " + m_radpsTrans;
-                for (int index = 0; index < Wheel.wheelCount; index++)
+                if (Logging.DetailLogging)
                 {
-                    uiString += "\nw" + index + ": " + m_wheelObjects[index].origin + " " + m_wheelObjects[index].slip + " " + m_wheelObjects[index].radps;
+                    string uiString = "dm: " + m_driveMode +
+                                      "\ng: " + (m_gear - 1) +
+                                      "\nt: " + m_throttle +
+                                      "\nb: " + m_brake +
+                                      "\ns: " + m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH +
+                                      "\nrps: " + m_radps +
+                                      "\nrpst: " + m_radpsTrans;
+                    for (int index = 0; index < Wheel.wheelCount; index++)
+                    {
+                        uiString += "\nw" + index + ": " + m_wheelObjects[index].origin + " " + m_wheelObjects[index].slip + " " + m_wheelObjects[index].radps;
+                    }
+
+                    GUIStyle m_style = new GUIStyle(GUI.skin.label);
+                    m_style.fontSize = 20;
+                    m_style.normal.textColor = Color.white;
+
+                    GUI.Label(new Rect(100f, 100f, 700f, 700f), uiString, m_style);
                 }
 
-                GUIStyle m_style = new GUIStyle(GUI.skin.label);
-                m_style.fontSize = 20;
-                m_style.normal.textColor = Color.white;
+                float sizePx = UI_SIZE * Screen.height;
+                float offsetPx = UI_OFFSET * Screen.height;
+                float fillPx = sizePx * UI_FILL;
+                float borderPx = (sizePx - fillPx) / 2;
 
-                GUI.Label(new Rect(100f, 100f, 700f, 700f), uiString, m_style);
+                float x = Screen.width - (sizePx + offsetPx);
+                float y = Screen.height - (sizePx + offsetPx);
+
+
+                Rect area = new Rect(x + borderPx, y + borderPx, fillPx, fillPx);
+                Rect bgarea = new Rect(x, y, sizePx, sizePx);
+
+                // Background
+                GUI.color = UI_BG_COLOR;
+                GUI.DrawTexture(bgarea, DriveCommon.driveGaugeCluster);
+                GUI.color = UI_FG_COLOR;
+
+                // text
+                GUI.Label(area, ENGINE_GEAR_NAMES[m_gear], m_gearStyle);
+                GUI.Label(area, Mathf.RoundToInt(m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH).ToString(), m_speedoStyle);
+
+                // Draw tach arc
+                DriveCommon.DrawRingSegment(new Vector2(x + sizePx * 0.5f, y + sizePx * 0.5f),
+                    fillPx * 0.5f, fillPx * 0.5f * 0.9f,
+                    Mathf.PI * 5.0f / 4.0f, -Mathf.PI / 4.0f,
+                    m_radps / ENGINE_PEAK_RPS,
+                    UI_FG_COLOR, m_glMaterial);
             }
-
-            float size = 250f;
-            float border = 30.0f;
-            float offset = 60.0f;
-            float x = Screen.width - size - offset;
-            float y = Screen.height - size - offset;
-
-            Rect area = new Rect(x, y, size, size);
-            Rect bgarea = new Rect(x - border, y - border, size + 2.0f * border, size + 2.0f * border);
-
-            // Background
-            GUI.color = new Color(0, 0, 0, 0.4f);
-            GUI.DrawTexture(bgarea, Texture2D.whiteTexture);
-            GUI.color = Color.white;
-
-            // text
-            GUI.Label(area, Mathf.RoundToInt(m_vehicleRigidBody.velocity.magnitude * MS_TO_KMPH).ToString(), m_speedoStyle);
-            GUI.Label(area, ENGINE_GEAR_NAMES[m_gear], m_gearStyle);
-
-            // Draw tach arc
-            DrawAnnulusSegment(area, m_radps / ENGINE_PEAK_RPS, Color.white, m_glMaterial);
         }
 
         private void FeedbackWheelAndEngine()
@@ -870,9 +833,8 @@ namespace DriveIt
             if (m_isConstrainedZ)
             {
                 Vector3 sideVec = Vector3.Cross(m_vehicleRigidBody.transform.forward, Vector3.up).normalized;
-                float lateralTorque = Vector3.Dot(netNetImpulse / m_vehicleRigidBody.mass, sideVec);
                 Vector3 targetNorm = Vector3.Cross(sideVec, m_vehicleRigidBody.transform.forward).normalized;
-                m_tilt = s_steer_tilt_inertia * m_tilt + STEER_TILT_STRENGTH * lateralTorque;
+                m_tilt = s_steer_tilt_inertia * m_tilt + Mathf.Atan(Vector3.Dot(netNetImpulse / m_vehicleRigidBody.mass, sideVec) / ACCEL_G) * 180.0f / Mathf.PI;
                 Quaternion rot = Quaternion.AngleAxis(m_tilt, m_vehicleRigidBody.transform.forward) * Quaternion.LookRotation(m_vehicleRigidBody.transform.forward);
                 m_vehicleRigidBody.transform.rotation = rot;
             }
@@ -926,7 +888,6 @@ namespace DriveIt
             s_steer_tilt_inertia = (float) System.Math.Pow(STEER_TILT_INERTIA, Time.fixedDeltaTime);
             s_drag_wheel_powered = (float) (1.0 - System.Math.Pow(1.0 - DRAG_WHEEL_POWERED, Time.fixedDeltaTime));
             s_drag_wheel = (float) (1.0 - System.Math.Pow(1.0 - DRAG_WHEEL, Time.fixedDeltaTime));
-
 
             m_setColor = setColor;
             m_vehicleColor = vehicleColor;
@@ -1083,7 +1044,13 @@ namespace DriveIt
             m_lightState = Vector4.zero;
             m_isSirenEnabled = false;
             m_isLightEnabled = false;
+            m_isDusty = false;
+            m_isTurning = false;
+            m_isConstrainedX = false;
+            m_isConstrainedZ = false;
+            m_gear = ENGINE_GEAR_NEUTRAL;
             m_driveMode = ENGINE_MODE_NEUTRAL;
+            m_lastReset = 0.0f;
             m_terrainHeight = 0.0f;
             m_distanceTravelled = 0.0f;
             m_steer = 0.0f;
@@ -1092,8 +1059,12 @@ namespace DriveIt
             m_rideHeight = 0.0f;
             m_roofHeight = 0.0f;
             m_compression = 0.0f;
-            m_normalImpulse = 0.0f;
             m_prevGearChange = 0.0f;
+            m_normalImpulse = 0.0f;
+            m_radps = 0.0f;
+            m_prevRadps = 0.0f;
+            m_radpsTrans = 0.0f;
+            m_tilt = 0.0f;
         }
 
         private void OverridePrefabs()
@@ -1607,7 +1578,9 @@ namespace DriveIt
         private void RemoveEffects()
         {
             m_lightEffects.Clear();
+            m_engineSoundEffects.Clear();
             m_regularEffects.Clear();
+            m_dustEffects.Clear();
             m_specialEffects.Clear();
         }
     }

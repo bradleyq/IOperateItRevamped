@@ -75,10 +75,13 @@ namespace DriveIt.Utils
         public const string TEX_BUTTON_HOVER            = "OptionBaseHovered";
         public const string TEX_BUTTON_DISABLE          = "OptionBaseDisabled";
 
+        public const string TEX_GAUGE_CLUSTER           = "Textures/GaugeCluster";
+
         public const int TEX_COUNT  = 5;
         public const int TEX_SIZE   = 1024;
 
         public static UITextureAtlas driveCommonAtlas;
+        public static Texture2D driveGaugeCluster;
 
         private static bool bInit = false;
 
@@ -110,7 +113,56 @@ namespace DriveIt.Utils
                 textures[index++] = DriveCommonRipTexture(TEX_BUTTON_DISABLE);
 
                 driveCommonAtlas = UITextures.CreateSpriteAtlas(MOD_HARMONY_ID + "_Atlas", TEX_SIZE, textures, names);
+
+                driveGaugeCluster = DriveCommonLoadTexture(TEX_GAUGE_CLUSTER);
             }
+        }
+
+        public static void DrawRingSegment(Vector2 center, float outerR, float innerR, float startAngle, float endAngle, float fill, Color color, Material mat)
+        {
+            int segments = 40;
+            fill = Mathf.Clamp01(fill);
+            center.y = Screen.height - center.y;
+
+            float totalAngle = endAngle - startAngle;
+
+
+            GL.PushMatrix();
+            GL.LoadPixelMatrix();
+
+            mat.SetPass(0);
+
+            GL.Begin(GL.TRIANGLES);
+            GL.Color(color);
+
+            int segDraw = (int)Mathf.Ceil(segments * fill);
+
+            for (int i = 0; i < segDraw; i++)
+            {
+                float t0 = i / (float)segments;
+                float t1 = (i + 1) / (float)segments;
+
+                float a0 = startAngle + totalAngle * t0;
+                float a1 = startAngle + totalAngle * Mathf.Min(t1, fill);
+
+                Vector2 o0 = center + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * outerR;
+                Vector2 o1 = center + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * outerR;
+
+                Vector2 i0 = center + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * innerR;
+                Vector2 i1 = center + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * innerR;
+
+                // Two triangles per segment
+                GL.Vertex3(i0.x, i0.y, 0);
+                GL.Vertex3(o0.x, o0.y, 0);
+                GL.Vertex3(o1.x, o1.y, 0);
+
+                GL.Vertex3(i0.x, i0.y, 0);
+                GL.Vertex3(o1.x, o1.y, 0);
+                GL.Vertex3(i1.x, i1.y, 0);
+            }
+
+            GL.End();
+            GL.PopMatrix();
         }
 
         // Hack to use Algernon load texture
