@@ -1,5 +1,6 @@
 ﻿using AlgernonCommons;
 using AlgernonCommons.UI;
+using ColossalFramework;
 using ColossalFramework.UI;
 using System;
 using System.IO;
@@ -63,7 +64,6 @@ namespace DriveIt.Utils
         public const float ROAD_WALL_HEIGHT = 0.75f;    // per tick height delta before the slope is considered a wall
         public const float ROAD_THICKNESS = 1.5f;       // height delta below road surface to be considered still part of the road
 
-
         #endregion
 
 
@@ -77,6 +77,9 @@ namespace DriveIt.Utils
         public const string TEX_BUTTON_HOVER            = "OptionBaseHovered";
         public const string TEX_BUTTON_DISABLE          = "OptionBaseDisabled";
 
+        public const int    TEX_ATLAS_COUNT  = 5;
+        public const int    TEX_ATLAS_SIZE   = 1024;
+
         public const string TEX_GAUGE_CLUSTER           = "Textures/GaugeCluster";
 
         public const string SND_TIRE_SQUEAL             = "Sounds/TireSqueal";
@@ -85,8 +88,7 @@ namespace DriveIt.Utils
         public const string SND_TIRE_GRAVEL             = "Sounds/TireGravel";
         public const string SND_TIRE_GRAVEL_NAME        = "Tire Gravel";
 
-        public const int TEX_COUNT  = 5;
-        public const int TEX_SIZE   = 1024;
+        public const float  SND_RANGE                   = 200.0f;
 
         private static EffectsWrapper s_effectsWrapper;
 
@@ -103,11 +105,11 @@ namespace DriveIt.Utils
             {
                 bInit = true;
 
-                s_effectsWrapper = EffectManager.instance.m_EffectsWrapper;
+                s_effectsWrapper = Singleton<EffectManager>.instance.m_EffectsWrapper;
 
                 int index = 0;
-                Texture2D[] textures = new Texture2D[TEX_COUNT];
-                string[] names = new string[TEX_COUNT];
+                Texture2D[] textures = new Texture2D[TEX_ATLAS_COUNT];
+                string[] names = new string[TEX_ATLAS_COUNT];
 
                 // Loaded custom textures
                 names[index] = TEX_BUTTON_ICON;
@@ -126,7 +128,7 @@ namespace DriveIt.Utils
                 names[index] = TEX_BUTTON_DISABLE;
                 textures[index++] = DriveCommonRipTexture(TEX_BUTTON_DISABLE);
 
-                s_driveCommonAtlas = UITextures.CreateSpriteAtlas(MOD_HARMONY_ID + "_Atlas", TEX_SIZE, textures, names);
+                s_driveCommonAtlas = UITextures.CreateSpriteAtlas(MOD_HARMONY_ID + "_Atlas", TEX_ATLAS_SIZE, textures, names);
 
                 s_driveTextureGaugeCluster = DriveCommonLoadTexture(TEX_GAUGE_CLUSTER);
 
@@ -238,7 +240,7 @@ namespace DriveIt.Utils
             settings.pitch = 1.0f;
             settings.loop = loop;
             settings.is3D = false;
-            settings.range = 200.0f;
+            settings.range = SND_RANGE;
             settings.fadeLength = 0.1f;
             settings.randomTime = random;
 

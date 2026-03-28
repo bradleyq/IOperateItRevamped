@@ -26,7 +26,8 @@ namespace DriveIt
             base.LoadedActions(mode);
             if (!gameObject)
             {
-                DriveCommon.Initialize();
+                DriveCommon.Initialize(); // Load and init custom assets
+
                 gameObject = new GameObject(Utils.DriveCommon.MOD_NAME);
                 gameObject.AddComponent<MainPanel>();
                 gameObject.AddComponent<DriveButtons>();

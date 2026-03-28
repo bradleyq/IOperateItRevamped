@@ -54,14 +54,14 @@ namespace DriveIt.Utils
                                 ? UnifiedUI.GUI.MainPanel.Instance.height
                                 : Object.FindObjectOfType<UnifiedUI.GUI.FloatingButton>().height;
                             // Position the main panel properly based on UUI button position
-                            Singleton<MainPanel>.instance.Panel.absolutePosition = new Vector3(
+                            MainPanel.instance.Panel.absolutePosition = new Vector3(
                             UUIpos.x + (UUIpos.x < Screen.width / 2f ?
-                            UUIwidth - 10f : -Singleton<MainPanel>.instance.Panel.width + 10f),
+                            UUIwidth - 10f : -MainPanel.instance.Panel.width + 10f),
                             UUIpos.y + (UUIpos.y < Screen.height / 2f ?
-                            UUIheight - 15f : -Singleton<MainPanel>.instance.Panel.height + 15f));
+                            UUIheight - 15f : -MainPanel.instance.Panel.height + 15f));
                         }
                         // Set main panel visibility
-                        Singleton<MainPanel>.instance.Panel.isVisible = value;
+                        MainPanel.instance.Panel.isVisible = value;
                     },
                     onToolChanged: null,
                     activationKey: UUIKey,

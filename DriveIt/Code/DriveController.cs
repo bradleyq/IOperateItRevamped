@@ -48,7 +48,7 @@ namespace DriveIt
         private const float ENGINE_IDLE_RPS = 90.0f;
         private const float ENGINE_INERTIA = 0.005f;
         private const float ENGINE_PITCH = 0.15f;
-        private static readonly float[] ENGINE_GEAR_RATIOS = { -15.0f, 0.0f, 15.0f, 8.5f, 5.67f, 4.25f, 3.4f, 2.83f, 2.43f, 2.13f };
+        private static readonly float[] ENGINE_GEAR_RATIOS = { -20.0f, 0.0f, 27.0f, 15.0f, 8.5f, 5.67f, 4.25f, 3.4f, 2.83f, 2.43f};
         private static readonly string[] ENGINE_GEAR_NAMES = { "R", "N", "1", "2", "3", "4", "5", "6", "7", "8" };
         private const int ENGINE_GEAR_REVERSE = 0;
         private const int ENGINE_GEAR_NEUTRAL = 1;
@@ -626,6 +626,54 @@ namespace DriveIt
             m_radps = Mathf.Lerp(engineRps, m_radps, s_engine_inertia);
         }
 
+        private void FeedForwardWheelAndEngine()
+        {
+            float engineTorque = ENGINE_GEAR_RATIOS[m_gear] * GetTorque(m_radps);
+            float avgFrontRps = 0.0f;
+            float avgRearRps = 0.0f;
+
+            foreach (Wheel w in m_wheelObjects)
+            {
+                // Find the maximum torque applicable to a single wheel on the axle
+                if (w.isFront)
+                {
+                    avgFrontRps += w.radps;
+                }
+                else
+                {
+                    avgRearRps += w.radps;
+                }
+            }
+
+            avgFrontRps /= Wheel.frontCount;
+            avgRearRps /= Wheel.rearCount;
+
+            foreach (Wheel w in m_wheelObjects)
+            {
+                // calcuate wheel angular velocity along with any assists.
+                float wheelTorque = m_throttle * w.torqueFract * engineTorque;
+
+                if (w.isFront)
+                {
+                    wheelTorque += (avgFrontRps - w.radps) * w.moment / Time.fixedDeltaTime * DIFF_LSD_FACTOR;
+                }
+                else
+                {
+                    wheelTorque += (avgRearRps - w.radps) * w.moment / Time.fixedDeltaTime * DIFF_LSD_FACTOR;
+                }
+
+                // TCS cut power when slipping
+                wheelTorque *= 1.0f - Mathf.Min(w.slip, 1.0f);
+
+                // braking ABS
+                float totalBrake = (w.slip < GRIP_OPTIM_SLIP * 0.75f || !ModSettings.BrakingABS || !w.onGround) ? m_brake : 0.0f;
+
+                wheelTorque -= Mathf.Sign(w.radps) * Mathf.Min(totalBrake * w.brakeForce * w.radius, Mathf.Abs(w.radps) * w.moment / Time.fixedDeltaTime);
+
+                w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
+            }
+        }
+
         private void SelectGear()
         {
             if (m_driveMode == ENGINE_MODE_FORWARD)
@@ -659,17 +707,13 @@ namespace DriveIt
             }
         }
 
-        private float GetTransmissionTorque()
-        {
-            return ENGINE_GEAR_RATIOS[m_gear] * GetTorque(m_radps);
-        }
-
-        private static float GetTorque(float radps) // Torque curve 27x(k-x)/(4k^3)
+        private static float GetTorque(float radps) // Torque curve 27x(k-x)/(4k^3)+max(3(k/2-x)^3/k^4,0)
         {
             // Check https://www.desmos.com/calculator/fp0csjaazj for formulation.
             float k = ENGINE_PEAK_RPS;
             float x = Mathf.Max(radps, ENGINE_IDLE_RPS);
-            return ModSettings.EnginePower * KW_TO_W * (1.0f - DRAG_DRIVETRAIN) * 27.0f * x * (k - x) / (4.0f * k * k * k);
+            float rawval = 27.0f * x * (k - x) / (4.0f * k * k * k) + Mathf.Max(3 * Mathf.Pow(k * 0.5f - x, 3.0f) / (k * k * k * k), 0.0f);
+            return ModSettings.EnginePower * KW_TO_W * (1.0f - DRAG_DRIVETRAIN) * rawval;
         }
 
         private static float GetPower(float radps) // Power curve 27x^2(k-x)/(4k^3)
@@ -768,57 +812,13 @@ namespace DriveIt
                 }
             }
 
-            // calculate new engine angular velocity
+            // calculate new engine and wheel angular velocity
             FeedbackWheelAndEngine();
             if (ModSettings.AutoTrans)
             {
                 SelectGear();
             }
-
-            float engineTorque = GetTransmissionTorque();
-            float avgFrontRps = 0.0f;
-            float avgRearRps = 0.0f;
-
-            foreach (Wheel w in m_wheelObjects) 
-            {
-                // Find the maximum torque applicable to a single wheel on the axle
-                if (w.isFront)
-                {
-                    avgFrontRps += w.radps;
-                }
-                else
-                {
-                    avgRearRps += w.radps;
-                }
-            }
-
-            avgFrontRps /= Wheel.frontCount;
-            avgRearRps /= Wheel.rearCount;
-
-            foreach (Wheel w in m_wheelObjects)
-            {
-                // calcuate wheel angular velocity along with any assists.
-                float wheelTorque = m_throttle * w.torqueFract * engineTorque;
-
-                if (w.isFront)
-                {
-                    wheelTorque += (avgFrontRps - w.radps) * w.moment / Time.fixedDeltaTime * DIFF_LSD_FACTOR;
-                }
-                else
-                {
-                    wheelTorque += (avgRearRps - w.radps) * w.moment / Time.fixedDeltaTime * DIFF_LSD_FACTOR;
-                }
-
-                // TCS cut power when slipping
-                wheelTorque *= 1.0f - Mathf.Min(w.slip, 1.0f);
-
-                // braking ABS
-                float totalBrake = (w.slip < GRIP_OPTIM_SLIP * 0.75f || !ModSettings.BrakingABS || !w.onGround) ? m_brake : 0.0f;
-
-                wheelTorque -= Mathf.Sign(w.radps) * Mathf.Min(totalBrake * w.brakeForce * w.radius, Mathf.Abs(w.radps) * w.moment / Time.fixedDeltaTime);
-
-                w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
-            }
+            FeedForwardWheelAndEngine();
 
             Vector3 netNetImpulse = Vector3.zero;
             int dustyWheels = 0;
@@ -843,9 +843,9 @@ namespace DriveIt
                     float lateralSpeed = Vector3.Dot(w.contactVelocity, w.binormal);
 
                     float longComponent = w.moment * (w.radps - longSpeed / w.radius) / w.radius;
-                    if (longSpeed < 1.0f || w.radps <0.01f) // exaggerated torque at very low speeds for better stop and start
+                    if (Mathf.Abs(longSpeed) < 1.0f || Mathf.Abs(w.radps) < 0.1f) // exaggerated torque at very low speeds for better stop and start
                     {
-                        longComponent = Mathf.Lerp(normalContribution * m_vehicleRigidBody.mass * (w.radps * w.radius - longSpeed), longComponent, longSpeed);
+                        longComponent = Mathf.Lerp(normalContribution * m_vehicleRigidBody.mass * (w.radps * w.radius - longSpeed), longComponent, Mathf.Abs(longSpeed));
                     }
 
                     flatImpulses.y = longComponent;
@@ -928,7 +928,8 @@ namespace DriveIt
             {
                 spawnPosition = m_vehicleRigidBody.transform.position;
                 spawnRotation = m_vehicleRigidBody.transform.rotation;
-                DestroyVehicle();
+
+                DestroyVehicle(false);
             }
 
             SpawnVehicle(spawnPosition + new Vector3(0.0f, -ModSettings.SpringOffset, 0.0f), spawnRotation, vehicleInfo, vehicleColor, setColor);
@@ -936,8 +937,8 @@ namespace DriveIt
             if (!enabled)
             {
                 OverridePrefabs();
-                Singleton<DriveCam>.instance.EnableCam(m_vehicleRigidBody, 2.0f * m_vehicleCollider.size.z);
-                Singleton<DriveButtons>.instance.SetDisable();
+                DriveCam.instance.EnableCam(m_vehicleRigidBody, 2.0f * m_vehicleCollider.size.z);
+                DriveButtons.instance.SetDisable();
             }
 
             enabled = true;
@@ -945,8 +946,8 @@ namespace DriveIt
         public void StopDriving()
         {
             StartCoroutine(m_collidersManager.DisableColliders());
-            Singleton<DriveCam>.instance.DisableCam();
-            Singleton<DriveButtons>.instance.SetEnable();
+            DriveCam.instance.DisableCam();
+            DriveButtons.instance.SetEnable();
             RestorePrefabs();
             DestroyVehicle();
             enabled = false;
@@ -1087,7 +1088,7 @@ namespace DriveIt
 
             AddEffects();
         }
-        private void DestroyVehicle()
+        private void DestroyVehicle(bool disable = true)
         {
             RemoveEffects();
             foreach (Wheel w in m_wheelObjects)
@@ -1095,7 +1096,7 @@ namespace DriveIt
                 Object.DestroyImmediate(w.gameObject);
             }
             m_wheelObjects.Clear();
-            gameObject.SetActive(false);
+            if (disable) gameObject.SetActive(false);
             m_vehicleRigidBody.velocity = Vector3.zero;
             m_vehicleRigidBody.angularVelocity = Vector3.zero;
 
@@ -1615,13 +1616,13 @@ namespace DriveIt
                 if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && w.slip >= GRIP_OPTIM_SLIP)
                 {
                     EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
-                    DriveCommon.s_driveSoundTireSqueal.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, 200.0f, w.slip - GRIP_OPTIM_SLIP, 0.9f + 0.2f * w.slip);
+                    DriveCommon.s_driveSoundTireSqueal.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, DriveCommon.SND_RANGE, w.slip - GRIP_OPTIM_SLIP, 0.9f + 0.2f * w.slip);
                 }
                 if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.GROUND && Mathf.Abs(w.radps) > 0.0f)
                 {
                     EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
                     float wheelSpeed = Mathf.Abs(w.radps) * w.radius;
-                    DriveCommon.s_driveSoundTireGravel.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, 200.0f, 1.5f * (0.6f * w.slip + 0.4f * Mathf.Clamp01(wheelSpeed * 0.1f)), 0.5f + wheelSpeed * 0.002f);
+                    DriveCommon.s_driveSoundTireGravel.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, DriveCommon.SND_RANGE, 1.5f * (0.6f * w.slip + 0.4f * Mathf.Clamp01(wheelSpeed * 0.1f)), 0.5f + wheelSpeed * 0.002f);
                 }
             }
 

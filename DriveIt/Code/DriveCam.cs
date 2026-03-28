@@ -229,7 +229,6 @@ namespace DriveIt
         {
             if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyCamCursorToggle.Key))
             {
-                Logging.Message("Toggle UI Vis");
                 bool visUpdate = !Cursor.visible;
                 SetUIVisibility(visUpdate); 
                 SetCursorVisibility(visUpdate);
