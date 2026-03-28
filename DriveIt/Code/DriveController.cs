@@ -20,8 +20,8 @@ namespace DriveIt
         private const float STEER_REST = 1.75f;
         private const float STEER_TILT_INERTIA = 0.1f;
         private const float STEER_TILT_STRENGTH = 4.5f;
-        private const float GEAR_RESP = 0.25f;
-        private const float PARK_SPEED = 0.5f;
+        private const float GEAR_RESP = 0.2f;
+        private const float PARK_SPEED = 0.25f;
         private const float STEER_MAX = 37.0f;
         private const float STEER_DECAY = 0.0075f;
         private const float LIGHT_HEADLIGHT_INTENSITY = 3.0f;
@@ -40,6 +40,7 @@ namespace DriveIt
         private const float MOMENT_WHEEL = 1.5f;
         private const float VALID_INCLINE = 0.5f;
         private const float GRIP_MAX_SLIP = 1.0f;
+        private const float GRIP_HIGH_SLIP = 0.4f;
         private const float GRIP_OPTIM_SLIP = 0.2f;
         private const float DIFF_BIAS_RATIO = 2.5f;
         private const float ENGINE_PEAK_RPS = 900.0f;
@@ -61,7 +62,7 @@ namespace DriveIt
         private const float UI_SIZE = 1.0f / 4.0f;
         private const float UI_OFFSET = 1.0f / 12.0f;
         private const float UI_FILL = 1.0f;
-        private const int TIRE_TRAIL_POOL = 128;
+        private const int TIRE_TRAIL_POOL = 96;
         private static readonly Color UI_BG_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
         private static readonly Color UI_FG_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
         const float MS_TO_KMPH = 3.6f;
@@ -253,13 +254,13 @@ namespace DriveIt
         private Material        m_renderMaterial = null;
         private Material        m_basicRenderMaterial = null;
 
+        private Queue<TrailRenderer>    m_tireTrails            = new Queue<TrailRenderer>();
         private List<Wheel>             m_wheelObjects          = new List<Wheel>();
         private List<LightEffect>       m_lightEffects          = new List<LightEffect>();
         private List<EngineSoundEffect> m_engineSoundEffects    = new List<EngineSoundEffect>();
         private List<EffectInfo>        m_regularEffects        = new List<EffectInfo>();
         private List<EffectInfo>        m_dustEffects           = new List<EffectInfo>();
         private List<EffectInfo>        m_specialEffects        = new List<EffectInfo>();
-        private Queue<TrailRenderer>    m_tireTrails            = new Queue<TrailRenderer>();
 
         private Dictionary<string, string> m_customUndergroundMappings = new Dictionary<string, string>();
         private Dictionary<NetInfo, NetInfoBackup> m_backupPrefabData = new Dictionary<NetInfo, NetInfoBackup>();
@@ -396,7 +397,6 @@ namespace DriveIt
             {
                 m_tireTrails.Enqueue(GameObject.Instantiate(m_tireTrailRefObject).GetComponent<TrailRenderer>());
             }
-
         }
         private void Update()
         {
@@ -447,14 +447,14 @@ namespace DriveIt
 
             foreach(Wheel w in m_wheelObjects)
             {
-                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && w.slip > GRIP_MAX_SLIP)
+                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && w.slip >= GRIP_HIGH_SLIP)
                 {
                     if (!w.skidTrail)
                     {
                         w.skidTrail = m_tireTrails.Dequeue();
                         w.skidTrail.transform.position = w.contactPoint;
                         w.skidTrail.transform.rotation = Quaternion.LookRotation(w.normal);
-                        w.skidTrail.widthMultiplier = w.radius * 0.5f;
+                        w.skidTrail.widthMultiplier = w.radius * 0.75f;
                         w.skidTrail.Clear();
                         w.skidTrail.enabled = true;
                     }
@@ -578,7 +578,7 @@ namespace DriveIt
 
                 // Background
                 GUI.color = UI_BG_COLOR;
-                GUI.DrawTexture(bgarea, DriveCommon.driveGaugeCluster);
+                GUI.DrawTexture(bgarea, DriveCommon.driveTextureGaugeCluster);
                 GUI.color = UI_FG_COLOR;
 
                 // text
@@ -1592,7 +1592,7 @@ namespace DriveIt
             var matrix = m_vehicleInfo.m_vehicleAI.CalculateBodyMatrix(Vehicle.Flags.Created | Vehicle.Flags.Spawned, ref position, ref rotation, ref scale, ref swayPosition);
             var area = new EffectInfo.SpawnArea(matrix, m_vehicleInfo.m_lodMeshData);
             var listenerInfo = Singleton<AudioManager>.instance.CurrentListenerInfo;
-            var audioGroup = Singleton<VehicleManager>.instance.m_audioGroup;
+            var audioGroup = Singleton<AudioManager>.instance.DefaultGroup;
             RenderGroup.MeshData effectMeshData = m_vehicleInfo.m_vehicleAI.GetEffectMeshData();
             var area2 = new EffectInfo.SpawnArea(matrix, effectMeshData, m_vehicleInfo.m_generatedInfo.m_tyres, m_vehicleInfo.m_lightPositions);
 
@@ -1602,7 +1602,21 @@ namespace DriveIt
             }
             foreach (var engineEffect in m_engineSoundEffects)
             {
-                engineEffect.PlayEffect(default, area, ENGINE_PITCH * m_radps * Vector3.up, ENGINE_PITCH * (m_radps - m_prevRadps) / Time.fixedDeltaTime, 1.0f + 0.25f * m_radps / ENGINE_PEAK_RPS + 0.25f * m_throttle, listenerInfo, audioGroup);
+                engineEffect.PlayEffect(default, area, ENGINE_PITCH * m_radps * Vector3.up, 0.0f, 4.0f * (0.75f + 0.125f * m_radps / ENGINE_PEAK_RPS + 0.125f * Mathf.Max(m_throttle, Mathf.Clamp01(m_radps - m_prevRadps))), listenerInfo, audioGroup);
+            }
+            foreach(Wheel w in m_wheelObjects)
+            {
+                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && w.slip >= GRIP_OPTIM_SLIP)
+                {
+                    EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
+                    DriveCommon.driveSoundTireSqueal.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, 200.0f, w.slip - GRIP_OPTIM_SLIP, 0.9f + 0.2f * w.slip);
+                }
+                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.GROUND && w.radps > 0.0f)
+                {
+                    EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
+                    float wheelSpeed = w.radps * w.radius;
+                    DriveCommon.driveSoundTireGravel.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, 200.0f, 1.5f * (0.6f * w.slip + 0.4f * Mathf.Clamp01(wheelSpeed * 0.1f)), 0.5f + w.radps * w.radius * 0.002f);
+                }
             }
 
             if (m_isLightEnabled)

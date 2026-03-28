@@ -50,16 +50,6 @@ namespace DriveIt.Utils
 
                 m_mainCamera = Singleton<RenderManager>.instance.CurrentCameraInfo.m_camera;
 
-                /* Loading Audio Clips:
-                string path = Path.Combine(AssemblyUtils.AssemblyPath, "Resources/Sounds/soundfile.ogg");
-                WWW www = new WWW(new Uri(path).AbsoluteUri);
-                www.GetAudioClip(true, false);
-                 */
-
-                /* Loading Textures:
-                CreateSpriteAtlas("DriveIt Sprites", 1, "Textures");
-                 */
-
                 string path = Path.Combine(AssemblyUtils.AssemblyPath, "Resources/Shaders/wireframeshader.asset");
                 WWW www = new WWW(new Uri(path).AbsoluteUri);
                 AssetBundle shaderBundle = www.assetBundle;

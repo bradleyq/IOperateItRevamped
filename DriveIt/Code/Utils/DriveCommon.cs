@@ -1,6 +1,8 @@
 ﻿using AlgernonCommons;
 using AlgernonCommons.UI;
 using ColossalFramework.UI;
+using System;
+using System.IO;
 using UnityEngine;
 
 namespace DriveIt.Utils
@@ -77,11 +79,21 @@ namespace DriveIt.Utils
 
         public const string TEX_GAUGE_CLUSTER           = "Textures/GaugeCluster";
 
+        public const string SND_TIRE_SQUEAL             = "Sounds/TireSqueal";
+        public const string SND_TIRE_SQUEAL_NAME        = "Tire Squeal";
+
+        public const string SND_TIRE_GRAVEL             = "Sounds/TireGravel";
+        public const string SND_TIRE_GRAVEL_NAME        = "Tire Gravel";
+
         public const int TEX_COUNT  = 5;
         public const int TEX_SIZE   = 1024;
 
+        private static EffectsWrapper effectsWrapper;
+
         public static UITextureAtlas driveCommonAtlas;
-        public static Texture2D driveGaugeCluster;
+        public static Texture2D driveTextureGaugeCluster;
+        public static SoundEffect driveSoundTireSqueal;
+        public static SoundEffect driveSoundTireGravel;
 
         private static bool bInit = false;
 
@@ -90,6 +102,8 @@ namespace DriveIt.Utils
             if (!bInit)
             {
                 bInit = true;
+
+                effectsWrapper = EffectManager.instance.m_EffectsWrapper;
 
                 int index = 0;
                 Texture2D[] textures = new Texture2D[TEX_COUNT];
@@ -114,7 +128,15 @@ namespace DriveIt.Utils
 
                 driveCommonAtlas = UITextures.CreateSpriteAtlas(MOD_HARMONY_ID + "_Atlas", TEX_SIZE, textures, names);
 
-                driveGaugeCluster = DriveCommonLoadTexture(TEX_GAUGE_CLUSTER);
+                driveTextureGaugeCluster = DriveCommonLoadTexture(TEX_GAUGE_CLUSTER);
+
+                AudioClip clip;
+                
+                clip = DriveCommonLoadAudioClip(SND_TIRE_SQUEAL);
+                driveSoundTireSqueal = DriveCommonSoundEffect(clip, 2.0f, true, true);
+
+                clip = DriveCommonLoadAudioClip(SND_TIRE_GRAVEL);
+                driveSoundTireGravel = DriveCommonSoundEffect(clip, 2.0f, true, true);
             }
         }
 
@@ -182,6 +204,30 @@ namespace DriveIt.Utils
                 }
             }
             return null;
+        }
+        public static AudioClip DriveCommonLoadAudioClip(string name)
+        {
+            string path = Path.Combine(AssemblyUtils.AssemblyPath, "Resources");
+            path = Path.Combine(path, name + ".ogg");
+            WWW www = new WWW(new Uri(path).AbsoluteUri);
+            return www.GetAudioClip(true, false);
+        }
+
+        public static SoundEffect DriveCommonSoundEffect(AudioClip clip, float volume, bool loop, bool random)
+        {
+
+            ICities.UserAudioSettings settings = new ICities.UserAudioSettings();
+            settings.volume = volume;
+            settings.pitch = 1.0f;
+            settings.loop = loop;
+            settings.is3D = false;
+            settings.range = 200.0f;
+            settings.fadeLength = 0.1f;
+            settings.randomTime = random;
+
+            SoundEffect clipEffect = effectsWrapper.CreateSoundEffect(SND_TIRE_SQUEAL_NAME, clip, ref settings) as SoundEffect;
+
+            return clipEffect;
         }
     }
 }
