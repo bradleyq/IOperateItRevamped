@@ -97,21 +97,10 @@ namespace DriveIt.UI
                 ModSettings.MainButtonPos = new Vector2(x, y);
             }
             _mainBtn = UIView.GetAView().AddUIComponent(typeof(UIButton)) as UIButton;
+            DriveCommon.FormatDriveButton(_mainBtn);
             _mainBtn.name = "MainButton";
             _mainBtn.tooltip = Translations.Translate(DriveCommon.TK_MAINPANELBTN_TOOLTIP);
             _mainBtn.absolutePosition = new Vector3(x, y);
-            _mainBtn.size = new Vector2(40f, 40f);
-            _mainBtn.scaleFactor = .8f;
-            _mainBtn.pressedBgSprite = "OptionBasePressed";
-            _mainBtn.normalBgSprite = "OptionBase";
-            _mainBtn.hoveredBgSprite = "OptionBaseHovered";
-            _mainBtn.disabledBgSprite = "OptionBaseDisabled";
-            _mainBtn.normalFgSprite = "InfoIconTrafficCongestion";
-            _mainBtn.textColor = new Color32(255, 255, 255, 255);
-            _mainBtn.disabledTextColor = new Color32(7, 7, 7, 255);
-            _mainBtn.hoveredTextColor = new Color32(255, 255, 255, 255);
-            _mainBtn.focusedTextColor = new Color32(255, 255, 255, 255);
-            _mainBtn.pressedTextColor = new Color32(30, 30, 44, 255);
             _mainBtn.eventClick += (_, m) =>
             {
                 Panel.absolutePosition = new Vector3(_mainBtn.absolutePosition.x +
@@ -141,6 +130,19 @@ namespace DriveIt.UI
             Destroy(_roadSelectTool);
         }
         public bool OnEsc()
+        {
+            if (_roadSelectTool)
+            {
+                ToolsModifierControl.toolController.CurrentTool = ToolsModifierControl.GetTool<DefaultTool>();
+                ToolsModifierControl.SetTool<DefaultTool>();
+                Destroy(_roadSelectTool);
+                _roadSelectTool = null;
+            }
+
+            return HideUI();
+        }
+
+        private bool HideUI()
         {
             if (Panel.isVisible)
             {
@@ -179,24 +181,24 @@ namespace DriveIt.UI
         {
             if (DriveController.instance.isVehicleInfoSet())
             {
-                if (_roadSelectTool == null)
+                if (DriveController.instance.enabled)
                 {
-                    if (!ToolsModifierControl.toolController.gameObject.GetComponent<RoadSelectTool>())
-                    {
-                        ToolsModifierControl.toolController.gameObject.AddComponent<RoadSelectTool>();
-                    }
-                    _roadSelectTool = ToolsModifierControl.toolController.gameObject.GetComponent<RoadSelectTool>();
-                    ToolsModifierControl.toolController.CurrentTool = _roadSelectTool;
-                    ToolsModifierControl.SetTool<RoadSelectTool>();
+                    DriveController.instance.StartDriving(Vector3.zero, Quaternion.identity);
                 }
                 else
                 {
-                    ToolsModifierControl.toolController.CurrentTool = ToolsModifierControl.GetTool<DefaultTool>();
-                    ToolsModifierControl.SetTool<DefaultTool>();
-                    Destroy(_roadSelectTool);
-                    _roadSelectTool = null;
+                    if (_roadSelectTool == null)
+                    {
+                        if (!ToolsModifierControl.toolController.gameObject.GetComponent<RoadSelectTool>())
+                        {
+                            ToolsModifierControl.toolController.gameObject.AddComponent<RoadSelectTool>();
+                        }
+                        _roadSelectTool = ToolsModifierControl.toolController.gameObject.GetComponent<RoadSelectTool>();
+                        ToolsModifierControl.toolController.CurrentTool = _roadSelectTool;
+                        ToolsModifierControl.SetTool<RoadSelectTool>();
+                    }
                 }
-                OnEsc();
+                HideUI();
             }
             else _spawnBtn.isEnabled = false;
         }

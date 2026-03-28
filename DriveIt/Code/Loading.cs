@@ -24,11 +24,15 @@ namespace DriveIt
         protected override void LoadedActions(LoadMode mode)
         {
             base.LoadedActions(mode);
-            gameObject = new GameObject(Utils.DriveCommon.MOD_NAME);
-            gameObject.AddComponent<MainPanel>();
-            gameObject.AddComponent<DriveButtons>();
-            gameObject.AddComponent<DriveController>();
-            gameObject.AddComponent<DriveCam>();
+            if (!gameObject)
+            {
+                DriveCommon.Initialize();
+                gameObject = new GameObject(Utils.DriveCommon.MOD_NAME);
+                gameObject.AddComponent<MainPanel>();
+                gameObject.AddComponent<DriveButtons>();
+                gameObject.AddComponent<DriveController>();
+                gameObject.AddComponent<DriveCam>();
+            }
         }
 
         public override void OnCreated(ILoading loading)

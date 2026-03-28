@@ -42,13 +42,13 @@ namespace DriveIt
         private const float GRIP_MAX_SLIP = 1.0f;
         private const float GRIP_HIGH_SLIP = 0.4f;
         private const float GRIP_OPTIM_SLIP = 0.2f;
-        private const float DIFF_BIAS_RATIO = 2.5f;
+        private const float DIFF_LSD_FACTOR = 0.25f;
         private const float ENGINE_PEAK_RPS = 900.0f;
-        private const float ENGINE_OVER_RPS = 1200.0f;
+        private const float ENGINE_OVER_RPS = 1100.0f;
         private const float ENGINE_IDLE_RPS = 90.0f;
         private const float ENGINE_INERTIA = 0.005f;
         private const float ENGINE_PITCH = 0.15f;
-        private static readonly float[] ENGINE_GEAR_RATIOS = { -25.0f, 0.0f, 25.0f, 12.5f, 8.333f, 6.25f, 5.0f, 4.167f, 3.571f, 3.125f };
+        private static readonly float[] ENGINE_GEAR_RATIOS = { -15.0f, 0.0f, 15.0f, 8.5f, 5.67f, 4.25f, 3.4f, 2.83f, 2.43f, 2.13f };
         private static readonly string[] ENGINE_GEAR_NAMES = { "R", "N", "1", "2", "3", "4", "5", "6", "7", "8" };
         private const int ENGINE_GEAR_REVERSE = 0;
         private const int ENGINE_GEAR_NEUTRAL = 1;
@@ -282,16 +282,13 @@ namespace DriveIt
         private int m_gear = ENGINE_GEAR_NEUTRAL;
         private int m_driveMode = ENGINE_MODE_NEUTRAL;
         private float m_lastReset = 0.0f;
-        private float m_terrainHeight = 0.0f;
         private float m_distanceTravelled = 0.0f;
         private float m_steer = 0.0f;
         private float m_brake = 0.0f;
         private float m_throttle = 0.0f;
         private float m_rideHeight = 0.0f;
         private float m_roofHeight = 0.0f;
-        private float m_compression = 0.0f;
         private float m_prevGearChange = 0.0f;
-        private float m_normalImpulse = 0.0f;
         private float m_radps = 0.0f;
         private float m_prevRadps = 0.0f;
         private float m_radpsTrans = 0.0f;
@@ -299,6 +296,11 @@ namespace DriveIt
 
         private void Awake()
         {
+            if (instance)
+            {
+                Destroy(this);
+                return;
+            }
             instance = this;
 
             gameObject.AddComponent<MeshFilter>();
@@ -405,7 +407,6 @@ namespace DriveIt
 
             MaterialPropertyBlock materialBlock = Singleton<VehicleManager>.instance.m_materialBlock;
             materialBlock.Clear();
-            //materialBlock.SetMatrix(Singleton<VehicleManager>.instance.ID_TyreMatrix, value);
             Vector4 tyrePosition = default;
             tyrePosition.x = m_steer * STEER_MAX / 180.0f * Mathf.PI;
             tyrePosition.y = m_distanceTravelled;
@@ -578,7 +579,7 @@ namespace DriveIt
 
                 // Background
                 GUI.color = UI_BG_COLOR;
-                GUI.DrawTexture(bgarea, DriveCommon.driveTextureGaugeCluster);
+                GUI.DrawTexture(bgarea, DriveCommon.s_driveTextureGaugeCluster);
                 GUI.color = UI_FG_COLOR;
 
                 // text
@@ -623,11 +624,6 @@ namespace DriveIt
             m_prevRadps = m_radps;
             engineRps = Mathf.Clamp(engineRps, ENGINE_IDLE_RPS, ENGINE_OVER_RPS);
             m_radps = Mathf.Lerp(engineRps, m_radps, s_engine_inertia);
-
-            if (m_radps > ENGINE_PEAK_RPS)
-            {
-                m_throttle = 1.0f;
-            }
         }
 
         private void SelectGear()
@@ -761,7 +757,7 @@ namespace DriveIt
                         w.normalImpulse = (-deltaVel) * m_vehicleRigidBody.mass / Wheel.wheelCount;
                         w.contactPoint = w.gameObject.transform.TransformPoint(new Vector3(0.0f, -w.radius, 0.0f));
                         w.contactVelocity = m_vehicleRigidBody.GetPointVelocity(w.contactPoint);
-                        w.slip = Mathf.Clamp(Vector3.Magnitude(w.contactVelocity - (w.radps * w.radius * w.tangent)) / Mathf.Max(w.contactVelocity.magnitude, 1.0f) / GRIP_MAX_SLIP, 0.0f, 1.0f);
+                        w.slip = Mathf.Clamp01(Vector3.Magnitude(w.contactVelocity - (w.radps * w.radius * w.tangent)) / Mathf.Max(w.contactVelocity.magnitude, 1.0f) / GRIP_MAX_SLIP);
                         w.frictionCoeff = Mathf.Lerp(ModSettings.GripCoeffS, ModSettings.GripCoeffK, Mathf.Max((w.slip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP), 0.0f));
                     }
                 }
@@ -778,39 +774,40 @@ namespace DriveIt
             {
                 SelectGear();
             }
+
             float engineTorque = GetTransmissionTorque();
-
-
-            float maxFrontTorque = Mathf.Abs(engineTorque);
-            float maxRearTorque = Mathf.Abs(engineTorque);
+            float avgFrontRps = 0.0f;
+            float avgRearRps = 0.0f;
 
             foreach (Wheel w in m_wheelObjects) 
             {
                 // Find the maximum torque applicable to a single wheel on the axle
                 if (w.isFront)
                 {
-                    maxFrontTorque = Mathf.Min(DIFF_BIAS_RATIO * w.normalImpulse * w.frictionCoeff * w.radius / Time.fixedDeltaTime, maxFrontTorque);
+                    avgFrontRps += w.radps;
                 }
                 else
                 {
-                    maxRearTorque = Mathf.Min(DIFF_BIAS_RATIO * w.normalImpulse * w.frictionCoeff * w.radius / Time.fixedDeltaTime, maxRearTorque);
+                    avgRearRps += w.radps;
                 }
             }
+
+            avgFrontRps /= Wheel.frontCount;
+            avgRearRps /= Wheel.rearCount;
+
             foreach (Wheel w in m_wheelObjects)
             {
                 // calcuate wheel angular velocity along with any assists.
-                float wheelTorque = Mathf.Abs(engineTorque);
-                float wheelTorqueSign = Mathf.Sign(engineTorque);
+                float wheelTorque = m_throttle * w.torqueFract * engineTorque;
 
                 if (w.isFront)
                 {
-                    wheelTorque = Mathf.Min(m_throttle * w.torqueFract * wheelTorque, maxFrontTorque);
+                    wheelTorque += (avgFrontRps - w.radps) * w.moment / Time.fixedDeltaTime * DIFF_LSD_FACTOR;
                 }
                 else
                 {
-                    wheelTorque = Mathf.Min(m_throttle * w.torqueFract * wheelTorque, maxRearTorque);
+                    wheelTorque += (avgRearRps - w.radps) * w.moment / Time.fixedDeltaTime * DIFF_LSD_FACTOR;
                 }
-                wheelTorque *= wheelTorqueSign;
 
                 // TCS cut power when slipping
                 wheelTorque *= 1.0f - Mathf.Min(w.slip, 1.0f);
@@ -924,17 +921,32 @@ namespace DriveIt
         public void StartDriving(Vector3 position, Quaternion rotation) => StartDriving(position, rotation, m_vehicleInfo, m_vehicleColor, m_setColor);
         public void StartDriving(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Color vehicleColor, bool setColor)
         {
+            Vector3 spawnPosition = position;
+            Quaternion spawnRotation = rotation;
+
+            if (enabled)
+            {
+                spawnPosition = m_vehicleRigidBody.transform.position;
+                spawnRotation = m_vehicleRigidBody.transform.rotation;
+                DestroyVehicle();
+            }
+
+            SpawnVehicle(spawnPosition + new Vector3(0.0f, -ModSettings.SpringOffset, 0.0f), spawnRotation, vehicleInfo, vehicleColor, setColor);
+
+            if (!enabled)
+            {
+                OverridePrefabs();
+                Singleton<DriveCam>.instance.EnableCam(m_vehicleRigidBody, 2.0f * m_vehicleCollider.size.z);
+                Singleton<DriveButtons>.instance.SetDisable();
+            }
+
             enabled = true;
-            SpawnVehicle(position + new Vector3(0.0f, -ModSettings.SpringOffset, 0.0f), rotation, vehicleInfo, vehicleColor, setColor);
-            OverridePrefabs();
-            DriveCam.instance.EnableCam(m_vehicleRigidBody, 2.0f * m_vehicleCollider.size.z);
-            DriveButtons.instance.SetDisable();
         }
         public void StopDriving()
         {
             StartCoroutine(m_collidersManager.DisableColliders());
-            DriveCam.instance.DisableCam();
-            DriveButtons.instance.SetEnable();
+            Singleton<DriveCam>.instance.DisableCam();
+            Singleton<DriveButtons>.instance.SetEnable();
             RestorePrefabs();
             DestroyVehicle();
             enabled = false;
@@ -954,13 +966,10 @@ namespace DriveIt
             m_lightState = Vector4.zero;
             m_vehicleInfo = vehicleInfo;
             m_driveMode = ENGINE_MODE_NEUTRAL;
-            m_terrainHeight = 0.0f;
             m_distanceTravelled = 0.0f;
             m_steer = 0.0f;
             m_brake = 0.0f;
             m_throttle = 0.0f;
-            m_compression = 0.0f;
-            m_normalImpulse = 0.0f;
             m_prevGearChange = 0.0f;
 
             m_vehicleInfo.CalculateGeneratedInfo();
@@ -1108,16 +1117,13 @@ namespace DriveIt
             m_gear = ENGINE_GEAR_NEUTRAL;
             m_driveMode = ENGINE_MODE_NEUTRAL;
             m_lastReset = 0.0f;
-            m_terrainHeight = 0.0f;
             m_distanceTravelled = 0.0f;
             m_steer = 0.0f;
             m_brake = 0.0f;
             m_throttle = 0.0f;
             m_rideHeight = 0.0f;
             m_roofHeight = 0.0f;
-            m_compression = 0.0f;
             m_prevGearChange = 0.0f;
-            m_normalImpulse = 0.0f;
             m_radps = 0.0f;
             m_prevRadps = 0.0f;
             m_radpsTrans = 0.0f;
@@ -1408,7 +1414,7 @@ namespace DriveIt
                         if (m_driveMode <= ENGINE_MODE_NEUTRAL)
                         {
                             m_throttle = 0.0f;
-                            m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                            m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
                             braking = true;
                         }
                     }
@@ -1420,13 +1426,13 @@ namespace DriveIt
                     if (m_driveMode > ENGINE_MODE_NEUTRAL)
                     {
                         m_brake = 0.0f;
-                        m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                        m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
                         throttling = true;
                     }
                 }
                 else // ManualTrans
                 {
-                    m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                    m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
                     throttling = true;
                 }
 
@@ -1440,7 +1446,7 @@ namespace DriveIt
                         if (m_driveMode >= ENGINE_MODE_NEUTRAL)
                         {
                             m_throttle = 0.0f;
-                            m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                            m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
                             braking = true;
                         }
                     }
@@ -1452,13 +1458,13 @@ namespace DriveIt
                     if (m_driveMode < ENGINE_MODE_NEUTRAL)
                     {
                         m_brake = 0.0f;
-                        m_throttle = Mathf.Clamp(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                        m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
                         throttling = true;
                     }
                 }
                 else // ManualTrans
                 {
-                    m_brake = Mathf.Clamp(m_brake + Time.fixedDeltaTime * THROTTLE_RESP, 0.0f, 1.0f);
+                    m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
                     braking = true;
                 }
             }
@@ -1474,11 +1480,11 @@ namespace DriveIt
             }
             if (!throttling)
             {
-                m_throttle = Mathf.Clamp(m_throttle - Time.fixedDeltaTime * THROTTLE_REST, 0.0f, 1.0f);
+                m_throttle = Mathf.Clamp01(m_throttle - Time.fixedDeltaTime * THROTTLE_REST);
             }
             if (!braking)
             {
-                m_brake = Mathf.Clamp(m_brake - Time.fixedDeltaTime * THROTTLE_REST, 0.0f, 1.0f);
+                m_brake = Mathf.Clamp01(m_brake - Time.fixedDeltaTime * THROTTLE_REST);
             }
 
             m_isTurning = false;
@@ -1609,13 +1615,13 @@ namespace DriveIt
                 if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && w.slip >= GRIP_OPTIM_SLIP)
                 {
                     EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
-                    DriveCommon.driveSoundTireSqueal.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, 200.0f, w.slip - GRIP_OPTIM_SLIP, 0.9f + 0.2f * w.slip);
+                    DriveCommon.s_driveSoundTireSqueal.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, 200.0f, w.slip - GRIP_OPTIM_SLIP, 0.9f + 0.2f * w.slip);
                 }
-                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.GROUND && w.radps > 0.0f)
+                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.GROUND && Mathf.Abs(w.radps) > 0.0f)
                 {
                     EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
-                    float wheelSpeed = w.radps * w.radius;
-                    DriveCommon.driveSoundTireGravel.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, 200.0f, 1.5f * (0.6f * w.slip + 0.4f * Mathf.Clamp01(wheelSpeed * 0.1f)), 0.5f + w.radps * w.radius * 0.002f);
+                    float wheelSpeed = Mathf.Abs(w.radps) * w.radius;
+                    DriveCommon.s_driveSoundTireGravel.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, 200.0f, 1.5f * (0.6f * w.slip + 0.4f * Mathf.Clamp01(wheelSpeed * 0.1f)), 0.5f + wheelSpeed * 0.002f);
                 }
             }
 

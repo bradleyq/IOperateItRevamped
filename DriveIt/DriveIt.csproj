@@ -51,7 +51,7 @@
       <Private>false</Private>
     </Reference>
     <Reference Include="UnifiedUILib">
-      <HintPath>..\..\..\..\workshop\content\255710\2966990700\UnifiedUILib.dll</HintPath>
+      <HintPath>..\..\UnifiedUI\UnifiedUILib.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\Cities_Data\Managed\UnityEngine.dll</HintPath>

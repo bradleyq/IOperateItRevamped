@@ -11,8 +11,8 @@ namespace DriveIt
     {
         private const float ROTATE_KEY_SCALE = 100.0f;
         private const float ROTATE_MOUSE_SCALE = 1.0f;
-        private const float ZOOM_KEY_SCALE = 10.0f;
-        private const float ZOOM_MOUSE_SCALE = 1.0f;
+        private const float ZOOM_KEY_SCALE = 5.0f;
+        private const float ZOOM_MOUSE_SCALE = 0.5f;
         private const float UNDERGROUND_RENDER_BIAS = 1.0f;
         private const float LOOK_MAX_DIST = 100.0f;
         private const float LOOK_RESET_TIME = 5.0f;
@@ -37,6 +37,11 @@ namespace DriveIt
 
         private void Awake()
         {
+            if (instance)
+            {
+                Destroy(this);
+                return;
+            }
             instance = this;
             enabled = false;
             Logging.Message("Setting up the Camera");
@@ -224,6 +229,7 @@ namespace DriveIt
         {
             if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyCamCursorToggle.Key))
             {
+                Logging.Message("Toggle UI Vis");
                 bool visUpdate = !Cursor.visible;
                 SetUIVisibility(visUpdate); 
                 SetCursorVisibility(visUpdate);

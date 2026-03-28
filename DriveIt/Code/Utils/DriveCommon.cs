@@ -88,12 +88,12 @@ namespace DriveIt.Utils
         public const int TEX_COUNT  = 5;
         public const int TEX_SIZE   = 1024;
 
-        private static EffectsWrapper effectsWrapper;
+        private static EffectsWrapper s_effectsWrapper;
 
-        public static UITextureAtlas driveCommonAtlas;
-        public static Texture2D driveTextureGaugeCluster;
-        public static SoundEffect driveSoundTireSqueal;
-        public static SoundEffect driveSoundTireGravel;
+        public static UITextureAtlas s_driveCommonAtlas;
+        public static Texture2D s_driveTextureGaugeCluster;
+        public static SoundEffect s_driveSoundTireSqueal;
+        public static SoundEffect s_driveSoundTireGravel;
 
         private static bool bInit = false;
 
@@ -103,7 +103,7 @@ namespace DriveIt.Utils
             {
                 bInit = true;
 
-                effectsWrapper = EffectManager.instance.m_EffectsWrapper;
+                s_effectsWrapper = EffectManager.instance.m_EffectsWrapper;
 
                 int index = 0;
                 Texture2D[] textures = new Texture2D[TEX_COUNT];
@@ -126,17 +126,17 @@ namespace DriveIt.Utils
                 names[index] = TEX_BUTTON_DISABLE;
                 textures[index++] = DriveCommonRipTexture(TEX_BUTTON_DISABLE);
 
-                driveCommonAtlas = UITextures.CreateSpriteAtlas(MOD_HARMONY_ID + "_Atlas", TEX_SIZE, textures, names);
+                s_driveCommonAtlas = UITextures.CreateSpriteAtlas(MOD_HARMONY_ID + "_Atlas", TEX_SIZE, textures, names);
 
-                driveTextureGaugeCluster = DriveCommonLoadTexture(TEX_GAUGE_CLUSTER);
+                s_driveTextureGaugeCluster = DriveCommonLoadTexture(TEX_GAUGE_CLUSTER);
 
                 AudioClip clip;
                 
                 clip = DriveCommonLoadAudioClip(SND_TIRE_SQUEAL);
-                driveSoundTireSqueal = DriveCommonSoundEffect(clip, 2.0f, true, true);
+                s_driveSoundTireSqueal = DriveCommonSoundEffect(clip, 2.0f, true, true);
 
                 clip = DriveCommonLoadAudioClip(SND_TIRE_GRAVEL);
-                driveSoundTireGravel = DriveCommonSoundEffect(clip, 2.0f, true, true);
+                s_driveSoundTireGravel = DriveCommonSoundEffect(clip, 2.0f, true, true);
             }
         }
 
@@ -187,6 +187,23 @@ namespace DriveIt.Utils
             GL.PopMatrix();
         }
 
+        public static void FormatDriveButton(UIButton button)
+        {
+            button.atlas = s_driveCommonAtlas;
+            button.size = new Vector2(40f, 40f);
+            button.scaleFactor = .8f;
+            button.normalBgSprite = TEX_BUTTON_BG;
+            button.pressedBgSprite = TEX_BUTTON_BG_PRESSED;
+            button.hoveredBgSprite = TEX_BUTTON_HOVER;
+            button.disabledBgSprite = TEX_BUTTON_DISABLE;
+            button.normalFgSprite = TEX_BUTTON_ICON;
+            button.textColor = new Color32(255, 255, 255, 255);
+            button.disabledTextColor = new Color32(7, 7, 7, 255);
+            button.hoveredTextColor = new Color32(255, 255, 255, 255);
+            button.focusedTextColor = new Color32(255, 255, 255, 255);
+            button.pressedTextColor = new Color32(30, 30, 44, 255);
+        }
+
         // Hack to use Algernon load texture
         private static Texture2D DriveCommonLoadTexture(string name)
         {
@@ -205,7 +222,7 @@ namespace DriveIt.Utils
             }
             return null;
         }
-        public static AudioClip DriveCommonLoadAudioClip(string name)
+        private static AudioClip DriveCommonLoadAudioClip(string name)
         {
             string path = Path.Combine(AssemblyUtils.AssemblyPath, "Resources");
             path = Path.Combine(path, name + ".ogg");
@@ -213,7 +230,7 @@ namespace DriveIt.Utils
             return www.GetAudioClip(true, false);
         }
 
-        public static SoundEffect DriveCommonSoundEffect(AudioClip clip, float volume, bool loop, bool random)
+        private static SoundEffect DriveCommonSoundEffect(AudioClip clip, float volume, bool loop, bool random)
         {
 
             ICities.UserAudioSettings settings = new ICities.UserAudioSettings();
@@ -225,7 +242,7 @@ namespace DriveIt.Utils
             settings.fadeLength = 0.1f;
             settings.randomTime = random;
 
-            SoundEffect clipEffect = effectsWrapper.CreateSoundEffect(SND_TIRE_SQUEAL_NAME, clip, ref settings) as SoundEffect;
+            SoundEffect clipEffect = s_effectsWrapper.CreateSoundEffect(SND_TIRE_SQUEAL_NAME, clip, ref settings) as SoundEffect;
 
             return clipEffect;
         }
