@@ -39,10 +39,10 @@ namespace DriveIt
         private const float DRAG_WHEEL = 0.01f;
         private const float MOMENT_WHEEL = 1.5f;
         private const float VALID_INCLINE = 0.5f;
-        private const float GRIP_MAX_SLIP = 1.0f;
         private const float GRIP_HIGH_SLIP = 0.4f;
         private const float GRIP_OPTIM_SLIP = 0.2f;
-        private const float DIFF_LSD_FACTOR = 0.25f;
+        private const float DIFF_LSD_FACTOR_LOW = 0.25f;
+        private const float DIFF_LSD_FACTOR_HIGH = 0.4f;
         private const float ENGINE_PEAK_RPS = 900.0f;
         private const float ENGINE_OVER_RPS = 1100.0f;
         private const float ENGINE_IDLE_RPS = 90.0f;
@@ -446,30 +446,6 @@ namespace DriveIt
 
             gameObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
 
-            foreach(Wheel w in m_wheelObjects)
-            {
-                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && w.slip >= GRIP_HIGH_SLIP)
-                {
-                    if (!w.skidTrail)
-                    {
-                        w.skidTrail = m_tireTrails.Dequeue();
-                        w.skidTrail.transform.position = w.contactPoint;
-                        w.skidTrail.transform.rotation = Quaternion.LookRotation(w.normal);
-                        w.skidTrail.widthMultiplier = w.radius * 0.75f;
-                        w.skidTrail.Clear();
-                        w.skidTrail.enabled = true;
-                    }
-
-                    w.skidTrail.gameObject.transform.position = w.contactPoint + +0.01f * w.normal;
-                    w.skidTrail.gameObject.transform.rotation = Quaternion.LookRotation(-w.normal);
-                }
-                else if (w.skidTrail)
-                {
-                    m_tireTrails.Enqueue(w.skidTrail);
-                    w.skidTrail = null;
-                }
-            }
-
             DebugHelper.DrawDebugBox(m_vehicleCollider.size, m_vehicleCollider.transform.TransformPoint(m_vehicleCollider.center), m_vehicleCollider.transform.rotation, Color.magenta);
         }
         private void FixedUpdate()
@@ -482,7 +458,8 @@ namespace DriveIt
 
             HandleInputOnFixedUpdate(invert);
 
-            WheelPhysics(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel);  
+            WheelPhysics(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel);
+            WheelEffects();
             
             LimitVelocity();
 
@@ -628,9 +605,11 @@ namespace DriveIt
 
         private void FeedForwardWheelAndEngine()
         {
-            float engineTorque = ENGINE_GEAR_RATIOS[m_gear] * GetTorque(m_radps);
+            float engineTorque = GetTorque(m_radps);
             float avgFrontRps = 0.0f;
             float avgRearRps = 0.0f;
+
+            engineTorque = (engineTorque > 0.0f ? m_throttle : 1.0f) * ENGINE_GEAR_RATIOS[m_gear] * engineTorque;
 
             foreach (Wheel w in m_wheelObjects)
             {
@@ -651,19 +630,50 @@ namespace DriveIt
             foreach (Wheel w in m_wheelObjects)
             {
                 // calcuate wheel angular velocity along with any assists.
-                float wheelTorque = m_throttle * w.torqueFract * engineTorque;
+                float wheelTorque =  w.torqueFract * engineTorque;
 
+                // LSD resist more at higher TCS levels
+                float LSDFactor = (ModSettings.TCSLevel >= (int)DriveCommon.TRACTIONCTL_LEVEL.SPORT) ? DIFF_LSD_FACTOR_HIGH : DIFF_LSD_FACTOR_LOW;
                 if (w.isFront)
                 {
-                    wheelTorque += (avgFrontRps - w.radps) * w.moment / Time.fixedDeltaTime * DIFF_LSD_FACTOR;
+                    wheelTorque += (avgFrontRps - w.radps) * w.moment / Time.fixedDeltaTime * LSDFactor;
                 }
                 else
                 {
-                    wheelTorque += (avgRearRps - w.radps) * w.moment / Time.fixedDeltaTime * DIFF_LSD_FACTOR;
+                    wheelTorque += (avgRearRps - w.radps) * w.moment / Time.fixedDeltaTime * LSDFactor;
                 }
 
-                // TCS cut power when slipping
-                wheelTorque *= 1.0f - Mathf.Min(w.slip, 1.0f);
+                // TCS cut power when on ground, accelerating, and slipping
+                switch (ModSettings.TCSLevel)
+                {
+                    case (int) DriveCommon.TRACTIONCTL_LEVEL.FULL:
+                        {
+                            if (w.radps * wheelTorque > 0.0f)
+                            {
+                                wheelTorque *= 1.0f - Mathf.Min(w.slip / GRIP_OPTIM_SLIP, 1.0f);
+                            }
+                        }
+                        break;
+                    case (int) DriveCommon.TRACTIONCTL_LEVEL.SPORT:
+                        {
+                            if (w.onGround && w.radps * wheelTorque > 0.0f)
+                            {
+                                wheelTorque *= 1.0f - Mathf.Min(w.slip, 1.0f);
+                            }
+                        }
+                        break;
+                    case (int) DriveCommon.TRACTIONCTL_LEVEL.TRACK:
+                        {
+                            if (w.onGround && w.radps * wheelTorque > 0.0f)
+                            {
+                                wheelTorque *= 1.0f - Mathf.Min(w.slip * 0.5f, 1.0f);
+                            }
+                        }
+                        break;
+                    case (int) DriveCommon.TRACTIONCTL_LEVEL.OFF:
+                    default:
+                        break;
+                }
 
                 // braking ABS
                 float totalBrake = (w.slip < GRIP_OPTIM_SLIP * 0.75f || !ModSettings.BrakingABS || !w.onGround) ? m_brake : 0.0f;
@@ -725,18 +735,6 @@ namespace DriveIt
         {
             Vector3 upVec = m_vehicleRigidBody.transform.TransformDirection(Vector3.up);
             Vector3 forwardVec = m_vehicleRigidBody.transform.TransformDirection(Vector3.forward);
-
-            // Steering assist
-            //if (!m_isTurning)
-            //{
-            //    float rot = Vector3.Dot(vehicleAngularVel, upVec);
-            //    float dir = Vector3.Dot(vehicleVel, forwardVec);
-
-            //    if (Mathf.Abs(rot) >= 0.001 && Mathf.Abs(m_steer) < 0.05f)
-            //    {
-            //        m_steer -= Mathf.Sign(rot * dir) * Mathf.Min(Mathf.Abs(rot) * 20.0f * Time.fixedDeltaTime, 0.05f);
-            //    }
-            //}
 
             m_vehicleRigidBody.AddForce(Vector3.down * (ACCEL_G * m_vehicleRigidBody.mass) - upVec * ModSettings.DownForce * Mathf.Abs(Vector3.Dot(vehicleVel, forwardVec)), ForceMode.Force);
 
@@ -801,7 +799,7 @@ namespace DriveIt
                         w.normalImpulse = (-deltaVel) * m_vehicleRigidBody.mass / Wheel.wheelCount;
                         w.contactPoint = w.gameObject.transform.TransformPoint(new Vector3(0.0f, -w.radius, 0.0f));
                         w.contactVelocity = m_vehicleRigidBody.GetPointVelocity(w.contactPoint);
-                        w.slip = Mathf.Clamp01(Vector3.Magnitude(w.contactVelocity - (w.radps * w.radius * w.tangent)) / Mathf.Max(w.contactVelocity.magnitude, 1.0f) / GRIP_MAX_SLIP);
+                        w.slip = Mathf.Clamp01(Vector3.Magnitude(w.contactVelocity - (w.radps * w.radius * w.tangent)) / Mathf.Max(w.contactVelocity.magnitude, 1.0f));
                         w.frictionCoeff = Mathf.Lerp(ModSettings.GripCoeffS, ModSettings.GripCoeffK, Mathf.Max((w.slip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP), 0.0f));
                     }
                 }
@@ -845,7 +843,7 @@ namespace DriveIt
                     float longComponent = w.moment * (w.radps - longSpeed / w.radius) / w.radius;
                     if (Mathf.Abs(longSpeed) < 1.0f || Mathf.Abs(w.radps) < 0.1f) // exaggerated torque at very low speeds for better stop and start
                     {
-                        longComponent = Mathf.Lerp(normalContribution * m_vehicleRigidBody.mass * (w.radps * w.radius - longSpeed), longComponent, Mathf.Abs(longSpeed));
+                        longComponent = normalContribution * m_vehicleRigidBody.mass * (w.radps * w.radius - longSpeed);
                     }
 
                     flatImpulses.y = longComponent;
@@ -859,9 +857,11 @@ namespace DriveIt
                         DebugHelper.DrawDebugMarker(2.0f, w.contactPoint, Quaternion.LookRotation(w.tangent, w.normal), Color.yellow);
                     }
 
-                    // boost in lateral friction so the cars feel less slidy (unrealistic)
+                    // boost in lateral friction on lower TCS levels so the cars feel less slidy (unrealistic)
+                    float lateralCoeff = (ModSettings.TCSLevel >= (int) DriveCommon.TRACTIONCTL_LEVEL.TRACK) ? w.frictionCoeff : w.frictionCoeff * 0.8f + ModSettings.GripCoeffS * 0.2f;
+                    
                     float frictionScaleLong = Mathf.Min(w.normalImpulse * w.frictionCoeff, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, FLOAT_ERROR);
-                    float frictionScaleLat = Mathf.Min(w.normalImpulse * (w.frictionCoeff + ModSettings.GripCoeffS) * 0.5f, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, FLOAT_ERROR);
+                    float frictionScaleLat = Mathf.Min(w.normalImpulse * lateralCoeff, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, FLOAT_ERROR);
 
                     w.binormalImpulse = lateralComponent * frictionScaleLat;
                     w.tangentImpulse = longComponent * frictionScaleLong;
@@ -891,6 +891,33 @@ namespace DriveIt
                 m_tilt = s_steer_tilt_inertia * m_tilt + Mathf.Atan(Vector3.Dot(netNetImpulse / m_vehicleRigidBody.mass, sideVec) / ACCEL_G) * 180.0f / Mathf.PI;
                 Quaternion rot = Quaternion.AngleAxis(m_tilt, m_vehicleRigidBody.transform.forward) * Quaternion.LookRotation(m_vehicleRigidBody.transform.forward);
                 m_vehicleRigidBody.transform.rotation = rot;
+            }
+        }
+
+        private void WheelEffects()
+        {
+            foreach (Wheel w in m_wheelObjects)
+            {
+                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && w.slip >= GRIP_HIGH_SLIP)
+                {
+                    if (!w.skidTrail)
+                    {
+                        w.skidTrail = m_tireTrails.Dequeue();
+                        w.skidTrail.transform.position = w.contactPoint;
+                        w.skidTrail.transform.rotation = Quaternion.LookRotation(w.normal);
+                        w.skidTrail.widthMultiplier = w.radius * 0.75f;
+                        w.skidTrail.Clear();
+                        w.skidTrail.enabled = true;
+                    }
+
+                    w.skidTrail.gameObject.transform.position = w.contactPoint + +0.01f * w.normal;
+                    w.skidTrail.gameObject.transform.rotation = Quaternion.LookRotation(-w.normal);
+                }
+                else if (w.skidTrail)
+                {
+                    m_tireTrails.Enqueue(w.skidTrail);
+                    w.skidTrail = null;
+                }
             }
         }
 
@@ -1600,6 +1627,7 @@ namespace DriveIt
             var area = new EffectInfo.SpawnArea(matrix, m_vehicleInfo.m_lodMeshData);
             var listenerInfo = Singleton<AudioManager>.instance.CurrentListenerInfo;
             var audioGroup = Singleton<AudioManager>.instance.DefaultGroup;
+            var audioGroupLow = Singleton<VehicleManager>.instance.m_audioGroup;
             RenderGroup.MeshData effectMeshData = m_vehicleInfo.m_vehicleAI.GetEffectMeshData();
             var area2 = new EffectInfo.SpawnArea(matrix, effectMeshData, m_vehicleInfo.m_generatedInfo.m_tyres, m_vehicleInfo.m_lightPositions);
 
@@ -1618,11 +1646,17 @@ namespace DriveIt
                     EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
                     DriveCommon.s_driveSoundTireSqueal.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, DriveCommon.SND_RANGE, w.slip - GRIP_OPTIM_SLIP, 0.9f + 0.2f * w.slip);
                 }
+                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && Mathf.Abs(w.radps) > 10.0f)
+                {
+                    EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
+                    float wheelSpeed = Mathf.Abs(w.radps) * w.radius;
+                    DriveCommon.s_driveSoundTirePavement.PlaySound(default, listenerInfo, audioGroupLow, w.contactPoint, m_vehicleRigidBody.velocity, DriveCommon.SND_RANGE, Mathf.Clamp01(wheelSpeed * 0.005f) * (1.0f - w.slip), 1.0f + wheelSpeed * 0.002f);
+                }
                 if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.GROUND && Mathf.Abs(w.radps) > 0.0f)
                 {
                     EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
                     float wheelSpeed = Mathf.Abs(w.radps) * w.radius;
-                    DriveCommon.s_driveSoundTireGravel.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, DriveCommon.SND_RANGE, 1.5f * (0.6f * w.slip + 0.4f * Mathf.Clamp01(wheelSpeed * 0.1f)), 0.5f + wheelSpeed * 0.002f);
+                    DriveCommon.s_driveSoundTireGravel.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, DriveCommon.SND_RANGE, 1.5f * (0.6f * w.slip + 0.4f * Mathf.Clamp01(wheelSpeed * 0.1f)), 0.75f + wheelSpeed * 0.002f);
                 }
             }
 

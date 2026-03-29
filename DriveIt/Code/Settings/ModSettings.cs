@@ -33,15 +33,20 @@ namespace DriveIt.Settings
         [XmlIgnore]
         internal static float BrakingForce = 30f;
 
+        [XmlElement("AutoTrans")]
+        public bool XMLAutoTrans { get => AutoTrans; set => AutoTrans = value; }
+        [XmlIgnore]
+        internal static bool AutoTrans = true;
+
         [XmlElement("BrakingABS")]
         public bool XMLBrakingABS { get => BrakingABS; set => BrakingABS = value; }
         [XmlIgnore]
         internal static bool BrakingABS = true;
 
-        [XmlElement("AutoTrans")]
-        public bool XMLAutoTrans { get => AutoTrans; set => AutoTrans = value; }
+        [XmlElement("TCSLevel")]
+        public int XMLTCSLevel { get => TCSLevel; set => TCSLevel = value; }
         [XmlIgnore]
-        internal static bool AutoTrans = true;
+        internal static int TCSLevel = 0;
 
         [XmlElement("DownForce")]
         public float XMLDownForce { get => DownForce; set => DownForce = value; }

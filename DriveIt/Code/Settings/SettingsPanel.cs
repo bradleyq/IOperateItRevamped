@@ -69,15 +69,24 @@ namespace DriveIt
             brakingForce_Slider.eventValueChanged += (_, value) => ModSettings.BrakingForce = value;
             currentY += brakingForce_Slider.height + SliderMargin;
 
-            var brakingABS_CheckBox = UICheckBoxes.AddPlainCheckBox(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_BRAKINGABS"));
+            var AutoTrans_CheckBox = UICheckBoxes.AddPlainCheckBox(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_AUTOMATICTRANS));
+            AutoTrans_CheckBox.isChecked = ModSettings.AutoTrans;
+            AutoTrans_CheckBox.eventCheckChanged += (_, isChecked) => ModSettings.AutoTrans = isChecked;
+            currentY += AutoTrans_CheckBox.height + Margin;
+
+            var brakingABS_CheckBox = UICheckBoxes.AddPlainCheckBox(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_BRAKINGABS));
             brakingABS_CheckBox.isChecked = ModSettings.BrakingABS;
             brakingABS_CheckBox.eventCheckChanged += (_, isChecked) => ModSettings.BrakingABS = isChecked;
             currentY += brakingABS_CheckBox.height + Margin;
 
-            var AutoTrans_CheckBox = UICheckBoxes.AddPlainCheckBox(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_AUTOTRANS"));
-            AutoTrans_CheckBox.isChecked = ModSettings.AutoTrans;
-            AutoTrans_CheckBox.eventCheckChanged += (_, isChecked) => ModSettings.AutoTrans = isChecked;
-            currentY += AutoTrans_CheckBox.height + Margin;
+            var TCS_Dropdown = UIDropDowns.AddLabelledDropDown(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL));
+            TCS_Dropdown.AddItem(Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_FULL));
+            TCS_Dropdown.AddItem(Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_SPORT));
+            TCS_Dropdown.AddItem(Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_TRACK));
+            TCS_Dropdown.AddItem(Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_OFF));
+            TCS_Dropdown.selectedIndex = ModSettings.TCSLevel;
+            TCS_Dropdown.eventSelectedIndexChanged += (_, index) => ModSettings.TCSLevel = index;
+            currentY += TCS_Dropdown.height + Margin;
 
             var downForce_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate("SETTINGS_DOWNFORCE"), 0.0f, 50.0f, 1f, ModSettings.DownForce, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N"));
             downForce_Slider.eventValueChanged += (_, value) => ModSettings.DownForce = value;

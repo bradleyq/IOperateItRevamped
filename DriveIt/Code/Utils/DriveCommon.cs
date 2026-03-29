@@ -46,6 +46,13 @@ namespace DriveIt.Utils
         public const string TK_SETTINGS_MAXVELOCITY        = "SETTINGS_MAXVELOCITY";
         public const string TK_SETTINGS_ENGINEPOWER        = "SETTINGS_ENGINEPOWER";
         public const string TK_SETTINGS_BRAKINGFORCE       = "SETTINGS_BRAKINGFORCE";
+        public const string TK_SETTINGS_AUTOMATICTRANS     = "SETTINGS_AUTOMATICTRANS";
+        public const string TK_SETTINGS_BRAKINGABS         = "SETTINGS_BRAKINGABS";
+        public const string TK_SETTINGS_TRACTIONCTL        = "SETTINGS_TRACTIONCTL";
+        public const string TK_SETTINGS_TRACTIONCTL_FULL   = "SETTINGS_TRACTIONCTL_FULL";
+        public const string TK_SETTINGS_TRACTIONCTL_SPORT  = "SETTINGS_TRACTIONCTL_SPORT";
+        public const string TK_SETTINGS_TRACTIONCTL_TRACK  = "SETTINGS_TRACTIONCTL_TRACK";
+        public const string TK_SETTINGS_TRACTIONCTL_OFF    = "SETTINGS_TRACTIONCTL_OFF";
         public const string TK_SETTINGS_BUILDINGCOLLISION  = "SETTINGS_BUILDINGCOLLISION";
         public const string TK_SETTINGS_VEHICLECOLLISION   = "SETTINGS_VEHICLECOLLISION";
         public const string TK_SETTINGS_OFFSET_X           = "SETTINGS_OFFSET_X";
@@ -63,6 +70,14 @@ namespace DriveIt.Utils
         #region DriveIt General Constants
         public const float ROAD_WALL_HEIGHT = 0.75f;    // per tick height delta before the slope is considered a wall
         public const float ROAD_THICKNESS = 1.5f;       // height delta below road surface to be considered still part of the road
+
+        public enum TRACTIONCTL_LEVEL
+        {
+            FULL = 0,
+            SPORT = 1,
+            TRACK = 2,
+            OFF = 3,
+        }
 
         #endregion
 
@@ -88,6 +103,9 @@ namespace DriveIt.Utils
         public const string SND_TIRE_GRAVEL             = "Sounds/TireGravel";
         public const string SND_TIRE_GRAVEL_NAME        = "Tire Gravel";
 
+        public const string SND_TIRE_PAVEMENT           = "Sounds/TirePavement";
+        public const string SND_TIRE_PAVEMENT_NAME      = "Tire Pavement";
+
         public const float  SND_RANGE                   = 200.0f;
 
         private static EffectsWrapper s_effectsWrapper;
@@ -96,6 +114,7 @@ namespace DriveIt.Utils
         public static Texture2D s_driveTextureGaugeCluster;
         public static SoundEffect s_driveSoundTireSqueal;
         public static SoundEffect s_driveSoundTireGravel;
+        public static SoundEffect s_driveSoundTirePavement;
 
         private static bool bInit = false;
 
@@ -139,6 +158,9 @@ namespace DriveIt.Utils
 
                 clip = DriveCommonLoadAudioClip(SND_TIRE_GRAVEL);
                 s_driveSoundTireGravel = DriveCommonSoundEffect(clip, 2.0f, true, true);
+
+                clip = DriveCommonLoadAudioClip(SND_TIRE_PAVEMENT);
+                s_driveSoundTirePavement = DriveCommonSoundEffect(clip, 2.0f, true, true);
             }
         }
 

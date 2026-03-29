@@ -30,6 +30,9 @@
 	<Content Include="Resources\Sounds\TireGravel.ogg">
 		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	</Content>
+	<Content Include="Resources\Sounds\TirePavement.ogg">
+		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	</Content>
 	<Content Include="Resources\Shaders\wireframeshader.asset">
 		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	</Content>
