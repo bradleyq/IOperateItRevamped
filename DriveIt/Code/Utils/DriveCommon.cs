@@ -72,6 +72,7 @@ namespace DriveIt.Utils
         public const float ROAD_THICKNESS = 1.5f;               // height delta below road surface to be considered still part of the road
         public const float FLOAT_ERROR = 0.01f;                 // a small float value
         public const float MS_TO_KMPH = 3.6f;                   // m/s to km/h
+        public const float RPS_TO_RPM = 9.549f;                 // radians per second to rpm
         //public const float UNIT_TO_M = 25.0f / 54.0f;           // unity unit to m
         //public const float M_TO_UNIT = 54.0f / 25.0f;           // m to unity unit
         //public const float UNIT_TO_MPH = UNIT_TO_M * 2.23694f;  // unity unit to mph

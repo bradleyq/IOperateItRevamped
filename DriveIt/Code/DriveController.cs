@@ -24,14 +24,6 @@ namespace DriveIt
         private const float PARK_SPEED = 0.25f;
         private const float STEER_MAX = 37.0f;
         private const float STEER_DECAY = 0.0075f;
-        private const float LIGHT_HEADLIGHT_INTENSITY = 3.0f;
-        private const float LIGHT_HEADLIGHT_RANGE = 125.0f;
-        private const float LIGHT_HEADLIGHT_ANGLE = 60.0f;
-        private const float LIGHT_TAILLIGHT_INTENSITY = 1.0f;
-        private const float LIGHT_TAILLIGHT_IDLE_INTENSITY = 0.5f;
-        private const float LIGHT_TAILLIGHT_RANGE = 15.0f;
-        private const float LIGHT_TEXTURE_INTENSITY = 5.0f;
-        private const float LIGHT_TEXTURE_IDLE_INTENSITY = 0.5f;
         private const float DRAG_FACTOR = 0.25f;
         private const float DRAG_DRIVETRAIN = 0.15f;
         private const float DRAG_FREEZE = 0.9f;
@@ -47,8 +39,7 @@ namespace DriveIt
         private const float ENGINE_OVER_RPS = 1100.0f;
         private const float ENGINE_IDLE_RPS = 90.0f;
         private const float ENGINE_INERTIA = 0.01f;
-        private const float ENGINE_PITCH = 0.15f;
-        private static readonly float[] ENGINE_GEAR_RATIOS = { -20.0f, 0.0f, 27.0f, 15.0f, 8.5f, 5.67f, 4.25f, 3.4f, 2.83f, 2.43f};
+        private static readonly float[] ENGINE_GEAR_RATIOS = { -20.0f, 0.0f, 27.0f, 15.0f, 8.5f, 5.67f, 4.25f, 3.4f, 2.83f, 2.43f };
         private static readonly string[] ENGINE_GEAR_NAMES = { "R", "N", "1", "2", "3", "4", "5", "6", "7", "8" };
         private const int ENGINE_GEAR_REVERSE = 0;
         private const int ENGINE_GEAR_NEUTRAL = 1;
@@ -62,7 +53,6 @@ namespace DriveIt
         private const float UI_SIZE = 1.0f / 4.0f;
         private const float UI_OFFSET = 1.0f / 12.0f;
         private const float UI_FILL = 1.0f;
-        private const int TIRE_TRAIL_POOL = 96;
         private static readonly Color UI_BG_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
         private static readonly Color UI_FG_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
 
@@ -71,55 +61,55 @@ namespace DriveIt
         private static float s_drag_wheel_powered;
         private static float s_drag_wheel;
 
-        private struct NetInfoBackup
+        public class Wheel : MonoBehaviour
         {
-            public NetInfoBackup(NetInfo.Node[] nodes, NetInfo.Segment[] segments)
-            {
-                this.nodes = nodes;
-                this.segments = segments;
-            }
-            
-            public NetInfo.Node[]      nodes;
-            public NetInfo.Segment[]   segments;
-        }
-
-        private class Wheel : MonoBehaviour
-        {
-            public static int wheelCount { get => wheels; private set => wheels = value; }
-            public static int frontCount { get => fronts; private set => fronts = value; }
+            public static int wheelCount { get => wheels; }
+            public static int frontCount { get => fronts; }
             public static int rearCount { get => wheels - fronts; }
 
-            private static volatile int wheels = 0;
-            private static volatile int fronts = 0;
+            private static int wheels = 0;
+            private static int fronts = 0;
 
-            public TrailRenderer skidTrail;
-            public Vector3 tangent;
-            public Vector3 binormal;
-            public Vector3 normal;
-            public Vector3 heightSample;
-            public Vector3 contactPoint;
-            public Vector3 contactVelocity;
-            public Vector3 origin;
-            public float moment;
-            public float radius;
-            public float torqueFract;
-            public float radps;
-            public float brakeForce;
-            public float normalFract;
-            public float normalImpulse;
-            public float binormalImpulse;
-            public float tangentImpulse;
-            public float compression;
-            public float frictionCoeffX;
-            public float frictionCoeffZ;
-            public float slip;
-            public bool onGround;
-            public MapUtils.COLLISION_TYPE groundType;
-            public bool isPowered       { get => powered && (torqueFract > 0.0f); private set => powered = value; }
-            public bool isSteerable     { get => steerable; private set => steerable = value; }
-            public bool isInvertedSteer { get => inverted; private set => inverted = value; }
-            public bool isFront         { get => front; private set => front = value; }
+            public bool isOnGround { get => onGround; }
+            public MapUtils.COLLISION_TYPE wheelGroundType { get => groundType; }
+            public Vector3 wheelGroundNormal { get => normal; }
+            public Vector3 wheelContactPoint { get => contactPoint; }
+            public Vector3 wheelContactVelocity { get => contactVelocity; }
+            public float wheelSlip { get => slip; }
+            public float wheelOptimSlip { get => slip - GRIP_OPTIM_SLIP; }
+            public float wheelHighSlip { get => slip - GRIP_HIGH_SLIP; }
+            public float wheelCompression { get => compression; }
+            public Vector3 wheelOrigin { get => origin; }
+            public float wheelRadius { get => radius; }
+            public float wheelMoment { get => moment; }
+            public bool isPowered { get => powered && (torqueFract > 0.0f); }
+            public bool isSteerable { get => steerable; }
+            public bool isInvertedSteer { get => inverted; }
+            public bool isFront { get => front; }
 
+            internal Vector3 tangent;
+            internal Vector3 binormal;
+            internal Vector3 normal;
+            internal Vector3 heightSample;
+            internal Vector3 contactPoint;
+            internal Vector3 contactVelocity;
+            internal float torqueFract;
+            internal float radps;
+            internal float brakeForce;
+            internal float normalFract;
+            internal float normalImpulse;
+            internal float binormalImpulse;
+            internal float tangentImpulse;
+            internal float compression;
+            internal float frictionCoeffX;
+            internal float frictionCoeffZ;
+            internal float slip;
+            internal bool onGround;
+            internal MapUtils.COLLISION_TYPE groundType;
+
+            private Vector3 origin;
+            private float radius;
+            private float moment;
             private bool powered;
             private bool steerable;
             private bool inverted;
@@ -131,10 +121,9 @@ namespace DriveIt
                 Wheel w = wheelObject.AddComponent<Wheel>();
                 wheelObject.transform.SetParent(parent);
                 wheelObject.transform.localPosition = localpos;
-                w.skidTrail = null;
                 w.tangent = Vector3.zero;
                 w.binormal = Vector3.zero;
-                w.normal = Vector3.zero;   
+                w.normal = Vector3.zero;
                 w.heightSample = Vector3.zero;
                 w.contactPoint = Vector3.zero;
                 w.contactVelocity = Vector3.zero;
@@ -153,10 +142,10 @@ namespace DriveIt
                 w.frictionCoeffZ = ModSettings.GripCoeffK;
                 w.slip = 0.0f;
                 w.onGround = false;
-                w.isPowered = isPowered;
-                w.isSteerable = isSteerable;
-                w.isInvertedSteer = isInvertedSteer;
-                w.isFront = localpos.z > 0.0f;
+                w.powered = isPowered;
+                w.steerable = isSteerable;
+                w.inverted = isInvertedSteer;
+                w.front = localpos.z > 0.0f;
                 w.registered = false;
 
                 w.Register();
@@ -203,7 +192,6 @@ namespace DriveIt
                     }
                     registered = true;
                 }
-                Logging.Message("Register: " + wheels + " " + fronts);
             }
 
             private void DeRegister()
@@ -218,51 +206,26 @@ namespace DriveIt
                     }
                     registered = false;
                 }
-                Logging.Message("Deregister: " + wheels + " " + fronts);
             }
         }
 
         public static DriveController instance { get; private set; }
 
-        private Rigidbody       m_vehicleRigidBody;
-        private BoxCollider     m_vehicleCollider;
-        private Color           m_vehicleColor;
-        private bool            m_setColor;
-        private VehicleInfo     m_vehicleInfo;
-        private GameObject      m_headlightObject;
-        private GameObject      m_taillightObject;
-        private Light           m_headlight;
-        private Light           m_taillight;
-        private GUIStyle        m_speedoStyle;
-        private GUIStyle        m_gearStyle;
-        private GameObject      m_tireTrailRefObject;
-        private TrailRenderer   m_tireTrailRef;
-        private Material        m_backupUndergroundMaterial = null;
-        private Material        m_uiMaterial = null;
-        private Material        m_renderMaterial = null;
-        private Material        m_basicRenderMaterial = null;
+        private Rigidbody m_vehicleRigidBody;
+        private BoxCollider m_vehicleCollider;
+        private Color m_vehicleColor;
+        private bool m_setColor;
+        private VehicleInfo m_vehicleInfo;
 
-        private Queue<TrailRenderer>    m_tireTrails            = new Queue<TrailRenderer>();
-        private List<Wheel>             m_wheelObjects          = new List<Wheel>();
-        private List<LightEffect>       m_lightEffects          = new List<LightEffect>();
-        private List<EngineSoundEffect> m_engineSoundEffects    = new List<EngineSoundEffect>();
-        private List<EffectInfo>        m_regularEffects        = new List<EffectInfo>();
-        private List<EffectInfo>        m_dustEffects           = new List<EffectInfo>();
-        private List<EffectInfo>        m_specialEffects        = new List<EffectInfo>();
-
-        private Dictionary<string, string> m_customUndergroundMappings = new Dictionary<string, string>();
-        private Dictionary<NetInfo, NetInfoBackup> m_backupPrefabData = new Dictionary<NetInfo, NetInfoBackup>();
+        private List<Wheel> m_wheelObjects = new List<Wheel>();
 
         private DriveColliders m_collidersManager = new DriveColliders();
         private Vector3 m_prevPosition;
         private Vector3 m_prevVelocity;
+        private Vector3 m_prevPrevVelocity;
         private Vector3 m_tangent;
         private Vector3 m_binormal;
         private Vector3 m_normal;
-        private Vector4 m_lightState;
-        private bool m_isSirenEnabled = false;
-        private bool m_isLightEnabled = false;
-        private bool m_isDusty = false;
         private bool m_isTurning = false;
         private bool m_isConstrainedX = false;
         private bool m_isConstrainedZ = false;
@@ -282,6 +245,83 @@ namespace DriveIt
         private float m_radpsTrans = 0.0f;
         private float m_tilt = 0.0f;
 
+        public float odometer { get => m_distanceTravelled; }
+        public float speedometer { get => m_vehicleRigidBody.velocity.magnitude * DriveCommon.MS_TO_KMPH / ModSettings.MaxVelocity; }
+        public float tachometer { get => m_radps / ENGINE_PEAK_RPS; }
+        public float steer { get => m_steer * STEER_MAX; }
+        public float brake { get => m_brake; }
+        public float throttle { get => m_throttle; }
+        public string gear { get => ENGINE_GEAR_NAMES[m_gear]; }
+        public float speed { get => m_vehicleRigidBody.velocity.magnitude; }
+        public Vector3 velocity { get => m_vehicleRigidBody.velocity; }
+        public Vector3 acceleration { get => (m_prevVelocity - m_prevPrevVelocity) / Time.fixedDeltaTime; }
+        public float rpm { get => m_radps * DriveCommon.RPS_TO_RPM; }
+        public float radps { get => m_radps; }
+        public float angularAcceleration { get => (m_radps - m_prevRadps) / Time.fixedDeltaTime; }
+
+        public List<Wheel> wheels { get => m_wheelObjects; }
+
+        public bool OnEsc()
+        {
+            if (enabled)
+            {
+                StopDriving();
+                return true;
+            }
+            return false;
+        }
+
+        public void UpdateColor(Color color, bool enable)
+        {
+            m_vehicleColor = color;
+            m_setColor = enable;
+        }
+
+        public void UpdateVehicleInfo(VehicleInfo info)
+        {
+            m_vehicleInfo = info;
+        }
+
+        public bool IsVehicleInfoSet()
+        {
+            return m_vehicleInfo != null;
+        }
+
+        public void StartDriving(Vector3 position, Quaternion rotation) => StartDriving(position, rotation, m_vehicleInfo, m_vehicleColor, m_setColor);
+
+        public void StartDriving(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Color vehicleColor, bool setColor)
+        {
+            Vector3 spawnPosition = position;
+            Quaternion spawnRotation = rotation;
+
+            if (enabled)
+            {
+                spawnPosition = m_vehicleRigidBody.transform.position;
+                spawnRotation = m_vehicleRigidBody.transform.rotation;
+
+                DestroyVehicle(false);
+            }
+
+            SpawnVehicle(spawnPosition + new Vector3(0.0f, -ModSettings.SpringOffset, 0.0f), spawnRotation, vehicleInfo, vehicleColor, setColor);
+
+            if (!enabled)
+            {
+                DriveCam.instance.EnableCam(m_vehicleRigidBody, 2.0f * m_vehicleCollider.size.z);
+                DriveButtons.instance.SetDisable();
+            }
+
+            enabled = true;
+        }
+
+        public void StopDriving()
+        {
+            StartCoroutine(m_collidersManager.DisableColliders());
+            DriveCam.instance.DisableCam();
+            DriveButtons.instance.SetEnable();
+            DestroyVehicle();
+            enabled = false;
+        }
+
         private void Awake()
         {
             if (instance)
@@ -291,16 +331,12 @@ namespace DriveIt
             }
             instance = this;
 
-            gameObject.AddComponent<MeshFilter>();
-            gameObject.AddComponent<MeshRenderer>();
-            gameObject.GetComponent<MeshRenderer>().enabled = true;
-
             m_vehicleRigidBody = gameObject.AddComponent<Rigidbody>();
             m_vehicleRigidBody.isKinematic = false;
             m_vehicleRigidBody.useGravity = false;
             m_vehicleRigidBody.freezeRotation = false;
             m_vehicleRigidBody.interpolation = RigidbodyInterpolation.Interpolate;
-            
+
             PhysicMaterial material = new PhysicMaterial();
             material.bounciness = 0.05f;
             material.staticFriction = 0.1f;
@@ -308,131 +344,15 @@ namespace DriveIt
             m_vehicleCollider = gameObject.AddComponent<BoxCollider>();
             m_vehicleCollider.material = material;
 
-            m_headlightObject = new GameObject();
-            m_headlight = m_headlightObject.AddComponent<Light>();
-            m_headlight.type = LightType.Spot;
-            m_headlight.intensity = LIGHT_HEADLIGHT_INTENSITY;
-            m_headlight.range = LIGHT_HEADLIGHT_RANGE;
-            m_headlight.spotAngle = LIGHT_HEADLIGHT_ANGLE;
-            m_headlight.transform.parent = m_vehicleRigidBody.transform;
-            m_headlight.color = Color.white;
-            m_headlight.enabled = false;
-
-            m_taillightObject = new GameObject();
-            m_taillight = m_taillightObject.AddComponent<Light>();
-            m_taillight.type = LightType.Point;
-            m_taillight.intensity = LIGHT_TAILLIGHT_IDLE_INTENSITY;
-            m_taillight.range = LIGHT_TAILLIGHT_RANGE;
-            m_taillight.transform.parent = m_vehicleRigidBody.transform;
-            m_taillight.color = Color.red;
-            m_taillight.enabled = false;
-
             StartCoroutine(m_collidersManager.InitializeColliders());
             gameObject.SetActive(false);
             enabled = false;
 
-            // Some tunnel names are atypical and need to be manually mapped.
-            m_customUndergroundMappings["HighwayRamp Tunnel"]                        = "HighwayRampElevated";
-            m_customUndergroundMappings["Metro Track"]                               = "Metro Track Elevated 01";
-            m_customUndergroundMappings["Metro Station Track"]                       = "Metro Station Track Elevated 01";
-            m_customUndergroundMappings["Large Oneway Road Tunnel"]                  = "Large Oneway Elevated";
-            m_customUndergroundMappings["Metro Station Below Ground Bypass"]         = "Metro Station Track Elevated Bypass";
-            m_customUndergroundMappings["Metro Station Below Ground Dual Island"]    = "Metro Station Track Elevated Dual Island";
-            m_customUndergroundMappings["Metro Station Below Ground Island"]         = "Metro Station Track Elevated Island Platform";
-
-            RenderManager rm = Singleton<RenderManager>.instance;
-            m_backupUndergroundMaterial = rm.m_groupLayerMaterials[MapUtils.LAYER_UNDERGROUND];
-            m_renderMaterial = rm.m_groupLayerMaterials[MapUtils.LAYER_ROAD];
-
-            Shader diffuseShader = Shader.Find("Hidden/Internal-Colored");
-            m_basicRenderMaterial = new Material(diffuseShader);
-            m_basicRenderMaterial.hideFlags = HideFlags.HideAndDontSave;
-            m_basicRenderMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            m_basicRenderMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            m_basicRenderMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-            m_basicRenderMaterial.SetInt("_ZWrite", 0);
-
-            Shader flatShader = Shader.Find("Hidden/Internal-Colored");
-            m_uiMaterial = new Material(flatShader);
-            m_uiMaterial.hideFlags = HideFlags.HideAndDontSave;
-            m_uiMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            m_uiMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            m_uiMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-            m_uiMaterial.SetInt("_ZWrite", 0);
-
-            m_speedoStyle = new GUIStyle();
-            m_speedoStyle.fontSize = (int) (Screen.height * UI_SIZE * 0.3f);
-            m_speedoStyle.normal.textColor = Color.white;
-            m_speedoStyle.alignment = TextAnchor.LowerCenter;
-            m_speedoStyle.fontStyle = FontStyle.Italic;
-            m_speedoStyle.padding.right = m_speedoStyle.fontSize / 8;
-            m_gearStyle = new GUIStyle();
-            m_gearStyle.fontSize = (int)(Screen.height * UI_SIZE * 0.2f);
-            m_gearStyle.normal.textColor = Color.white;
-            m_gearStyle.alignment = TextAnchor.MiddleCenter;
-            m_gearStyle.fontStyle = FontStyle.Italic;
-            m_gearStyle.padding.right = m_gearStyle.fontSize / 8;
-
-            m_tireTrailRefObject = new GameObject();
-            m_tireTrailRef = m_tireTrailRefObject.AddComponent<TrailRenderer>();
-            m_tireTrailRef.sharedMaterial = m_basicRenderMaterial;
-            m_tireTrailRef.widthMultiplier = 1.0f;
-            m_tireTrailRef.startColor = new Color(0.0f, 0.0f, 0.0f, 0.4f);
-            m_tireTrailRef.endColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
-            m_tireTrailRef.alignment = LineAlignment.Local;
-            m_tireTrailRef.time = Mathf.Infinity;
-            m_tireTrailRef.enabled = false;
-
-            for (int i = 0; i < TIRE_TRAIL_POOL; i++)
-            {
-                m_tireTrails.Enqueue(GameObject.Instantiate(m_tireTrailRefObject).GetComponent<TrailRenderer>());
-            }
+            DriveEffects.s_controller = this;
         }
         private void Update()
         {
             HandleInputOnUpdate();
-            PlayEffects();
-
-            MaterialPropertyBlock materialBlock = Singleton<VehicleManager>.instance.m_materialBlock;
-            materialBlock.Clear();
-            Vector4 tyrePosition = default;
-            tyrePosition.x = m_steer * STEER_MAX / 180.0f * Mathf.PI;
-            tyrePosition.y = m_distanceTravelled;
-            tyrePosition.z = 0f;
-            tyrePosition.w = 0f;
-            materialBlock.SetVector(Singleton<VehicleManager>.instance.ID_TyrePosition, tyrePosition);
-
-            m_lightState.x = m_isLightEnabled ? LIGHT_TEXTURE_INTENSITY : 0.0f;
-            m_lightState.y = m_brake > 0.0f ? LIGHT_TEXTURE_INTENSITY : (m_isLightEnabled ? LIGHT_TEXTURE_IDLE_INTENSITY : 0.0f);
-            materialBlock.SetVector(Singleton<VehicleManager>.instance.ID_LightState, m_lightState);
-            if (m_setColor)
-            {
-                materialBlock.SetColor(Singleton<VehicleManager>.instance.ID_Color, m_vehicleColor);
-            }
-
-            m_headlight.enabled = m_isLightEnabled;
-
-            float tailIntensity = m_isLightEnabled ? LIGHT_TEXTURE_IDLE_INTENSITY : 0.0f;
-            tailIntensity = m_brake > 0.0f ? LIGHT_TAILLIGHT_INTENSITY : tailIntensity;
-            if (tailIntensity > 0.0f)
-            {
-                m_taillight.intensity = tailIntensity;
-                m_taillight.enabled = true;
-            }
-            else
-            {
-                m_taillight.enabled = false;
-            }
-
-            float avgCompression = 0.0f;
-            foreach(Wheel w in m_wheelObjects)
-            {
-                avgCompression += w.compression;
-            }
-            avgCompression = ModSettings.SpringOffset + avgCompression / Wheel.wheelCount;
-            materialBlock.SetMatrix(Singleton < VehicleManager >.instance.ID_TyreMatrix, Matrix4x4.TRS(new Vector3(0.0f, Mathf.Clamp(avgCompression, ModSettings.SpringOffset, 0.0f), 0.0f), Quaternion.identity, Vector3.one));
-
-            gameObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
 
             DebugHelper.DrawDebugBox(m_vehicleCollider.size, m_vehicleCollider.transform.TransformPoint(m_vehicleCollider.center), m_vehicleCollider.transform.rotation, Color.magenta);
         }
@@ -447,13 +367,13 @@ namespace DriveIt
             HandleInputOnFixedUpdate(invert);
 
             WheelPhysics(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel);
-            WheelEffects();
-            
+
             LimitVelocity();
 
             m_collidersManager.UpdateColliders(m_vehicleRigidBody.transform);
             m_collidersManager.UpdateGroundCollider(m_vehicleCollider);
 
+            m_prevPrevVelocity = m_prevVelocity;
             m_prevVelocity = vehicleVel;
             m_prevPosition = vehiclePos;
         }
@@ -464,16 +384,6 @@ namespace DriveIt
         private void OnDestroy()
         {
             m_collidersManager.DestroyColliders();
-        }
-
-        public bool OnEsc()
-        {
-            if (enabled)
-            {
-                StopDriving();
-                return true;
-            }
-            return false;
         }
 
         private void OnCollisionEnter(Collision collision)
@@ -507,57 +417,26 @@ namespace DriveIt
 
         private void OnGUI()
         {
-            if (Event.current.type == EventType.Repaint)
+            if (Event.current.type == EventType.Repaint && Logging.DetailLogging)
             {
-                if (Logging.DetailLogging)
+                string uiString = "dm: " + m_driveMode +
+                                    "\ng: " + (m_gear - 1) +
+                                    "\nt: " + m_throttle +
+                                    "\nb: " + m_brake +
+                                    "\ns: " + m_vehicleRigidBody.velocity.magnitude * DriveCommon.MS_TO_KMPH +
+                                    "\nrps: " + m_radps +
+                                    "\nrpst: " + m_radpsTrans +
+                                    "\nwct: " + Wheel.wheelCount;
+                for (int index = 0; index < m_wheelObjects.Count; index++)
                 {
-                    string uiString = "dm: " + m_driveMode +
-                                      "\ng: " + (m_gear - 1) +
-                                      "\nt: " + m_throttle +
-                                      "\nb: " + m_brake +
-                                      "\ns: " + m_vehicleRigidBody.velocity.magnitude * DriveCommon.MS_TO_KMPH +
-                                      "\nrps: " + m_radps +
-                                      "\nrpst: " + m_radpsTrans + 
-                                      "\nwct: " + Wheel.wheelCount;
-                    for (int index = 0; index < m_wheelObjects.Count; index++)
-                    {
-                        uiString += "\nw" + index + ": " + m_wheelObjects[index].origin + " " + m_wheelObjects[index].slip + " " + m_wheelObjects[index].radps;
-                    }
-
-                    GUIStyle m_style = new GUIStyle(GUI.skin.label);
-                    m_style.fontSize = 20;
-                    m_style.normal.textColor = Color.white;
-
-                    GUI.Label(new Rect(100f, 100f, 700f, 700f), uiString, m_style);
+                    uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + " " + m_wheelObjects[index].slip + " " + m_wheelObjects[index].radps;
                 }
 
-                float sizePx = UI_SIZE * Screen.height;
-                float offsetPx = UI_OFFSET * Screen.height;
-                float fillPx = sizePx * UI_FILL;
-                float borderPx = (sizePx - fillPx) / 2;
+                GUIStyle m_style = new GUIStyle(GUI.skin.label);
+                m_style.fontSize = 20;
+                m_style.normal.textColor = Color.white;
 
-                float x = Screen.width - (sizePx + offsetPx);
-                float y = Screen.height - (sizePx + offsetPx);
-
-
-                Rect area = new Rect(x + borderPx, y + borderPx, fillPx, fillPx);
-                Rect bgarea = new Rect(x, y, sizePx, sizePx);
-
-                // Background
-                GUI.color = UI_BG_COLOR;
-                GUI.DrawTexture(bgarea, DriveCommon.s_driveTextureGaugeCluster);
-                GUI.color = UI_FG_COLOR;
-
-                // text
-                GUI.Label(area, ENGINE_GEAR_NAMES[m_gear], m_gearStyle);
-                GUI.Label(area, Mathf.RoundToInt(m_vehicleRigidBody.velocity.magnitude * DriveCommon.MS_TO_KMPH).ToString(), m_speedoStyle);
-
-                // Draw tach arc
-                DriveCommon.DrawRingSegment(new Vector2(x + sizePx * 0.5f, y + sizePx * 0.5f),
-                    fillPx * 0.5f, fillPx * 0.5f * 0.9f,
-                    Mathf.PI * 5.0f / 4.0f, -Mathf.PI / 4.0f,
-                    m_radps / ENGINE_PEAK_RPS,
-                    UI_FG_COLOR, m_uiMaterial);
+                GUI.Label(new Rect(100f, 100f, 700f, 700f), uiString, m_style);
             }
         }
 
@@ -568,7 +447,7 @@ namespace DriveIt
             foreach (Wheel w in m_wheelObjects)
             {
                 // record distance travelled from previous tick
-                m_distanceTravelled += w.radps * w.torqueFract * w.radius * Time.fixedDeltaTime;
+                m_distanceTravelled += w.radps * w.torqueFract * w.wheelRadius * Time.fixedDeltaTime;
 
                 // apply wheel drag from previous tick
                 w.radps *= 1.0f - (w.isPowered ? s_drag_wheel_powered : s_drag_wheel);
@@ -613,16 +492,16 @@ namespace DriveIt
             foreach (Wheel w in m_wheelObjects)
             {
                 // calcuate wheel angular velocity along with any assists.
-                float wheelTorque =  w.torqueFract * engineTorque;
+                float wheelTorque = w.torqueFract * engineTorque;
 
                 // LSD resist more at higher TCS levels
                 float LSDFactor = (ModSettings.TCSLevel >= (int)DriveCommon.TRACTIONCTL_LEVEL.SPORT) ? DIFF_LSD_FACTOR_HIGH : DIFF_LSD_FACTOR_LOW;
-                wheelTorque += (avgRps - w.radps) * w.moment / Time.fixedDeltaTime * LSDFactor * w.torqueFract * powered;
+                wheelTorque += (avgRps - w.radps) * w.wheelMoment / Time.fixedDeltaTime * LSDFactor * w.torqueFract * powered;
 
                 // TCS cut power when on ground, accelerating, and slipping
                 switch (ModSettings.TCSLevel)
                 {
-                    case (int) DriveCommon.TRACTIONCTL_LEVEL.FULL:
+                    case (int)DriveCommon.TRACTIONCTL_LEVEL.FULL:
                         {
                             if (w.radps * wheelTorque > 0.0f)
                             {
@@ -636,7 +515,7 @@ namespace DriveIt
                             }
                         }
                         break;
-                    case (int) DriveCommon.TRACTIONCTL_LEVEL.SPORT:
+                    case (int)DriveCommon.TRACTIONCTL_LEVEL.SPORT:
                         {
                             if (w.onGround && w.radps * wheelTorque > 0.0f)
                             {
@@ -644,7 +523,7 @@ namespace DriveIt
                             }
                         }
                         break;
-                    case (int) DriveCommon.TRACTIONCTL_LEVEL.TRACK:
+                    case (int)DriveCommon.TRACTIONCTL_LEVEL.TRACK:
                         {
                             if (w.onGround && w.radps * wheelTorque > 0.0f)
                             {
@@ -652,7 +531,7 @@ namespace DriveIt
                             }
                         }
                         break;
-                    case (int) DriveCommon.TRACTIONCTL_LEVEL.OFF:
+                    case (int)DriveCommon.TRACTIONCTL_LEVEL.OFF:
                     default:
                         break;
                 }
@@ -660,9 +539,9 @@ namespace DriveIt
                 // braking ABS
                 float totalBrake = (w.slip < GRIP_OPTIM_SLIP * 0.75f || !ModSettings.BrakingABS || !w.onGround) ? m_brake : 0.0f;
 
-                wheelTorque -= Mathf.Sign(w.radps) * Mathf.Min(totalBrake * w.brakeForce * w.radius, Mathf.Abs(w.radps) * w.moment / Time.fixedDeltaTime);
+                wheelTorque -= Mathf.Sign(w.radps) * Mathf.Min(totalBrake * w.brakeForce * w.wheelRadius, Mathf.Abs(w.radps) * w.wheelMoment / Time.fixedDeltaTime);
 
-                w.radps += wheelTorque * Time.fixedDeltaTime / w.moment;
+                w.radps += wheelTorque * Time.fixedDeltaTime / w.wheelMoment;
             }
         }
 
@@ -740,7 +619,7 @@ namespace DriveIt
                 }
             }
 
-            foreach (Wheel w in m_wheelObjects) 
+            foreach (Wheel w in m_wheelObjects)
             {
                 // apply angular friction from previous tick. 
                 if (w.isSteerable)
@@ -755,8 +634,8 @@ namespace DriveIt
                 if (w.onGround)
                 {
                     Vector3 prelimContactVel = m_vehicleRigidBody.GetPointVelocity(w.contactPoint);
-                    float radDelta = Vector3.Dot(prelimContactVel, w.tangent) / w.radius - w.radps;
-                    w.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), w.normalImpulse * w.radius * w.frictionCoeffZ / w.moment);
+                    float radDelta = Vector3.Dot(prelimContactVel, w.tangent) / w.wheelRadius - w.radps;
+                    w.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), w.normalImpulse * w.wheelRadius * w.frictionCoeffZ / w.wheelMoment);
                 }
 
                 // calculate fist pass normal impulses. Update wheel suspension position.
@@ -768,21 +647,22 @@ namespace DriveIt
                 float normDotUp = Vector3.Dot(w.normal, upVec);
                 if (normDotUp > VALID_INCLINE)
                 {
-                    Vector3 originWheelBottom = m_vehicleRigidBody.transform.TransformPoint(w.origin + Vector3.down * w.radius);
+                    Vector3 wheelOrigin = w.wheelOrigin;
+                    Vector3 originWheelBottom = m_vehicleRigidBody.transform.TransformPoint(wheelOrigin + Vector3.down * w.wheelRadius);
                     float compression = Mathf.Max(Vector3.Dot(w.heightSample - originWheelBottom, w.normal) / normDotUp, 0.0f);
                     float springVel = (compression - w.compression) / Time.fixedDeltaTime;
                     float deltaVel = -ModSettings.SpringDamp * Mathf.Exp(-ModSettings.SpringDamp * Time.fixedDeltaTime) * (compression + springVel * Time.fixedDeltaTime) + springVel * Mathf.Exp(-ModSettings.SpringDamp * Time.fixedDeltaTime) - springVel;
 
-                    w.gameObject.transform.localPosition = new Vector3(w.origin.x, w.origin.y + compression, w.origin.z);
+                    w.gameObject.transform.localPosition = new Vector3(wheelOrigin.x, wheelOrigin.y + compression, wheelOrigin.z);
                     w.compression = compression;
 
                     if (deltaVel < 0.0f)
                     {
                         w.onGround = true;
                         w.normalImpulse = (-deltaVel) * m_vehicleRigidBody.mass / Wheel.wheelCount;
-                        w.contactPoint = w.gameObject.transform.TransformPoint(new Vector3(0.0f, -w.radius, 0.0f));
+                        w.contactPoint = w.gameObject.transform.TransformPoint(new Vector3(0.0f, -w.wheelRadius, 0.0f));
                         w.contactVelocity = m_vehicleRigidBody.GetPointVelocity(w.contactPoint);
-                        w.slip = Mathf.Clamp01(Vector3.Magnitude(w.contactVelocity - (w.radps * w.radius * w.tangent)) / Mathf.Max(w.contactVelocity.magnitude, 1.0f));
+                        w.slip = Mathf.Clamp01(Vector3.Magnitude(w.contactVelocity - (w.radps * w.wheelRadius * w.tangent)) / Mathf.Max(w.contactVelocity.magnitude, 1.0f));
 
                         if (w.groundType == MapUtils.COLLISION_TYPE.ROAD)
                         {
@@ -790,7 +670,7 @@ namespace DriveIt
 
                             // boost in lateral friction on lower TCS levels or steerables so the cars feel less slidy (unrealistic)
                             float lateralCoeffK = ModSettings.GripCoeffK;
-                            lateralCoeffK = (ModSettings.TCSLevel <= (int) DriveCommon.TRACTIONCTL_LEVEL.SPORT) ? (ModSettings.GripCoeffK * 0.75f + ModSettings.GripCoeffS * 0.25f) : lateralCoeffK;
+                            lateralCoeffK = (ModSettings.TCSLevel <= (int)DriveCommon.TRACTIONCTL_LEVEL.SPORT) ? (ModSettings.GripCoeffK * 0.75f + ModSettings.GripCoeffS * 0.25f) : lateralCoeffK;
                             lateralCoeffK = w.isSteerable ? ModSettings.GripCoeffS : lateralCoeffK;
 
                             w.frictionCoeffX = Mathf.Lerp(ModSettings.GripCoeffS, lateralCoeffK, Mathf.Max((w.slip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP), 0.0f));
@@ -800,7 +680,7 @@ namespace DriveIt
                 else
                 {
                     w.compression = 0.0f;
-                    w.gameObject.transform.localPosition = w.origin;
+                    w.gameObject.transform.localPosition = w.wheelOrigin;
                 }
             }
 
@@ -813,17 +693,16 @@ namespace DriveIt
             FeedForwardWheelAndEngine();
 
             Vector3 netNetImpulse = Vector3.zero;
-            int dustyWheels = 0;
 
             foreach (Wheel w in m_wheelObjects)
             {
                 // calculate the lateral and longitudinal forces. Apply all forces.
                 if (w.onGround)
                 {
-                    Vector3 netImpulse = Vector3.zero;             
+                    Vector3 netImpulse = Vector3.zero;
 
                     float normalContribution = 0.0f;
-                    foreach(Wheel wAlt in m_wheelObjects)
+                    foreach (Wheel wAlt in m_wheelObjects)
                     {
                         normalContribution += Vector3.Dot(w.normal, wAlt.normal) * wAlt.normalImpulse;
                     }
@@ -834,10 +713,10 @@ namespace DriveIt
                     float longSpeed = Vector3.Dot(w.contactVelocity, w.tangent);
                     float lateralSpeed = Vector3.Dot(w.contactVelocity, w.binormal);
 
-                    float longComponent = w.moment * (w.radps - longSpeed / w.radius) / w.radius;
+                    float longComponent = w.wheelMoment * (w.radps - longSpeed / w.wheelRadius) / w.wheelRadius;
                     if (Mathf.Abs(longSpeed) < 1.0f || Mathf.Abs(w.radps) < 0.1f) // exaggerated torque at low speeds for better stop and start
                     {
-                        longComponent = normalContribution * m_vehicleRigidBody.mass * (w.radps * w.radius - longSpeed);
+                        longComponent = normalContribution * m_vehicleRigidBody.mass * (w.radps * w.wheelRadius - longSpeed);
                     }
 
                     flatImpulses.y = longComponent;
@@ -850,7 +729,7 @@ namespace DriveIt
                     {
                         DebugHelper.DrawDebugMarker(2.0f, w.contactPoint, Quaternion.LookRotation(w.tangent, w.normal), Color.yellow);
                     }
-                    
+
                     float frictionScaleLong = Mathf.Min(w.normalImpulse * w.frictionCoeffZ, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, DriveCommon.FLOAT_ERROR);
                     float frictionScaleLat = Mathf.Min(w.normalImpulse * w.frictionCoeffX, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, DriveCommon.FLOAT_ERROR);
 
@@ -864,16 +743,8 @@ namespace DriveIt
                     netNetImpulse += netImpulse;
 
                     m_vehicleRigidBody.AddForceAtPosition(netImpulse, w.contactPoint, ForceMode.Impulse);
-
-                    // check for effects
-                    if (w.groundType == MapUtils.COLLISION_TYPE.GROUND)
-                    {
-                        dustyWheels++;
-                    }
                 }
             }
-
-            m_isDusty = dustyWheels >= Wheel.wheelCount / 2;
 
             if (m_isConstrainedZ)
             {
@@ -881,33 +752,6 @@ namespace DriveIt
                 m_tilt = s_steer_tilt_inertia * m_tilt + Mathf.Atan(Vector3.Dot(netNetImpulse / m_vehicleRigidBody.mass, sideVec) / ACCEL_G) * 180.0f / Mathf.PI;
                 Quaternion rot = Quaternion.AngleAxis(m_tilt, m_vehicleRigidBody.transform.forward) * Quaternion.LookRotation(m_vehicleRigidBody.transform.forward);
                 m_vehicleRigidBody.transform.rotation = rot;
-            }
-        }
-
-        private void WheelEffects()
-        {
-            foreach (Wheel w in m_wheelObjects)
-            {
-                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && w.slip >= GRIP_HIGH_SLIP)
-                {
-                    if (!w.skidTrail)
-                    {
-                        w.skidTrail = m_tireTrails.Dequeue();
-                        w.skidTrail.transform.position = w.contactPoint;
-                        w.skidTrail.transform.rotation = Quaternion.LookRotation(w.normal);
-                        w.skidTrail.widthMultiplier = w.radius * 0.75f;
-                        w.skidTrail.Clear();
-                        w.skidTrail.enabled = true;
-                    }
-
-                    w.skidTrail.gameObject.transform.position = w.contactPoint + +0.01f * w.normal;
-                    w.skidTrail.gameObject.transform.rotation = Quaternion.LookRotation(-w.normal);
-                }
-                else if (w.skidTrail)
-                {
-                    m_tireTrails.Enqueue(w.skidTrail);
-                    w.skidTrail = null;
-                }
             }
         }
 
@@ -919,71 +763,19 @@ namespace DriveIt
             }
         }
 
-        public void updateColor(Color color, bool enable)
-        {
-            m_vehicleColor = color; 
-            m_setColor = enable;
-        }
-
-        public void updateVehicleInfo(VehicleInfo info)
-        {
-            m_vehicleInfo = info; 
-        }
-
-        public bool isVehicleInfoSet()
-        {
-            return m_vehicleInfo != null;
-        }
-
-        public void StartDriving(Vector3 position, Quaternion rotation) => StartDriving(position, rotation, m_vehicleInfo, m_vehicleColor, m_setColor);
-        public void StartDriving(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Color vehicleColor, bool setColor)
-        {
-            Logging.Message("Wheels Before " + Wheel.wheelCount);
-            Vector3 spawnPosition = position;
-            Quaternion spawnRotation = rotation;
-
-            if (enabled)
-            {
-                spawnPosition = m_vehicleRigidBody.transform.position;
-                spawnRotation = m_vehicleRigidBody.transform.rotation;
-
-                DestroyVehicle(false);
-            }
-
-            SpawnVehicle(spawnPosition + new Vector3(0.0f, -ModSettings.SpringOffset, 0.0f), spawnRotation, vehicleInfo, vehicleColor, setColor);
-
-            if (!enabled)
-            {
-                OverridePrefabs();
-                DriveCam.instance.EnableCam(m_vehicleRigidBody, 2.0f * m_vehicleCollider.size.z);
-                DriveButtons.instance.SetDisable();
-            }
-
-            enabled = true;
-            Logging.Message("Wheels After " + Wheel.wheelCount);
-        }
-        public void StopDriving()
-        {
-            StartCoroutine(m_collidersManager.DisableColliders());
-            DriveCam.instance.DisableCam();
-            DriveButtons.instance.SetEnable();
-            RestorePrefabs();
-            DestroyVehicle();
-            enabled = false;
-        }
         private void SpawnVehicle(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Color vehicleColor, bool setColor)
         {
-            s_engine_inertia = (float) System.Math.Pow(ENGINE_INERTIA, Time.fixedDeltaTime);
-            s_steer_tilt_inertia = (float) System.Math.Pow(STEER_TILT_INERTIA, Time.fixedDeltaTime);
-            s_drag_wheel_powered = (float) (1.0 - System.Math.Pow(1.0 - DRAG_WHEEL_POWERED, Time.fixedDeltaTime));
-            s_drag_wheel = (float) (1.0 - System.Math.Pow(1.0 - DRAG_WHEEL, Time.fixedDeltaTime));
+            s_engine_inertia = (float)System.Math.Pow(ENGINE_INERTIA, Time.fixedDeltaTime);
+            s_steer_tilt_inertia = (float)System.Math.Pow(STEER_TILT_INERTIA, Time.fixedDeltaTime);
+            s_drag_wheel_powered = (float)(1.0 - System.Math.Pow(1.0 - DRAG_WHEEL_POWERED, Time.fixedDeltaTime));
+            s_drag_wheel = (float)(1.0 - System.Math.Pow(1.0 - DRAG_WHEEL, Time.fixedDeltaTime));
 
             m_setColor = setColor;
             m_vehicleColor = vehicleColor;
             m_vehicleColor.a = 0; // Make sure blinking is not set.
             m_prevPosition = position;
             m_prevVelocity = Vector3.zero;
-            m_lightState = Vector4.zero;
+            m_prevPrevVelocity = Vector3.zero;
             m_vehicleInfo = vehicleInfo;
             m_driveMode = ENGINE_MODE_NEUTRAL;
             m_distanceTravelled = 0.0f;
@@ -1049,8 +841,6 @@ namespace DriveIt
 
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
             Vector3 fullBounds = vehicleMesh.bounds.size;
-            m_headlight.transform.localPosition = new Vector3(0.0f, fullBounds.y * 0.5f, fullBounds.z * 0.5f + DriveCommon.FLOAT_ERROR);
-            m_taillight.transform.localPosition = new Vector3(0.0f, fullBounds.y * 0.5f, -fullBounds.z * 0.5f - DriveCommon.FLOAT_ERROR);
 
             Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;
             adjustedBounds.y = adjustedBounds.y - m_rideHeight;
@@ -1087,35 +877,22 @@ namespace DriveIt
             m_vehicleCollider.size = adjustedBounds;
             m_vehicleCollider.center = new Vector3(0.0f, 0.5f * adjustedBounds.y + m_rideHeight, 0.0f);
 
-            gameObject.GetComponent<MeshFilter>().mesh = gameObject.GetComponent<MeshFilter>().sharedMesh = vehicleMesh;
-            gameObject.GetComponent<MeshRenderer>().material = gameObject.GetComponent<MeshRenderer>().sharedMaterial = m_vehicleInfo.m_material;
-
-            if (m_setColor)
-            {
-                MaterialPropertyBlock materialBlock = Singleton<VehicleManager>.instance.m_materialBlock;
-                materialBlock.Clear();
-                materialBlock.SetColor(Singleton<VehicleManager>.instance.ID_Color, m_vehicleColor);
-                gameObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
-            }
-
             m_tangent = m_vehicleRigidBody.transform.TransformDirection(Vector3.forward);
             m_normal = m_vehicleRigidBody.transform.TransformDirection(Vector3.up);
             m_binormal = m_vehicleRigidBody.transform.TransformDirection(Vector3.right);
 
-            gameObject.SetActive(true);
+            DriveEffects.instance.UpdateVehicleInfo(vehicleInfo, vehicleColor, setColor);
+            DriveEffects.instance.StartEffects();
 
-            AddEffects();
+            gameObject.SetActive(true);
         }
+
         private void DestroyVehicle(bool disable = true)
         {
-            RemoveEffects();
+            DriveEffects.instance.StopEffects();
+
             foreach (Wheel w in m_wheelObjects)
             {
-                if (w.skidTrail)
-                {
-                    m_tireTrails.Enqueue(w.skidTrail);
-                    w.skidTrail = null;
-                }
                 Object.DestroyImmediate(w.gameObject);
             }
             m_wheelObjects.Clear();
@@ -1131,13 +908,10 @@ namespace DriveIt
             m_vehicleInfo = null;
             m_prevPosition = Vector3.zero;
             m_prevVelocity = Vector3.zero;
+            m_prevPrevVelocity = Vector3.zero;
             m_tangent = Vector3.zero;
             m_binormal = Vector3.zero;
             m_normal = Vector3.zero;
-            m_lightState = Vector4.zero;
-            m_isSirenEnabled = false;
-            m_isLightEnabled = false;
-            m_isDusty = false;
             m_isTurning = false;
             m_isConstrainedX = false;
             m_isConstrainedZ = false;
@@ -1156,277 +930,6 @@ namespace DriveIt
             m_radpsTrans = 0.0f;
             m_tilt = 0.0f;
         }
-
-        private void OverridePrefabs()
-        {
-            // override the underground material for all vehicles.
-            for (uint prefabIndex = 0; prefabIndex < PrefabCollection<VehicleInfo>.PrefabCount(); prefabIndex++)
-            {
-                VehicleInfo prefabVehicleInfo = PrefabCollection<VehicleInfo>.GetPrefab(prefabIndex);
-                if (prefabVehicleInfo == null) continue;
-                prefabVehicleInfo.m_undergroundMaterial = prefabVehicleInfo.m_material;
-                prefabVehicleInfo.m_undergroundLodMaterial = prefabVehicleInfo.m_lodMaterialCombined;
-                foreach (VehicleInfo.MeshInfo submesh in prefabVehicleInfo.m_subMeshes)
-                {
-                    if (submesh.m_subInfo)
-                    {
-                        VehicleInfoSub subVehicleInfo = (VehicleInfoSub)submesh.m_subInfo;
-                        subVehicleInfo.m_undergroundMaterial = subVehicleInfo.m_material;
-                        subVehicleInfo.m_undergroundLodMaterial = subVehicleInfo.m_lodMaterialCombined;
-                    }
-                }
-            }
-
-            int prefabCount = PrefabCollection<NetInfo>.PrefabCount();
-
-            // only modify prefabs with MetroTunnels item layer or underground render layer.
-            for (uint prefabIndex = 0; prefabIndex < prefabCount; prefabIndex++)
-            {
-                NetInfo prefabNetInfo = PrefabCollection<NetInfo>.GetPrefab(prefabIndex);
-                if (prefabNetInfo == null) continue;
-                NetInfo prefabReplaceInfo = prefabNetInfo;
-                bool bHasUnderground = false;
-                bool bForceUnderground = false;
-
-                for (int index = 0; index < prefabReplaceInfo.m_segments.Length; index++)
-                {
-                    bHasUnderground |= prefabReplaceInfo.m_segments[index].m_layer == MapUtils.LAYER_UNDERGROUND;
-                }
-
-                for (int index = 0; index < prefabReplaceInfo.m_nodes.Length; index++)
-                {
-                    bHasUnderground |= prefabReplaceInfo.m_nodes[index].m_layer == MapUtils.LAYER_UNDERGROUND;
-                }
-
-                if (prefabNetInfo.m_class.m_layer == ItemClass.Layer.MetroTunnels)
-                {
-                    bool bCanReplace = true;
-
-                    foreach (NetInfo.Segment s in prefabNetInfo.m_segments)
-                    {
-                        if (s.m_material && (!s.m_material.shader || s.m_material.shader.name != "Custom/Net/Metro"))
-                        {
-                            bCanReplace = false;
-                        }
-                    }
-
-                    // replace the prefab with elevated variant if no visible meshes are found.
-                    if (bCanReplace)
-                    {
-                        string replaceName = "";
-                    
-                        // get underground to elvated mapping.
-                        if (!m_customUndergroundMappings.TryGetValue(prefabNetInfo.name, out replaceName))
-                        {
-                            replaceName = prefabNetInfo.name.Replace(" Tunnel", " Elevated");
-                        }
-
-                        // find the elevated counterpart prefab to be used as a reference.
-                        for (uint otherPrefabIndex = 0; otherPrefabIndex < prefabCount; otherPrefabIndex++)
-                        {
-                            NetInfo tmpInfo = PrefabCollection<NetInfo>.GetPrefab(otherPrefabIndex);
-                            if (tmpInfo.m_class.m_layer == ItemClass.Layer.Default && tmpInfo.name == replaceName)
-                            {
-                                prefabReplaceInfo = tmpInfo;
-                                bForceUnderground = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                
-                if (bHasUnderground)
-                {
-                    m_backupPrefabData[prefabNetInfo] = new NetInfoBackup(prefabNetInfo.m_nodes, prefabNetInfo.m_segments);
-                    NetInfo.Segment[] segments = new NetInfo.Segment[prefabReplaceInfo.m_segments.Length];
-                    NetInfo.Node[] nodes = new NetInfo.Node[prefabReplaceInfo.m_nodes.Length];
-
-                    for (int index = 0; index < prefabReplaceInfo.m_segments.Length; index++)
-                    {
-                        NetInfo.Segment newSegment = CopySegment(prefabReplaceInfo.m_segments[index]);
-
-                        if (newSegment.m_layer == MapUtils.LAYER_UNDERGROUND)
-                        {
-                            // disable segment underground xray component from rendering.
-                            if (newSegment.m_material && newSegment.m_material.shader && newSegment.m_material.shader.name == "Custom/Net/Metro")
-                            {
-                                newSegment.m_forwardForbidden = NetSegment.Flags.All;
-                                newSegment.m_forwardRequired = NetSegment.Flags.None;
-                                newSegment.m_backwardForbidden = NetSegment.Flags.All;
-                                newSegment.m_backwardRequired = NetSegment.Flags.None;
-                            }
-                        }
-                        // apply underground layer if the segment is being replaced from an overground component.
-                        else if (bForceUnderground)
-                        {
-                            newSegment.m_layer = MapUtils.LAYER_UNDERGROUND;
-                        }
-
-                        segments[index] = newSegment;
-                    }
-
-                    for (int index = 0; index < prefabReplaceInfo.m_nodes.Length; index++)
-                    {
-                        NetInfo.Node newNode = CopyNode(prefabReplaceInfo.m_nodes[index]);
-
-                        if (newNode.m_layer == MapUtils.LAYER_UNDERGROUND)
-                        {
-                            // disable node underground xray component from rendering.
-                            if (newNode.m_material && newNode.m_material.shader && newNode.m_material.shader.name == "Custom/Net/Metro")
-                            {
-                                newNode.m_flagsForbidden = NetNode.Flags.All;
-                                newNode.m_flagsRequired = NetNode.Flags.None;
-                            }
-                        }
-                        // apply underground layer if the node is being replaced from an overground component.
-                        else if (bForceUnderground)
-                        {
-                            newNode.m_layer = MapUtils.LAYER_UNDERGROUND;
-                        }
-                        
-                        newNode.m_flagsForbidden = newNode.m_flagsForbidden & ~NetNode.Flags.Underground;
-
-                        nodes[index] = newNode;
-                    }
-
-                    prefabNetInfo.m_segments = segments;
-                    prefabNetInfo.m_nodes = nodes;
-                }
-            }
-
-            // replace the distant LOD material for underground and update LOD render groups.
-            RenderManager rm = Singleton<RenderManager>.instance;
-            rm.m_groupLayerMaterials[MapUtils.LAYER_UNDERGROUND] = m_renderMaterial;
-            rm.UpdateGroups(MapUtils.LAYER_UNDERGROUND);
-        }
-
-        private void RestorePrefabs()
-        {
-            // delete all underground vehicle materials. Cities will auto generate new ones.
-            for (uint iter = 0; iter < PrefabCollection<VehicleInfo>.PrefabCount(); iter++)
-            {
-                VehicleInfo prefabVehicleInfo = PrefabCollection<VehicleInfo>.GetPrefab(iter);
-                if (prefabVehicleInfo == null) continue;
-                prefabVehicleInfo.m_undergroundMaterial = null;
-                prefabVehicleInfo.m_undergroundLodMaterial = null;
-                foreach (VehicleInfo.MeshInfo submesh in prefabVehicleInfo.m_subMeshes)
-                {
-                    if (submesh.m_subInfo)
-                    {
-                        VehicleInfoSub subVehicleInfo = (VehicleInfoSub)submesh.m_subInfo;
-                        subVehicleInfo.m_undergroundMaterial = null;
-                        subVehicleInfo.m_undergroundLodMaterial = null;
-                    }
-                }
-            }
-
-            // restore road prefab segment and node data to before driving.
-            int prefabCount = PrefabCollection<NetInfo>.PrefabCount();
-            for (uint prefabIndex = 0; prefabIndex < prefabCount; prefabIndex++)
-            {
-                NetInfo prefabNetInfo = PrefabCollection<NetInfo>.GetPrefab(prefabIndex);
-                if (prefabNetInfo == null) continue;
-
-                if (m_backupPrefabData.ContainsKey(prefabNetInfo))
-                {
-                    if (m_backupPrefabData.TryGetValue(prefabNetInfo, out NetInfoBackup backupData))
-                    {
-                        prefabNetInfo.m_segments = backupData.segments;
-                        prefabNetInfo.m_nodes = backupData.nodes;
-
-                        m_backupPrefabData.Remove(prefabNetInfo);
-                    }
-                }
-            }
-
-            m_backupPrefabData.Clear();
-
-            // restore the distant LOD material for underground and update LOD render groups.
-            RenderManager rm = Singleton<RenderManager>.instance;
-            rm.m_groupLayerMaterials[MapUtils.LAYER_UNDERGROUND] = m_backupUndergroundMaterial;
-            rm.UpdateGroups(MapUtils.LAYER_UNDERGROUND);
-        }
-
-        private static NetInfo.Node CopyNode(NetInfo.Node node)
-        {
-            NetInfo.Node retval = new NetInfo.Node();
-            retval.m_mesh = node.m_mesh;
-            retval.m_lodMesh = node.m_lodMesh;
-            retval.m_material = node.m_material;
-            retval.m_lodMaterial = node.m_lodMaterial;
-            retval.m_flagsRequired = node.m_flagsRequired;
-            retval.m_flagsRequired2 = node.m_flagsRequired2;
-            retval.m_flagsForbidden = node.m_flagsForbidden;
-            retval.m_flagsForbidden2 = node.m_flagsForbidden2;
-            retval.m_connectGroup = node.m_connectGroup;
-            retval.m_directConnect = node.m_directConnect;
-            retval.m_emptyTransparent = node.m_emptyTransparent;
-            retval.m_tagsRequired = node.m_tagsRequired;
-            retval.m_nodeTagsRequired = node.m_nodeTagsRequired;
-            retval.m_tagsForbidden = node.m_tagsForbidden;
-            retval.m_nodeTagsForbidden = node.m_nodeTagsForbidden;
-            retval.m_forbidAnyTags = node.m_forbidAnyTags;
-            retval.m_minSameTags = node.m_minSameTags;
-            retval.m_maxSameTags = node.m_maxSameTags;
-            retval.m_minOtherTags = node.m_minOtherTags;
-            retval.m_maxOtherTags = node.m_maxOtherTags;
-            retval.m_nodeMesh = node.m_nodeMesh;
-            retval.m_nodeMaterial = node.m_nodeMaterial;
-            retval.m_combinedLod = node.m_combinedLod;
-            retval.m_lodRenderDistance = node.m_lodRenderDistance;
-            retval.m_requireSurfaceMaps = node.m_requireSurfaceMaps;
-            retval.m_requireWindSpeed = node.m_requireWindSpeed;
-            retval.m_preserveUVs = node.m_preserveUVs;
-            retval.m_generateTangents = node.m_generateTangents;
-            retval.m_layer = node.m_layer;
-
-            return retval;
-        }
-
-        private static NetInfo.Segment CopySegment(NetInfo.Segment segment)
-        {
-            NetInfo.Segment retval = new NetInfo.Segment();
-            retval.m_mesh = segment.m_mesh;
-            retval.m_lodMesh = segment.m_lodMesh;
-            retval.m_material = segment.m_material;
-            retval.m_lodMaterial = segment.m_lodMaterial;
-            retval.m_forwardRequired = segment.m_forwardRequired;
-            retval.m_forwardForbidden = segment.m_forwardForbidden;
-            retval.m_backwardRequired = segment.m_backwardRequired;
-            retval.m_backwardForbidden = segment.m_backwardForbidden;
-            retval.m_emptyTransparent = segment.m_emptyTransparent;
-            retval.m_disableBendNodes = segment.m_disableBendNodes;
-            retval.m_segmentMesh = segment.m_segmentMesh;
-            retval.m_segmentMaterial = segment.m_segmentMaterial;
-            retval.m_combinedLod = segment.m_combinedLod;
-            retval.m_lodRenderDistance = segment.m_lodRenderDistance;
-            retval.m_requireSurfaceMaps = segment.m_requireSurfaceMaps;
-            retval.m_requireHeightMap = segment.m_requireHeightMap;
-            retval.m_requireWindSpeed = segment.m_requireWindSpeed;
-            retval.m_preserveUVs = segment.m_preserveUVs;
-            retval.m_generateTangents = segment.m_generateTangents;
-            retval.m_layer = segment.m_layer;
-
-            return retval;
-        }
-
-        // there are problems with replacing LodValue. It needs to be registered with NodeManager and/or RenderManager or there will be null reference errors.
-        //private static NetInfo.LodValue CopyLodValue(NetInfo.LodValue value)
-        //{
-        //    NetInfo.LodValue retval = new NetInfo.LodValue();
-        //    retval.m_key = value.m_key;
-        //    retval.m_material = value.m_material;
-        //    retval.m_lodMin = value.m_lodMin;
-        //    retval.m_lodMax = value.m_lodMax;
-        //    retval.m_surfaceTexA = value.m_surfaceTexA;
-        //    retval.m_surfaceTexB = value.m_surfaceTexB;
-        //    retval.m_surfaceMapping = value.m_surfaceMapping;
-        //    retval.m_heightMap = value.m_heightMap;
-        //    retval.m_heightMapping = value.m_heightMapping;
-
-        //    return retval;
-        //}
 
         private void HandleInputOnFixedUpdate(int invert)
         {
@@ -1543,12 +1046,6 @@ namespace DriveIt
 
         private void HandleInputOnUpdate()
         {
-            if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyLightToggle.Key))
-                m_isLightEnabled = !m_isLightEnabled;
-
-            if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeySirenToggle.Key))
-                m_isSirenEnabled = !m_isSirenEnabled;
-
             if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyResetVehicle.Key) && m_lastReset + RESET_FREQ < Time.time)
             {
                 Quaternion rot = Quaternion.LookRotation(m_vehicleRigidBody.transform.TransformDirection(Vector3.forward));
@@ -1567,130 +1064,6 @@ namespace DriveIt
                 m_gear -= 1;
                 m_nextGearChange = Time.time + GEAR_RESP;
             }
-        }
-        private void AddEffects()
-        {
-            if (m_vehicleInfo.m_effects != null)
-            {
-                foreach (var effect in m_vehicleInfo.m_effects)
-                {
-                    {
-                        if (effect.m_effect != null)
-                        {
-                            if (effect.m_vehicleFlagsRequired.IsFlagSet(Vehicle.Flags.Emergency1 | Vehicle.Flags.Emergency2))
-                                m_specialEffects.Add(effect.m_effect);
-                            else if (effect.m_vehicleFlagsRequired.IsFlagSet(Vehicle.Flags.OnGravel))
-                                {
-                                m_dustEffects.Add(effect.m_effect);
-                            }
-                            else if (effect.m_effect is EngineSoundEffect esEffect0)
-                            {
-                                m_engineSoundEffects.Add(esEffect0);
-                            }
-                            else if (effect.m_effect is MultiEffect multiEffect)
-                            {
-                                foreach (var sub in multiEffect.m_effects)
-                                {
-                                    if (sub.m_effect is LightEffect lightEffect)
-                                    {
-                                        m_lightEffects.Add(lightEffect);
-                                    }
-                                    else if (sub.m_effect is EngineSoundEffect esEffect1)
-                                    {
-                                        m_engineSoundEffects.Add(esEffect1);
-                                    }
-                                    else
-                                    {
-                                        m_regularEffects.Add(effect.m_effect);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                m_regularEffects.Add(effect.m_effect);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        private void PlayEffects()
-        {
-            var position = m_vehicleRigidBody.transform.position;
-            var rotation = m_vehicleRigidBody.transform.rotation;
-            var velocity = m_vehicleRigidBody.velocity;
-            var acceleration = ((velocity - m_prevVelocity) / Time.fixedDeltaTime).magnitude;
-            var swayPosition = Vector3.zero;
-            var scale = Vector3.one;
-            var matrix = m_vehicleInfo.m_vehicleAI.CalculateBodyMatrix(Vehicle.Flags.Created | Vehicle.Flags.Spawned, ref position, ref rotation, ref scale, ref swayPosition);
-            var area = new EffectInfo.SpawnArea(matrix, m_vehicleInfo.m_lodMeshData);
-            var listenerInfo = Singleton<AudioManager>.instance.CurrentListenerInfo;
-            var audioGroup = Singleton<AudioManager>.instance.DefaultGroup;
-            var audioGroupLow = Singleton<VehicleManager>.instance.m_audioGroup;
-            RenderGroup.MeshData effectMeshData = m_vehicleInfo.m_vehicleAI.GetEffectMeshData();
-            var area2 = new EffectInfo.SpawnArea(matrix, effectMeshData, m_vehicleInfo.m_generatedInfo.m_tyres, m_vehicleInfo.m_lightPositions);
-
-            foreach (var regularEffect in m_regularEffects)
-            {
-                regularEffect.PlayEffect(default, area, velocity, acceleration, 1f, listenerInfo, audioGroup);
-            }
-            foreach (var engineEffect in m_engineSoundEffects)
-            {
-                engineEffect.PlayEffect(default, area, ENGINE_PITCH * m_radps * Vector3.up, 0.0f, 4.0f * (0.75f + 0.125f * m_radps / ENGINE_PEAK_RPS + 0.125f * Mathf.Max(m_throttle, Mathf.Clamp01(m_radps - m_prevRadps))), listenerInfo, audioGroup);
-            }
-            foreach(Wheel w in m_wheelObjects)
-            {
-                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && w.slip >= GRIP_OPTIM_SLIP)
-                {
-                    EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
-                    DriveCommon.s_driveSoundTireSqueal.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, DriveCommon.SND_RANGE, w.slip - GRIP_OPTIM_SLIP, 0.9f + 0.2f * w.slip);
-                }
-                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.ROAD && Mathf.Abs(w.radps) > 10.0f)
-                {
-                    EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
-                    float wheelSpeed = Mathf.Abs(w.radps) * w.radius;
-                    DriveCommon.s_driveSoundTirePavement.PlaySound(default, listenerInfo, audioGroupLow, w.contactPoint, m_vehicleRigidBody.velocity, DriveCommon.SND_RANGE, Mathf.Clamp01(wheelSpeed * 0.005f) * (1.0f - w.slip), 1.0f + wheelSpeed * 0.002f);
-                }
-                if (w.onGround && w.groundType == MapUtils.COLLISION_TYPE.GROUND && Mathf.Abs(w.radps) > 0.0f)
-                {
-                    EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
-                    float wheelSpeed = Mathf.Abs(w.radps) * w.radius;
-                    DriveCommon.s_driveSoundTireGravel.PlaySound(default, listenerInfo, audioGroup, w.contactPoint, m_vehicleRigidBody.velocity, DriveCommon.SND_RANGE, 1.5f * (0.6f * w.slip + 0.4f * Mathf.Clamp01(wheelSpeed * 0.1f)), 0.75f + wheelSpeed * 0.002f);
-                }
-            }
-
-            if (m_isLightEnabled)
-            {
-                foreach (var light in m_lightEffects)
-                {
-                    light.RenderEffect(default, area2, velocity, acceleration, 1f, -1f, Singleton<SimulationManager>.instance.m_simulationTimeDelta, Singleton<RenderManager>.instance.CurrentCameraInfo);
-                }
-            }
-
-            if (m_isSirenEnabled)
-            {
-                foreach (var specialEffect in m_specialEffects)
-                {
-                    specialEffect.RenderEffect(default, area2, velocity, acceleration, 1f, -1f, Singleton<SimulationManager>.instance.m_simulationTimeDelta, Singleton<RenderManager>.instance.CurrentCameraInfo);
-                    specialEffect.PlayEffect(default, area, velocity, acceleration, 1f, listenerInfo, audioGroup);
-                }
-            }
-            if (m_isDusty)
-            {
-                foreach (var dustEffect in m_dustEffects)
-                {
-                    dustEffect.RenderEffect(default, area2, velocity, acceleration, 1f, -1f, Singleton<SimulationManager>.instance.m_simulationTimeDelta, Singleton<RenderManager>.instance.CurrentCameraInfo);
-                }
-            }
-        }
-
-        private void RemoveEffects()
-        {
-            m_lightEffects.Clear();
-            m_engineSoundEffects.Clear();
-            m_regularEffects.Clear();
-            m_dustEffects.Clear();
-            m_specialEffects.Clear();
         }
     }
 }
