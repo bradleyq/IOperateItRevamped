@@ -79,7 +79,7 @@ namespace DriveIt
             brakingABS_CheckBox.eventCheckChanged += (_, isChecked) => ModSettings.BrakingABS = isChecked;
             currentY += brakingABS_CheckBox.height + Margin;
 
-            var TCS_Dropdown = UIDropDowns.AddLabelledDropDown(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL));
+            var TCS_Dropdown = UIDropDowns.AddLabelledDropDown(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL), 300, 30, labelTextScale:1.1f, itemTextScale:1.0f, itemHeight:30);
             TCS_Dropdown.AddItem(Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_FULL));
             TCS_Dropdown.AddItem(Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_SPORT));
             TCS_Dropdown.AddItem(Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_TRACK));

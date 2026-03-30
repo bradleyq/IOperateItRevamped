@@ -68,8 +68,15 @@ namespace DriveIt.Utils
         #endregion
 
         #region DriveIt General Constants
-        public const float ROAD_WALL_HEIGHT = 0.75f;    // per tick height delta before the slope is considered a wall
-        public const float ROAD_THICKNESS = 1.5f;       // height delta below road surface to be considered still part of the road
+        public const float ROAD_WALL_HEIGHT = 0.75f;            // per tick height delta before the slope is considered a wall
+        public const float ROAD_THICKNESS = 1.5f;               // height delta below road surface to be considered still part of the road
+        public const float FLOAT_ERROR = 0.01f;                 // a small float value
+        public const float MS_TO_KMPH = 3.6f;                   // m/s to km/h
+        //public const float UNIT_TO_M = 25.0f / 54.0f;           // unity unit to m
+        //public const float M_TO_UNIT = 54.0f / 25.0f;           // m to unity unit
+        //public const float UNIT_TO_MPH = UNIT_TO_M * 2.23694f;  // unity unit to mph
+        public const float KN_TO_N = 1000f;                     // KN to N
+        public const float KW_TO_W = 1000f;                     // KW to W
 
         public enum TRACTIONCTL_LEVEL
         {
