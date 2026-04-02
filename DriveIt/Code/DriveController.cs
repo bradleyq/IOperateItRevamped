@@ -27,8 +27,8 @@ namespace DriveIt
         private const float DRAG_FACTOR = 0.25f;
         private const float DRAG_DRIVETRAIN = 0.15f;
         private const float DRAG_FREEZE = 0.9f;
-        private const float DRAG_WHEEL_POWERED = 0.05f;
-        private const float DRAG_WHEEL = 0.01f;
+        private const float DRAG_WHEEL_POWERED = 0.25f;
+        private const float DRAG_WHEEL = 0.15f;
         private const float MOMENT_WHEEL = 1.5f;
         private const float VALID_INCLINE = 0.5f;
         private const float GRIP_HIGH_SLIP = 0.5f;
@@ -638,7 +638,6 @@ namespace DriveIt
 
             foreach (Wheel w in m_wheelObjects)
             {
-                // apply angular friction from previous tick. 
                 if (w.isSteerable)
                 {
                     w.gameObject.transform.localRotation = Quaternion.Euler(0, (w.isInvertedSteer ? -1.0f : 1.0f) * STEER_MAX * m_steer, 0);
@@ -652,7 +651,14 @@ namespace DriveIt
                 {
                     Vector3 prelimContactVel = m_vehicleRigidBody.GetPointVelocity(w.contactPoint);
                     float radDelta = Vector3.Dot(prelimContactVel, w.tangent) / w.wheelRadius - w.radps;
-                    w.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), w.normalImpulse * w.wheelRadius * w.frictionCoeffZ / w.wheelMoment);
+                    //if (w.radps < 1.0f && m_brake > 0.5f)
+                    //{
+                    //    w.radps = 0.0f;
+                    //}
+                    //else
+                    {
+                        w.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), w.normalImpulse * w.wheelRadius * w.frictionCoeffZ / w.wheelMoment);
+                    }
                 }
 
                 // calculate fist pass normal impulses. Update wheel suspension position.
