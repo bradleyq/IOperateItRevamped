@@ -66,13 +66,18 @@ namespace DriveIt
             public static int wheelCount { get => wheels; }
             public static int frontCount { get => fronts; }
             public static int rearCount { get => wheels - fronts; }
+            public static int rightCount { get => rights; }
+            public static int leftCount { get => wheels - rights; }
 
             private static int wheels = 0;
             private static int fronts = 0;
+            private static int rights = 0;
 
             public bool isOnGround { get => onGround; }
             public MapUtils.COLLISION_TYPE wheelGroundType { get => groundType; }
             public Vector3 wheelGroundNormal { get => normal; }
+            public Vector3 wheelGroundTangent { get => tangent; }
+            public Vector3 wheelGroundBinormal { get => binormal; }
             public Vector3 wheelContactPoint { get => contactPoint; }
             public Vector3 wheelContactVelocity { get => contactVelocity; }
             public float wheelSlip { get => slip; }
@@ -86,6 +91,7 @@ namespace DriveIt
             public bool isSteerable { get => steerable; }
             public bool isInvertedSteer { get => inverted; }
             public bool isFront { get => front; }
+            public bool isRight { get => right; }
 
             internal Vector3 tangent;
             internal Vector3 binormal;
@@ -114,6 +120,7 @@ namespace DriveIt
             private bool steerable;
             private bool inverted;
             private bool front;
+            private bool right;
             private bool registered;
             public static Wheel InstanceWheel(Transform parent, Vector3 localpos, float moment, float radius, bool isPowered = true, float torque = 0.0f, float brakeForce = 0.0f, bool isSteerable = false, bool isInvertedSteer = false)
             {
@@ -146,6 +153,7 @@ namespace DriveIt
                 w.steerable = isSteerable;
                 w.inverted = isInvertedSteer;
                 w.front = localpos.z > 0.0f;
+                w.right = localpos.x > 0.0f;
                 w.registered = false;
 
                 w.Register();
@@ -190,6 +198,10 @@ namespace DriveIt
                     {
                         fronts++;
                     }
+                    if (isRight)
+                    {
+                        rights++;
+                    }
                     registered = true;
                 }
             }
@@ -203,6 +215,10 @@ namespace DriveIt
                     if (isFront)
                     {
                         fronts--;
+                    }
+                    if (isRight)
+                    {
+                        rights--;
                     }
                     registered = false;
                 }
@@ -258,7 +274,8 @@ namespace DriveIt
         public float rpm { get => m_radps * DriveCommon.RPS_TO_RPM; }
         public float radps { get => m_radps; }
         public float angularAcceleration { get => (m_radps - m_prevRadps) / Time.fixedDeltaTime; }
-
+        public bool inlineWheels { get => m_isConstrainedZ; }
+        public bool parallelWheels {  get => m_isConstrainedX; }
         public List<Wheel> wheels { get => m_wheelObjects; }
 
         public bool OnEsc()

@@ -50,13 +50,9 @@ namespace DriveIt.Utils
 
                 m_mainCamera = Singleton<RenderManager>.instance.CurrentCameraInfo.m_camera;
 
-                string path = Path.Combine(AssemblyUtils.AssemblyPath, "Resources/Shaders/wireframeshader.asset");
-                WWW www = new WWW(new Uri(path).AbsoluteUri);
-                AssetBundle shaderBundle = www.assetBundle;
-                Shader s = shaderBundle.LoadAsset<Shader>("Wireframe");
-                if (s != null)
+                if (DriveCommon.s_driveWireframeShader != null)
                 {
-                    m_debugMaterialWire = new Material(s);
+                    m_debugMaterialWire = new Material(DriveCommon.s_driveWireframeShader);
                 }
 
                 m_debugMaterialBlock = new MaterialPropertyBlock();

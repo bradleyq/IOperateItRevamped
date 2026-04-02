@@ -20,7 +20,8 @@ namespace DriveIt
         private const float UI_SIZE = 1.0f / 4.0f;
         private const float UI_OFFSET = 1.0f / 12.0f;
         private const float UI_FILL = 1.0f;
-        private const int TIRE_TRAIL_POOL = 96;
+        private const int TIRE_TRAIL_POOL = 64;
+        private const float TIRE_TRAIL_END_DELAY = 0.1f;
         private static readonly Color UI_BG_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
         private static readonly Color UI_FG_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
 
@@ -56,7 +57,9 @@ namespace DriveIt
         private Material m_basicRenderMaterial = null;
 
         private Queue<TrailRenderer> m_tireTrails = new Queue<TrailRenderer>();
-        private Dictionary<DriveController.Wheel, TrailRenderer> m_usedTireTrails = new Dictionary<DriveController.Wheel, TrailRenderer>();
+        private List<TrailRenderer> m_usedTireTrails = new List<TrailRenderer>();
+        private List<float> m_usedTireTrailStopTime = new List<float>();
+
         private List<LightEffect> m_lightEffects = new List<LightEffect>();
         private List<EngineSoundEffect> m_engineSoundEffects = new List<EngineSoundEffect>();
         private List<EffectInfo> m_regularEffects = new List<EffectInfo>();
@@ -67,10 +70,14 @@ namespace DriveIt
         private Dictionary<NetInfo, NetInfoBackup> m_backupPrefabData = new Dictionary<NetInfo, NetInfoBackup>();
 
         private Vector4 m_lightState;
-        private bool m_isSirenEnabled = false;
-        private bool m_isLightEnabled = false;
-        private bool m_isDusty = false;
-        private bool m_vehicleColorSet = false;
+        private bool m_isSirenEnabled;
+        private bool m_isLightEnabled;
+        private bool m_isDusty;
+        private bool m_vehicleColorSet;
+        private float m_spCompression;
+        private Vector3 m_spTangent;
+        private Vector3 m_spBinormal;
+        private Vector3 m_spNormal;
         private void Awake()
         {
             if (instance)
@@ -201,19 +208,14 @@ namespace DriveIt
                 m_taillight.enabled = false;
             }
 
-            float avgCompression = 0.0f;
-            foreach (DriveController.Wheel w in s_controller.wheels)
-            {
-                avgCompression += w.wheelCompression;
-            }
-            avgCompression = ModSettings.SpringOffset + avgCompression / DriveController.Wheel.wheelCount;
-            materialBlock.SetMatrix(Singleton<VehicleManager>.instance.ID_TyreMatrix, Matrix4x4.TRS(new Vector3(0.0f, Mathf.Clamp(avgCompression, ModSettings.SpringOffset, 0.0f), 0.0f), Quaternion.identity, Vector3.one));
+            materialBlock.SetMatrix(Singleton<VehicleManager>.instance.ID_TyreMatrix, 
+                Matrix4x4.TRS(Mathf.Max(m_spCompression + ModSettings.SpringOffset, ModSettings.SpringOffset) * Vector3.up, Quaternion.LookRotation(m_spTangent, m_spNormal), Vector3.one));
 
             m_visualObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
         }
         private void FixedUpdate()
         {
-            WheelEffects();
+            UpdateWheelEffects();
         }
 
         private void LateUpdate()
@@ -257,34 +259,93 @@ namespace DriveIt
             }
         }
 
-        private void WheelEffects()
+        private void UpdateWheelEffects()
         {
-            foreach (DriveController.Wheel w in s_controller.wheels)
+            int dustyCount = 0;
+            Vector3 frontSum = Vector3.zero;
+            Vector3 rearSum = Vector3.zero;
+            Vector3 rightSum = Vector3.zero;
+            Vector3 leftSum = Vector3.zero;
+            
+            for (int i = 0; i < DriveController.Wheel.wheelCount; i++)
             {
+                DriveController.Wheel w = s_controller.wheels[i];
+                TrailRenderer trail = m_usedTireTrails[i];
+                bool trailFound = trail;
+
                 if (w.isOnGround && w.wheelGroundType == MapUtils.COLLISION_TYPE.ROAD && w.wheelHighSlip > 0.0f)
                 {
-                    TrailRenderer trail = m_usedTireTrails.ContainsKey(w) ? m_usedTireTrails[w] : null;
+                    m_usedTireTrailStopTime[i] = Time.time + TIRE_TRAIL_END_DELAY;
+                }
 
-                    if (!trail)
+                if (w.isOnGround && w.wheelGroundType == MapUtils.COLLISION_TYPE.GROUND)
+                {
+                    dustyCount += 1;
+                }
+
+                if (m_usedTireTrailStopTime[i] > Time.time)
+                {
+                    if (!trailFound)
                     {
                         trail = m_tireTrails.Dequeue();
-                        trail.transform.position = w.wheelContactPoint;
-                        trail.transform.rotation = Quaternion.LookRotation(w.wheelGroundNormal);
                         trail.widthMultiplier = w.wheelRadius * 0.75f;
-                        trail.Clear();
-                        trail.enabled = true;
-                        m_usedTireTrails[w] = trail;
+                        m_usedTireTrails[i] = trail;
                     }
 
-                    trail.gameObject.transform.position = w.wheelContactPoint + +0.01f * w.wheelGroundNormal;
+                    trail.gameObject.transform.position = w.wheelContactPoint + 0.01f * w.wheelGroundNormal;
                     trail.gameObject.transform.rotation = Quaternion.LookRotation(-w.wheelGroundNormal);
+
+                    if (!trailFound)
+                    {
+                        trail.Clear();
+                    }
                 }
-                else if (m_usedTireTrails.ContainsKey(w))
+                else if (trailFound)
                 {
-                    m_tireTrails.Enqueue(m_usedTireTrails[w]);
-                    m_usedTireTrails.Remove(w);
+                    m_tireTrails.Enqueue(trail);
+                    m_usedTireTrails[i] = null;
+                }
+
+                Vector3 localPos = w.transform.localPosition;
+                localPos.y -= w.wheelOrigin.y;
+                if (w.isFront)
+                {
+                    frontSum += localPos;
+                }
+                else
+                {
+                    rearSum += localPos;
+                }
+                if (w.isRight)
+                {
+                    rightSum += localPos;
+                }
+                else
+                {
+                    leftSum += localPos;
                 }
             }
+
+            m_spBinormal = Vector3.right;
+            m_spTangent = Vector3.forward;
+            m_spCompression = ((frontSum + rearSum) / DriveController.Wheel.wheelCount).y;
+
+            if (!s_controller.inlineWheels)
+            {
+                m_spBinormal = Vector3.Normalize(rightSum / DriveController.Wheel.rightCount - leftSum / DriveController.Wheel.leftCount);
+            }
+            if (!s_controller.parallelWheels)
+            {
+                Vector3 frontAvg = frontSum / DriveController.Wheel.frontCount;
+                Vector3 rearAvg = rearSum / DriveController.Wheel.rearCount;
+                float wblength = Mathf.Abs(frontAvg.z - rearAvg.z);
+                m_spTangent = Vector3.Normalize(frontAvg - rearAvg);
+                m_spCompression = frontAvg.y * Mathf.Abs(rearAvg.z) / wblength + rearAvg.y * Mathf.Abs(frontAvg.z) / wblength;
+            }
+            
+            m_spNormal = Vector3.Normalize(Vector3.Cross(m_spTangent, m_spBinormal));
+
+            m_isDusty = dustyCount >= DriveController.Wheel.wheelCount / 2;
         }
 
         public void UpdateVehicleInfo(VehicleInfo info, Color color, bool setColor = false)
@@ -302,6 +363,13 @@ namespace DriveIt
             this.enabled = true;
             m_vehicleColor.a = 0; // Make sure blinking is not set.
             m_lightState = Vector4.zero;
+            m_isSirenEnabled = false;
+            m_isLightEnabled = false;
+            m_isDusty = false;
+            m_spCompression = 0.0f;
+            m_spTangent = Vector3.forward;
+            m_spBinormal = Vector3.right;
+            m_spNormal = Vector3.up;
             m_vehicleInfo.CalculateGeneratedInfo();
 
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
@@ -322,6 +390,16 @@ namespace DriveIt
 
             m_visualObject.SetActive(true);
 
+            for (int i = 0; i < s_controller.wheels.Count; i++)
+            {
+                m_usedTireTrails.Add(null);
+                m_usedTireTrailStopTime.Add(0.0f);
+            }
+            foreach (TrailRenderer trail in m_tireTrails)
+            {
+                trail.enabled = true;
+            }
+
             OverridePrefabs();
             AddEffects();
         }
@@ -331,12 +409,20 @@ namespace DriveIt
             RemoveEffects();
             RestorePrefabs();
 
-            foreach (TrailRenderer trail in m_usedTireTrails.Values)
+            foreach (TrailRenderer trail in m_usedTireTrails)
             {
-                m_tireTrails.Enqueue(trail);
+                if (trail)
+                {
+                    m_tireTrails.Enqueue(trail);
+                }
+            }
+            m_usedTireTrails.Clear();
+            m_usedTireTrailStopTime.Clear();
+            foreach (TrailRenderer trail in m_tireTrails)
+            {
+                trail.enabled = false;
             }
 
-            m_usedTireTrails.Clear();
             m_visualObject.SetActive(false);
             m_vehicleColorSet = false;
             m_vehicleColor = default;
@@ -345,6 +431,10 @@ namespace DriveIt
             m_isSirenEnabled = false;
             m_isLightEnabled = false;
             m_isDusty = false;
+            m_spCompression = 0.0f;
+            m_spTangent = Vector3.forward;
+            m_spBinormal = Vector3.right;
+            m_spNormal = Vector3.up;
             this.enabled = false;
         }
 

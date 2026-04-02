@@ -116,6 +116,9 @@ namespace DriveIt.Utils
 
         public const float  SND_RANGE                   = 200.0f;
 
+        public const string SHADER_WIREFRAME            = "Shaders/wireframeshader";
+        public const string SHADER_WIREFRAME_ASSET      = "Wireframe";
+
         private static EffectsWrapper s_effectsWrapper;
 
         public static UITextureAtlas s_driveCommonAtlas;
@@ -123,6 +126,7 @@ namespace DriveIt.Utils
         public static SoundEffect s_driveSoundTireSqueal;
         public static SoundEffect s_driveSoundTireGravel;
         public static SoundEffect s_driveSoundTirePavement;
+        public static Shader s_driveWireframeShader;
 
         private static bool bInit = false;
 
@@ -134,41 +138,47 @@ namespace DriveIt.Utils
 
                 s_effectsWrapper = Singleton<EffectManager>.instance.m_EffectsWrapper;
 
-                int index = 0;
-                Texture2D[] textures = new Texture2D[TEX_ATLAS_COUNT];
-                string[] names = new string[TEX_ATLAS_COUNT];
+                {
+                    int index = 0;
+                    Texture2D[] textures = new Texture2D[TEX_ATLAS_COUNT];
+                    string[] names = new string[TEX_ATLAS_COUNT];
 
-                // Loaded custom textures
-                names[index] = TEX_BUTTON_ICON;
-                textures[index++] = DriveCommonLoadTexture(TEX_BUTTON_ICON);
+                    // Loaded custom textures
+                    names[index] = TEX_BUTTON_ICON;
+                    textures[index++] = DriveCommonLoadTexture(TEX_BUTTON_ICON);
 
-                // Existing core game textures
-                names[index] = TEX_BUTTON_BG;
-                textures[index++] = DriveCommonRipTexture(TEX_BUTTON_BG);
+                    // Existing core game textures
+                    names[index] = TEX_BUTTON_BG;
+                    textures[index++] = DriveCommonRipTexture(TEX_BUTTON_BG);
 
-                names[index] = TEX_BUTTON_BG_PRESSED;
-                textures[index++] = DriveCommonRipTexture(TEX_BUTTON_BG_PRESSED);
+                    names[index] = TEX_BUTTON_BG_PRESSED;
+                    textures[index++] = DriveCommonRipTexture(TEX_BUTTON_BG_PRESSED);
 
-                names[index] = TEX_BUTTON_HOVER;
-                textures[index++] = DriveCommonRipTexture(TEX_BUTTON_HOVER);
+                    names[index] = TEX_BUTTON_HOVER;
+                    textures[index++] = DriveCommonRipTexture(TEX_BUTTON_HOVER);
 
-                names[index] = TEX_BUTTON_DISABLE;
-                textures[index++] = DriveCommonRipTexture(TEX_BUTTON_DISABLE);
+                    names[index] = TEX_BUTTON_DISABLE;
+                    textures[index++] = DriveCommonRipTexture(TEX_BUTTON_DISABLE);
 
-                s_driveCommonAtlas = UITextures.CreateSpriteAtlas(MOD_HARMONY_ID + "_Atlas", TEX_ATLAS_SIZE, textures, names);
+                    s_driveCommonAtlas = UITextures.CreateSpriteAtlas(MOD_HARMONY_ID + "_Atlas", TEX_ATLAS_SIZE, textures, names);
+                }
 
                 s_driveTextureGaugeCluster = DriveCommonLoadTexture(TEX_GAUGE_CLUSTER);
 
-                AudioClip clip;
+                {
+                    AudioClip clip;
                 
-                clip = DriveCommonLoadAudioClip(SND_TIRE_SQUEAL);
-                s_driveSoundTireSqueal = DriveCommonSoundEffect(clip, 2.0f, true, true);
+                    clip = DriveCommonLoadAudioClip(SND_TIRE_SQUEAL);
+                    s_driveSoundTireSqueal = DriveCommonSoundEffect(clip, 2.0f, true, true);
 
-                clip = DriveCommonLoadAudioClip(SND_TIRE_GRAVEL);
-                s_driveSoundTireGravel = DriveCommonSoundEffect(clip, 2.0f, true, true);
+                    clip = DriveCommonLoadAudioClip(SND_TIRE_GRAVEL);
+                    s_driveSoundTireGravel = DriveCommonSoundEffect(clip, 2.0f, true, true);
 
-                clip = DriveCommonLoadAudioClip(SND_TIRE_PAVEMENT);
-                s_driveSoundTirePavement = DriveCommonSoundEffect(clip, 2.0f, true, true);
+                    clip = DriveCommonLoadAudioClip(SND_TIRE_PAVEMENT);
+                    s_driveSoundTirePavement = DriveCommonSoundEffect(clip, 2.0f, true, true);
+                }
+
+                s_driveWireframeShader = DriveCommonLoadShader(SHADER_WIREFRAME, SHADER_WIREFRAME_ASSET);
             }
         }
 
@@ -260,6 +270,15 @@ namespace DriveIt.Utils
             path = Path.Combine(path, name + ".ogg");
             WWW www = new WWW(new Uri(path).AbsoluteUri);
             return www.GetAudioClip(true, false);
+        }
+
+        private static Shader DriveCommonLoadShader(string name, string assetName)
+        {
+            string path = Path.Combine(AssemblyUtils.AssemblyPath, "Resources");
+            path = Path.Combine(path, name + ".asset");
+            WWW www = new WWW(new Uri(path).AbsoluteUri);
+            AssetBundle shaderBundle = www.assetBundle;
+            return shaderBundle.LoadAsset<Shader>(assetName);
         }
 
         private static SoundEffect DriveCommonSoundEffect(AudioClip clip, float volume, bool loop, bool random)
