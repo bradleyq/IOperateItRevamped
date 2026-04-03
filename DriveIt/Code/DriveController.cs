@@ -19,6 +19,7 @@ namespace DriveIt
         private const float STEER_REST = 1.75f;
         private const float STEER_TILT_INERTIA = 0.1f;
         private const float STEER_TILT_STRENGTH = 4.5f;
+        private const float STEER_SWAY_BAR_K = 1000.0f;
         private const float GEAR_RESP = 0.2f;
         private const float GEAR_RESP_AUTO = 1.0f;
         private const float PARK_SPEED = 0.25f;
@@ -30,9 +31,12 @@ namespace DriveIt
         private const float DRAG_WHEEL_POWERED = 0.25f;
         private const float DRAG_WHEEL = 0.15f;
         private const float MOMENT_WHEEL = 1.5f;
+        private const float RADIUS_D_WHEEL = 0.2f;
         private const float VALID_INCLINE = 0.5f;
         private const float GRIP_HIGH_SLIP = 0.5f;
         private const float GRIP_OPTIM_SLIP = 0.2f;
+        private const float GRIP_SLIP_SPEED_LOW = 8.0f;
+        private const float GRIP_SLIP_SPEED_HIGH = 40.0f;
         private const float DIFF_LSD_FACTOR_LOW = 0.05f;
         private const float DIFF_LSD_FACTOR_HIGH = 0.25f;
         private const float ENGINE_PEAK_RPS = 900.0f;
@@ -228,6 +232,7 @@ namespace DriveIt
         public static DriveController instance { get; private set; }
 
         private Rigidbody m_vehicleRigidBody;
+        private RigidbodyConstraints m_vehicleConstraints;
         private BoxCollider m_vehicleCollider;
         private Color m_vehicleColor;
         private bool m_setColor;
@@ -245,6 +250,7 @@ namespace DriveIt
         private bool m_isTurning = false;
         private bool m_isConstrainedX = false;
         private bool m_isConstrainedZ = false;
+        private bool m_isFallbackSuspension = false;
 
         private int m_gear = ENGINE_GEAR_NEUTRAL;
         private int m_driveMode = ENGINE_MODE_NEUTRAL;
@@ -276,6 +282,7 @@ namespace DriveIt
         public float angularAcceleration { get => (m_radps - m_prevRadps) / Time.fixedDeltaTime; }
         public bool inlineWheels { get => m_isConstrainedZ; }
         public bool parallelWheels {  get => m_isConstrainedX; }
+        public bool fallbackWheels { get => m_isFallbackSuspension; }
         public List<Wheel> wheels { get => m_wheelObjects; }
 
         public bool OnEsc()
@@ -523,12 +530,6 @@ namespace DriveIt
                             if (w.radps * wheelTorque > 0.0f)
                             {
                                 wheelTorque *= 1.0f - Mathf.Min(w.slip / GRIP_OPTIM_SLIP, 1.0f);
-
-                                //// Prevent gear changes trigged by TCS
-                                //if (ModSettings.AutoTrans)
-                                //{
-                                //    m_prevGearChange = Time.time;
-                                //}
                             }
                         }
                         break;
@@ -617,6 +618,8 @@ namespace DriveIt
 
             m_vehicleRigidBody.AddForce(Vector3.down * (ACCEL_G * m_vehicleRigidBody.mass) - upVec * ModSettings.DownForce * Mathf.Abs(Vector3.Dot(vehicleVel, forwardVec)), ForceMode.Force);
 
+            bool slipping = false;
+
             foreach (Wheel w in m_wheelObjects)
             {
                 // first calculate the heights and tbn at each wheel.
@@ -624,17 +627,21 @@ namespace DriveIt
 
                 w.CalcRoadState();
 
-                if (wheelPos.y + DriveCommon.ROAD_WALL_HEIGHT < w.heightSample.y)
+                slipping |= w.slip > GRIP_HIGH_SLIP;
+            }
+
+            RigidbodyConstraints constraints = m_vehicleConstraints;
+            if (vehicleVel.magnitude < 3.0f && m_throttle == 0.0f && m_brake > 0.0f && !slipping)
+            {
+                Vector3 sideVec = Vector3.Cross(forwardVec, upVec).normalized;
+                m_vehicleRigidBody.velocity = m_vehicleRigidBody.velocity - Vector3.Dot(m_vehicleRigidBody.velocity, sideVec) * sideVec;
+
+                if (vehicleVel.magnitude < PARK_SPEED)
                 {
-                    vehiclePos = m_prevPosition;
-                    vehicleVel = -vehicleVel * 0.1f;
-                    vehicleAngularVel = Vector3.zero;
-                    m_vehicleRigidBody.angularVelocity = vehicleAngularVel;
-                    m_vehicleRigidBody.velocity = vehicleVel;
-                    m_vehicleRigidBody.transform.position = vehiclePos;
-                    return;
+                    constraints = constraints | RigidbodyConstraints.FreezeRotationZ;
                 }
             }
+            m_vehicleRigidBody.constraints = constraints;
 
             foreach (Wheel w in m_wheelObjects)
             {
@@ -651,14 +658,7 @@ namespace DriveIt
                 {
                     Vector3 prelimContactVel = m_vehicleRigidBody.GetPointVelocity(w.contactPoint);
                     float radDelta = Vector3.Dot(prelimContactVel, w.tangent) / w.wheelRadius - w.radps;
-                    //if (w.radps < 1.0f && m_brake > 0.5f)
-                    //{
-                    //    w.radps = 0.0f;
-                    //}
-                    //else
-                    {
-                        w.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), w.normalImpulse * w.wheelRadius * w.frictionCoeffZ / w.wheelMoment);
-                    }
+                    w.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), w.normalImpulse * w.wheelRadius * w.frictionCoeffZ / w.wheelMoment);
                 }
 
                 // calculate fist pass normal impulses. Update wheel suspension position.
@@ -685,7 +685,8 @@ namespace DriveIt
                         w.normalImpulse = (-deltaVel) * m_vehicleRigidBody.mass / Wheel.wheelCount;
                         w.contactPoint = w.gameObject.transform.TransformPoint(new Vector3(0.0f, -w.wheelRadius, 0.0f));
                         w.contactVelocity = m_vehicleRigidBody.GetPointVelocity(w.contactPoint);
-                        w.slip = Mathf.Clamp01(Vector3.Magnitude(w.contactVelocity - (w.radps * w.wheelRadius * w.tangent)) / Mathf.Max(w.contactVelocity.magnitude, 1.0f));
+                        Vector3 flatVel = w.contactVelocity - Vector3.Dot(w.contactVelocity, w.normal) * w.normal;
+                        w.slip = Mathf.Clamp01(Vector3.Magnitude(flatVel - (w.radps * w.wheelRadius * w.tangent)) / Mathf.Clamp(flatVel.magnitude, GRIP_SLIP_SPEED_LOW, GRIP_SLIP_SPEED_HIGH));
 
                         if (w.groundType == MapUtils.COLLISION_TYPE.ROAD)
                         {
@@ -704,6 +705,41 @@ namespace DriveIt
                 {
                     w.compression = 0.0f;
                     w.gameObject.transform.localPosition = w.wheelOrigin;
+                }
+            }
+
+            float frontCompression = 0.0f;
+            float rearCompression = 0.0f;
+            foreach (Wheel w in m_wheelObjects)
+            {
+                if (w.isFront)
+                {
+                    frontCompression += w.compression;
+                }
+                else
+                {
+                    rearCompression += w.compression;
+                }
+            }
+
+            if ( Wheel.frontCount > 0)
+            {
+                frontCompression /= Wheel.frontCount;
+            }
+            if (Wheel.rearCount > 0)
+            {
+                rearCompression /= Wheel.rearCount;
+            }
+
+            foreach (Wheel w in m_wheelObjects)
+            {
+                if (w.isFront)
+                {
+                    w.normalImpulse = Mathf.Max(w.normalImpulse + (w.compression - frontCompression) * STEER_SWAY_BAR_K, 0.0f);
+                }
+                else
+                {
+                    w.normalImpulse += Mathf.Max(w.normalImpulse + (w.compression - rearCompression) * STEER_SWAY_BAR_K, 0.0f);
                 }
             }
 
@@ -806,66 +842,74 @@ namespace DriveIt
             m_brake = 0.0f;
             m_throttle = 0.0f;
             m_nextGearChange = 0.0f;
+            m_isFallbackSuspension = false;
 
             m_vehicleInfo.CalculateGeneratedInfo();
 
-            if (m_vehicleInfo.m_generatedInfo.m_tyres?.Length > 0)
+            Mesh vehicleMesh = m_vehicleInfo.m_mesh;
+            Vector3 fullBounds = vehicleMesh.bounds.size;
+            Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;
+
+            if (m_vehicleInfo.m_generatedInfo.m_tyres?.Length > 0 && (m_vehicleInfo.m_vehicleType == VehicleInfo.VehicleType.Car || m_vehicleInfo.m_vehicleType == VehicleInfo.VehicleType.Bicycle || m_vehicleInfo.m_vehicleType == VehicleInfo.VehicleType.Trolleybus))
             {
                 m_rideHeight = m_vehicleInfo.m_generatedInfo.m_tyres[0].y;
 
                 foreach (Vector4 tirepos in m_vehicleInfo.m_generatedInfo.m_tyres)
                 {
-                    m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(tirepos.x, tirepos.y + ModSettings.SpringOffset, tirepos.z), MOMENT_WHEEL, tirepos.w, true, 0, 0, tirepos.z > 0.0f));
+                    m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(tirepos.x, tirepos.y + ModSettings.SpringOffset, tirepos.z), MOMENT_WHEEL, Mathf.Min(tirepos.w, 1.0f), true, 0, 0, tirepos.z > 0.0f));
                 }
 
                 m_isConstrainedX = Wheel.rearCount == 0 || Wheel.frontCount == 0;
-                m_isConstrainedZ = (Wheel.rearCount <= 1) && (Wheel.frontCount <= 1);
-
-                float frontTorque = 0.0f;
-                float rearTorque = 0.0f;
-                float frontBraking = 0.0f;
-                float rearBraking = 0.0f;
-                if (Wheel.rearCount == 0 && Wheel.frontCount > 0)
-                {
-                    frontTorque = 1.0f / Wheel.frontCount;
-                    frontBraking = Settings.ModSettings.BrakingForce * DriveCommon.KN_TO_N / Wheel.frontCount;
-                }
-                else if (Wheel.frontCount == 0 && Wheel.rearCount > 0)
-                {
-                    rearTorque = 1.0f / Wheel.rearCount;
-                    rearBraking = Settings.ModSettings.BrakingForce * DriveCommon.KN_TO_N / Wheel.rearCount;
-                }
-                else if (Wheel.frontCount > 0 && Wheel.rearCount > 0)
-                {
-                    frontTorque = ModSettings.DriveBias / Wheel.frontCount;
-                    rearTorque = (1.0f - ModSettings.DriveBias) / Wheel.rearCount;
-                    frontBraking = ModSettings.BrakeBias * Settings.ModSettings.BrakingForce * DriveCommon.KN_TO_N / Wheel.frontCount;
-                    rearBraking = (1.0f - ModSettings.BrakeBias) * Settings.ModSettings.BrakingForce * DriveCommon.KN_TO_N / Wheel.rearCount;
-                }
-
-                foreach (Wheel w in m_wheelObjects)
-                {
-                    if (w.isFront)
-                    {
-                        w.torqueFract = frontTorque;
-                        w.brakeForce = frontBraking;
-                    }
-                    else
-                    {
-                        w.torqueFract = rearTorque;
-                        w.brakeForce = rearBraking;
-                    }
-                }
+                m_isConstrainedZ = Wheel.rightCount == 0 || Wheel.leftCount == 0;
             }
             else
             {
-                m_rideHeight = 0;
+                m_rideHeight = 0.0f;
+                m_isFallbackSuspension = true;
+
+                m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(adjustedBounds.x * 0.5f, ModSettings.SpringOffset + RADIUS_D_WHEEL, adjustedBounds.z * 0.5f), MOMENT_WHEEL, RADIUS_D_WHEEL, true, 0, 0, true));
+                m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(-adjustedBounds.x * 0.5f, ModSettings.SpringOffset + RADIUS_D_WHEEL, adjustedBounds.z * 0.5f), MOMENT_WHEEL, RADIUS_D_WHEEL, true, 0, 0, true));
+                m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(0.0f, ModSettings.SpringOffset + RADIUS_D_WHEEL, 0.0f), MOMENT_WHEEL, RADIUS_D_WHEEL, true, 0, 0, false));
+                m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(adjustedBounds.x * 0.5f, ModSettings.SpringOffset + RADIUS_D_WHEEL, -adjustedBounds.z * 0.5f), MOMENT_WHEEL, RADIUS_D_WHEEL, true, 0, 0, true, true));
+                m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(-adjustedBounds.x * 0.5f, ModSettings.SpringOffset + RADIUS_D_WHEEL, -adjustedBounds.z * 0.5f), MOMENT_WHEEL, RADIUS_D_WHEEL, true, 0, 0, true, true));
             }
 
-            Mesh vehicleMesh = m_vehicleInfo.m_mesh;
-            Vector3 fullBounds = vehicleMesh.bounds.size;
+            float frontTorque = 0.0f;
+            float rearTorque = 0.0f;
+            float frontBraking = 0.0f;
+            float rearBraking = 0.0f;
+            if (Wheel.rearCount == 0 && Wheel.frontCount > 0)
+            {
+                frontTorque = 1.0f / Wheel.frontCount;
+                frontBraking = Settings.ModSettings.BrakingForce * DriveCommon.KN_TO_N / Wheel.frontCount;
+            }
+            else if (Wheel.frontCount == 0 && Wheel.rearCount > 0)
+            {
+                rearTorque = 1.0f / Wheel.rearCount;
+                rearBraking = Settings.ModSettings.BrakingForce * DriveCommon.KN_TO_N / Wheel.rearCount;
+            }
+            else if (Wheel.frontCount > 0 && Wheel.rearCount > 0)
+            {
+                frontTorque = ModSettings.DriveBias / Wheel.frontCount;
+                rearTorque = (1.0f - ModSettings.DriveBias) / Wheel.rearCount;
+                frontBraking = ModSettings.BrakeBias * Settings.ModSettings.BrakingForce * DriveCommon.KN_TO_N / Wheel.frontCount;
+                rearBraking = (1.0f - ModSettings.BrakeBias) * Settings.ModSettings.BrakingForce * DriveCommon.KN_TO_N / Wheel.rearCount;
+            }
 
-            Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;
+            foreach (Wheel w in m_wheelObjects)
+            {
+                if (w.isFront)
+                {
+                    w.torqueFract = frontTorque;
+                    w.brakeForce = frontBraking;
+                }
+                else
+                {
+                    w.torqueFract = rearTorque;
+                    w.brakeForce = rearBraking;
+                }
+            }
+
             adjustedBounds.y = adjustedBounds.y - m_rideHeight;
             m_roofHeight = adjustedBounds.y;
 
@@ -884,18 +928,19 @@ namespace DriveIt
             m_vehicleRigidBody.transform.rotation = rotation;
             m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, m_rideHeight + adjustedBounds.y * ModSettings.MassCenterHeight, (ModSettings.MassCenterBias - 0.5f) * adjustedBounds.z * 0.5f);
             m_vehicleRigidBody.velocity = Vector3.zero;
+            m_vehicleRigidBody.maxDepenetrationVelocity = 2.0f;
 
-            RigidbodyConstraints constraints = RigidbodyConstraints.None;
+            m_vehicleConstraints = RigidbodyConstraints.None;
             if (m_isConstrainedX)
             {
-                constraints |= RigidbodyConstraints.FreezePositionX;
+                m_vehicleConstraints |= RigidbodyConstraints.FreezePositionX;
             }
             if (m_isConstrainedZ)
             {
-                constraints |= RigidbodyConstraints.FreezeRotationZ;
+                m_vehicleConstraints |= RigidbodyConstraints.FreezeRotationZ;
             }
 
-            m_vehicleRigidBody.constraints = constraints;
+            m_vehicleRigidBody.constraints = m_vehicleConstraints;
 
             m_vehicleCollider.size = adjustedBounds;
             m_vehicleCollider.center = new Vector3(0.0f, 0.5f * adjustedBounds.y + m_rideHeight, 0.0f);
@@ -912,7 +957,7 @@ namespace DriveIt
 
         private void DestroyVehicle(bool disable = true)
         {
-            DriveEffects.instance.StopEffects();
+            DriveEffects.instance.StopEffects(disable);
 
             foreach (Wheel w in m_wheelObjects)
             {
@@ -938,6 +983,7 @@ namespace DriveIt
             m_isTurning = false;
             m_isConstrainedX = false;
             m_isConstrainedZ = false;
+            m_isFallbackSuspension = false;
             m_gear = ENGINE_GEAR_NEUTRAL;
             m_driveMode = ENGINE_MODE_NEUTRAL;
             m_lastReset = 0.0f;
@@ -1021,7 +1067,7 @@ namespace DriveIt
                     braking = true;
                 }
             }
-            if (ModSettings.AutoTrans && invert == 0 && m_throttle == 0.0f)
+            if (ModSettings.AutoTrans && (invert == 0 || m_gear == ENGINE_GEAR_NEUTRAL) && m_throttle == 0.0f)
             {
                 if (Time.time > m_nextGearChange)
                 {
