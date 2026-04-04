@@ -65,6 +65,7 @@ namespace DriveIt.Utils
         public const string TK_DRIVEBTN_TOOLTIP            = "DRIVEBTN_TOOLTIP";
         public const string TK_SPAWNBTN_TEXT               = "SPAWNBTN_TEXT";
         public const string TK_ROAD_SELECT                 = "ROAD_SELECT";
+        public const string TK_TERRAIN_SELECT              = "TERRAIN_SELECT";
         #endregion
 
         #region DriveIt General Constants

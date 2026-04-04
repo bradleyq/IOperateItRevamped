@@ -19,7 +19,7 @@ namespace DriveIt
         private const float STEER_REST = 1.75f;
         private const float STEER_TILT_INERTIA = 0.1f;
         private const float STEER_TILT_STRENGTH = 4.5f;
-        private const float STEER_SWAY_BAR_K = 1000.0f;
+        private const float STEER_SWAY_BAR_K = 60000.0f;
         private const float GEAR_RESP = 0.2f;
         private const float GEAR_RESP_AUTO = 1.0f;
         private const float PARK_SPEED = 0.25f;
@@ -735,11 +735,11 @@ namespace DriveIt
             {
                 if (w.isFront)
                 {
-                    w.normalImpulse = Mathf.Max(w.normalImpulse + (w.compression - frontCompression) * STEER_SWAY_BAR_K, 0.0f);
+                    w.normalImpulse = Mathf.Max(w.normalImpulse + (w.compression - frontCompression) * STEER_SWAY_BAR_K * Time.fixedDeltaTime, 0.0f);
                 }
                 else
                 {
-                    w.normalImpulse += Mathf.Max(w.normalImpulse + (w.compression - rearCompression) * STEER_SWAY_BAR_K, 0.0f);
+                    w.normalImpulse += Mathf.Max(w.normalImpulse + (w.compression - rearCompression) * STEER_SWAY_BAR_K * Time.fixedDeltaTime, 0.0f);
                 }
             }
 
@@ -849,10 +849,18 @@ namespace DriveIt
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
             Vector3 fullBounds = vehicleMesh.bounds.size;
             Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;
+            m_rideHeight = m_vehicleInfo.m_lodMesh.bounds.min.y;
+            if (m_rideHeight < 0.0f) adjustedBounds.y += m_rideHeight;
+            m_rideHeight = Mathf.Max(m_rideHeight, 0.0f);
 
             if (m_vehicleInfo.m_generatedInfo.m_tyres?.Length > 0 && (m_vehicleInfo.m_vehicleType == VehicleInfo.VehicleType.Car || m_vehicleInfo.m_vehicleType == VehicleInfo.VehicleType.Bicycle || m_vehicleInfo.m_vehicleType == VehicleInfo.VehicleType.Trolleybus))
             {
-                m_rideHeight = m_vehicleInfo.m_generatedInfo.m_tyres[0].y;
+                float height = m_vehicleInfo.m_generatedInfo.m_tyres[0].y;
+                if (height > m_rideHeight)
+                {
+                    adjustedBounds.y -= height - m_rideHeight;
+                }
+                m_rideHeight = height;
 
                 foreach (Vector4 tirepos in m_vehicleInfo.m_generatedInfo.m_tyres)
                 {
@@ -864,7 +872,6 @@ namespace DriveIt
             }
             else
             {
-                m_rideHeight = 0.0f;
                 m_isFallbackSuspension = true;
 
                 m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(adjustedBounds.x * 0.5f, ModSettings.SpringOffset + RADIUS_D_WHEEL, adjustedBounds.z * 0.5f), MOMENT_WHEEL, RADIUS_D_WHEEL, true, 0, 0, true));
@@ -910,7 +917,6 @@ namespace DriveIt
                 }
             }
 
-            adjustedBounds.y = adjustedBounds.y - m_rideHeight;
             m_roofHeight = adjustedBounds.y;
 
             float halfSA = (adjustedBounds.x * adjustedBounds.y + adjustedBounds.x * adjustedBounds.z + adjustedBounds.y * adjustedBounds.z);
@@ -943,7 +949,7 @@ namespace DriveIt
             m_vehicleRigidBody.constraints = m_vehicleConstraints;
 
             m_vehicleCollider.size = adjustedBounds;
-            m_vehicleCollider.center = new Vector3(0.0f, 0.5f * adjustedBounds.y + m_rideHeight, 0.0f);
+            m_vehicleCollider.center = new Vector3(0.0f, 0.5f * adjustedBounds.y + m_rideHeight, m_vehicleInfo.m_lodMesh.bounds.center.z);
 
             m_tangent = m_vehicleRigidBody.transform.TransformDirection(Vector3.forward);
             m_normal = m_vehicleRigidBody.transform.TransformDirection(Vector3.up);

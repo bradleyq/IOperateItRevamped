@@ -20,7 +20,7 @@ namespace DriveIt.UI
         private const float VehicleRowHeight = 40f;
 
         private UIButton _mainBtn;
-        private RoadSelectTool _roadSelectTool;
+        private DriveSelectTool _positionSelect;
         private UIButton _spawnBtn;
         internal UIList _vehicleList;
         private PreviewPanel _previewPanel;
@@ -127,16 +127,16 @@ namespace DriveIt.UI
             _spawnBtn.eventClick -= SpawnBtnClickEvent;
             Destroy(Panel);
             Destroy(GetMainButton());
-            Destroy(_roadSelectTool);
+            Destroy(_positionSelect);
         }
         public bool OnEsc()
         {
-            if (_roadSelectTool)
+            if (_positionSelect)
             {
                 ToolsModifierControl.toolController.CurrentTool = ToolsModifierControl.GetTool<DefaultTool>();
                 ToolsModifierControl.SetTool<DefaultTool>();
-                Destroy(_roadSelectTool);
-                _roadSelectTool = null;
+                Destroy(_positionSelect);
+                _positionSelect = null;
             }
 
             return HideUI();
@@ -187,15 +187,15 @@ namespace DriveIt.UI
                 }
                 else
                 {
-                    if (_roadSelectTool == null)
+                    if (_positionSelect == null)
                     {
-                        if (!ToolsModifierControl.toolController.gameObject.GetComponent<RoadSelectTool>())
+                        if (!ToolsModifierControl.toolController.gameObject.GetComponent<DriveSelectTool>())
                         {
-                            ToolsModifierControl.toolController.gameObject.AddComponent<RoadSelectTool>();
+                            ToolsModifierControl.toolController.gameObject.AddComponent<DriveSelectTool>();
                         }
-                        _roadSelectTool = ToolsModifierControl.toolController.gameObject.GetComponent<RoadSelectTool>();
-                        ToolsModifierControl.toolController.CurrentTool = _roadSelectTool;
-                        ToolsModifierControl.SetTool<RoadSelectTool>();
+                        _positionSelect = ToolsModifierControl.toolController.gameObject.GetComponent<DriveSelectTool>();
+                        ToolsModifierControl.toolController.CurrentTool = _positionSelect;
+                        ToolsModifierControl.SetTool<DriveSelectTool>();
                     }
                 }
                 HideUI();

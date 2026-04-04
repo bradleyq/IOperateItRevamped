@@ -57,7 +57,7 @@ namespace DriveIt
             UISpacers.AddTitleSpacer(scrollPanel, Margin, currentY, headerWidth, Translations.Translate(DriveCommon.TK_SETTINGS_GROUP_VEHICLE));
             currentY += LargeMargin;
 
-            var maxVelocity_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_MAXVELOCITY), 25f, 300f, 1f, ModSettings.MaxVelocity, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N0", suffix: " km/h"));
+            var maxVelocity_Slider = UISliders.AddPlainSliderWithValue(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_MAXVELOCITY), 25f, 350f, 1f, ModSettings.MaxVelocity, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N0", suffix: " km/h"));
             maxVelocity_Slider.eventValueChanged += (_, value) => ModSettings.MaxVelocity = value;
             currentY += maxVelocity_Slider.height + SliderMargin;
 
@@ -79,7 +79,7 @@ namespace DriveIt
             brakingABS_CheckBox.eventCheckChanged += (_, isChecked) => ModSettings.BrakingABS = isChecked;
             currentY += brakingABS_CheckBox.height + Margin;
 
-            var TCS_Dropdown = UIDropDowns.AddLabelledDropDown(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL), 300, 30, labelTextScale:1.1f, itemTextScale:1.0f, itemHeight:30);
+            var TCS_Dropdown = UIDropDowns.AddLabelledDropDown(scrollPanel, MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL), 300, 30, labelTextScale:1.0f, itemTextScale:1.0f, itemHeight:30);
             TCS_Dropdown.AddItem(Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_FULL));
             TCS_Dropdown.AddItem(Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_SPORT));
             TCS_Dropdown.AddItem(Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_TRACK));

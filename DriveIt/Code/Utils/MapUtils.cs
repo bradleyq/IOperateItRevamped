@@ -58,9 +58,9 @@ namespace DriveIt.Utils
         }
 
 
-        public static float CalculateHeight(Vector3 position, float objectHeight, out COLLISION_TYPE collisionType, bool ignoreColliders = default)
+        public static float CalculateHeight(Vector3 position, float objectHeight, out COLLISION_TYPE collisionType, bool ignoreColliders = false)
         {
-            ushort segmentId = 65535;
+            ushort segmentId = 0;
             ToolBase.RaycastInput input;
             ToolBase.RaycastOutput output;
             Vector3 roadPos;
@@ -91,35 +91,46 @@ namespace DriveIt.Utils
                                          NetSegment.Flags.Flooded;
 
             input.m_netService.m_service = ItemClass.Service.Road;  // General roads
-            input.m_netService.m_itemLayers =   ItemClass.Layer.Default |
-                                                ItemClass.Layer.MetroTunnels;
-            input.m_netService2.m_service = ItemClass.Service.PublicTransport; // For tracks
-            input.m_netService2.m_itemLayers =  ItemClass.Layer.Default |
-                                                ItemClass.Layer.MetroTunnels;
+            input.m_netService.m_itemLayers = ItemClass.Layer.Default |
+                                              ItemClass.Layer.MetroTunnels;
+            input.m_netService2.m_service = ItemClass.Service.None;
 
-            if (RayCast(input, out output))
+            if (RayCast(input, out output) && output.m_netSegment != 0)
             {
                 height = Mathf.Max(height, output.m_hitPos.y);
                 segmentId = output.m_netSegment;
             }
 
-            input.m_netService.m_service = ItemClass.Service.Beautification; // For paths, quays, pedestrian bridges
-            input.m_netService.m_service = ItemClass.Service.None; // No secondary raycast
+            input.m_netService.m_service = ItemClass.Service.PublicTransport; // For tracks
+            input.m_netService.m_itemLayers = ItemClass.Layer.Default |
+                                              ItemClass.Layer.MetroTunnels;
+            input.m_netService2.m_service = ItemClass.Service.Beautification; // For paths, quays, pedestrian bridges
+            input.m_netService2.m_itemLayers = ItemClass.Layer.Default |
+                                               ItemClass.Layer.MetroTunnels;
 
-            if (RayCast(input, out output))
+            if (RayCast(input, out output) && output.m_netSegment != 0)
             {
-                ref NetSegment segment = ref Singleton<NetManager>.instance.m_segments.m_buffer[output.m_netSegment];
-
-                // Try again without Beautification (some items do not require renderers)
-                if (segment.Info.m_requireSegmentRenderers && (segmentId == 65535 || height < output.m_hitPos.y))
+                // Retry without beautification if an unrendered segment is found
+                if (!Singleton<NetManager>.instance.m_segments.m_buffer[output.m_netSegment].Info.m_requireSegmentRenderers)
                 {
-                    height = Mathf.Max(height, output.m_hitPos.y);
-                    segmentId = output.m_netSegment;
+                    input.m_netService2.m_service = ItemClass.Service.None;
+                    RayCast(input, out output);
+                }
+
+                if (output.m_netSegment != 0)
+                {
+                    ref NetSegment segment = ref Singleton<NetManager>.instance.m_segments.m_buffer[output.m_netSegment];
+
+                    if (segment.Info.m_requireSegmentRenderers && (segmentId == 0 || height < output.m_hitPos.y))
+                    {
+                        height = Mathf.Max(height, output.m_hitPos.y);
+                        segmentId = output.m_netSegment;
+                    }
                 }
             }
 
             // If a road was found, try to find a lane and find the precise height.
-            if (segmentId != 65535)
+            if (segmentId != 0)
             {
                 float offset = 0f;
                 int lane = 0;

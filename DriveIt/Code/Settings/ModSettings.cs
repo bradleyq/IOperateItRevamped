@@ -21,17 +21,17 @@ namespace DriveIt.Settings
         [XmlElement("MaxVelocity")]
         public float XMLMaxVelocity { get => MaxVelocity; set => MaxVelocity = value; }
         [XmlIgnore]
-        internal static float MaxVelocity = 200f;
+        internal static float MaxVelocity = 250f;
 
         [XmlElement("EnginePower")]
         public float XMLEnginePower { get => EnginePower; set => EnginePower = value; }
         [XmlIgnore]
-        internal static float EnginePower = 200f;
+        internal static float EnginePower = 250f;
 
         [XmlElement("BrakingForce")]
         public float XMLBrakingForce { get => BrakingForce; set => BrakingForce = value; }
         [XmlIgnore]
-        internal static float BrakingForce = 30f;
+        internal static float BrakingForce = 50f;
 
         [XmlElement("AutoTrans")]
         public bool XMLAutoTrans { get => AutoTrans; set => AutoTrans = value; }
@@ -66,7 +66,7 @@ namespace DriveIt.Settings
         [XmlElement("GripCoeffS")]
         public float XMLGripCoeffS { get => GripCoeffS; set => GripCoeffS = value; }
         [XmlIgnore]
-        internal static float GripCoeffS = 1.05f;
+        internal static float GripCoeffS = 1.1f;
 
         [XmlElement("GripCoeffK")]
         public float XMLGripCoeffK { get => GripCoeffK; set => GripCoeffK = value; }
@@ -76,7 +76,7 @@ namespace DriveIt.Settings
         [XmlElement("SpringDamp")]
         public float XMLSpringDamp { get => SpringDamp; set => SpringDamp = value; }
         [XmlIgnore]
-        internal static float SpringDamp = 5.0f;
+        internal static float SpringDamp = 2.0f;
 
         [XmlElement("SpringOffset")]
         public float XMLSpringOffset { get => SpringOffset; set => SpringOffset = value; }
@@ -91,7 +91,7 @@ namespace DriveIt.Settings
         [XmlElement("MassCenterHeight")]
         public float XMLMassCenterHeight { get => MassCenterHeight; set => MassCenterHeight = value; }
         [XmlIgnore]
-        internal static float MassCenterHeight = 0.1f;
+        internal static float MassCenterHeight = 0.05f;
 
         [XmlElement("MassCenterBias")]
         public float XMLMassCenterBias { get => MassCenterBias; set => MassCenterBias = value; }
