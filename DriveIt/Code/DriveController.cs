@@ -17,14 +17,13 @@ namespace DriveIt
         private const float THROTTLE_REST = 2.0f;
         private const float STEER_RESP = 1.75f;
         private const float STEER_REST = 1.75f;
-        private const float STEER_TILT_INERTIA = 0.1f;
-        private const float STEER_TILT_STRENGTH = 4.5f;
+        private const float STEER_TILT_INERTIA = 0.25f;
         private const float STEER_SWAY_BAR_K = 60000.0f;
+        private const float STEER_MAX = 37.0f;
+        private const float STEER_DECAY = 0.0075f;
         private const float GEAR_RESP = 0.2f;
         private const float GEAR_RESP_AUTO = 1.0f;
         private const float PARK_SPEED = 0.25f;
-        private const float STEER_MAX = 37.0f;
-        private const float STEER_DECAY = 0.0075f;
         private const float DRAG_FACTOR = 0.25f;
         private const float DRAG_DRIVETRAIN = 0.15f;
         private const float DRAG_FREEZE = 0.9f;
@@ -43,7 +42,9 @@ namespace DriveIt
         private const float ENGINE_OVER_RPS = 1100.0f;
         private const float ENGINE_IDLE_RPS = 90.0f;
         private const float ENGINE_INERTIA = 0.01f;
-        private static readonly float[] ENGINE_GEAR_RATIOS = { -20.0f, 0.0f, 27.0f, 15.0f, 8.5f, 5.67f, 4.25f, 3.4f, 2.83f, 2.43f };
+        private static readonly float[] ENGINE_GEAR_RATIOS_L = { -5.0f, 0.0f, 15.0f, 8.5f,   5.67f,  4.25f,   3.4f, 2.83f, 2.43f, 2.13f };
+        private static readonly float[] ENGINE_GEAR_RATIOS_S = { -30.0f, 0.0f, 30.0f, 22.5f, 16.88f, 12.66f, 10.13f, 8.44f, 7.23f, 6.33f };
+        private static float[] ENGINE_GEAR_RATIOS = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
         private static readonly string[] ENGINE_GEAR_NAMES = { "R", "N", "1", "2", "3", "4", "5", "6", "7", "8" };
         private const int ENGINE_GEAR_REVERSE = 0;
         private const int ENGINE_GEAR_NEUTRAL = 1;
@@ -450,7 +451,7 @@ namespace DriveIt
                                     "\ns: " + m_vehicleRigidBody.velocity.magnitude * DriveCommon.MS_TO_KMPH +
                                     "\nrps: " + m_radps +
                                     "\nrpst: " + m_radpsTrans +
-                                    "\nwct: " + Wheel.wheelCount;
+                                    "\nwct: " + Wheel.frontCount + " " + Wheel.rightCount + " " + Wheel.wheelCount;
                 for (int index = 0; index < m_wheelObjects.Count; index++)
                 {
                     uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + " " + m_wheelObjects[index].slip + " " + m_wheelObjects[index].radps;
@@ -518,7 +519,7 @@ namespace DriveIt
                 // calcuate wheel angular velocity along with any assists.
                 float wheelTorque = w.torqueFract * engineTorque;
 
-                // LSD resist more at higher TCS levels
+                //// LSD resist more at higher TCS levels
                 float LSDFactor = (ModSettings.TCSLevel >= (int)DriveCommon.TRACTIONCTL_LEVEL.SPORT) ? DIFF_LSD_FACTOR_HIGH : DIFF_LSD_FACTOR_LOW;
                 wheelTorque += (avgRps - w.radps) * w.wheelMoment / Time.fixedDeltaTime * LSDFactor * w.torqueFract * powered;
 
@@ -790,8 +791,9 @@ namespace DriveIt
                     }
 
                     float frictionScaleLong = Mathf.Min(w.normalImpulse * w.frictionCoeffZ, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, DriveCommon.FLOAT_ERROR);
-                    float frictionScaleLat = Mathf.Min(w.normalImpulse * w.frictionCoeffX, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, DriveCommon.FLOAT_ERROR);
+                    float frictionScaleLat = Mathf.Min(w.normalImpulse * ((m_isConstrainedZ && !w.isFront) ? 4.0f : 1.0f) * w.frictionCoeffX, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, DriveCommon.FLOAT_ERROR);
 
+                    w.binormalImpulse = lateralComponent * frictionScaleLat;
                     w.binormalImpulse = lateralComponent * frictionScaleLat;
                     w.tangentImpulse = longComponent * frictionScaleLong;
 
@@ -808,7 +810,7 @@ namespace DriveIt
             if (m_isConstrainedZ)
             {
                 Vector3 sideVec = Vector3.Cross(m_vehicleRigidBody.transform.forward, Vector3.up).normalized;
-                m_tilt = s_steer_tilt_inertia * m_tilt + Mathf.Atan(Vector3.Dot(netNetImpulse / m_vehicleRigidBody.mass, sideVec) / ACCEL_G) * 180.0f / Mathf.PI;
+                m_tilt = s_steer_tilt_inertia * m_tilt + Mathf.Atan(Vector3.Dot(netNetImpulse / m_vehicleRigidBody.mass, sideVec) / ACCEL_G) * 180.0f / Mathf.PI * 0.25f;
                 Quaternion rot = Quaternion.AngleAxis(m_tilt, m_vehicleRigidBody.transform.forward) * Quaternion.LookRotation(m_vehicleRigidBody.transform.forward);
                 m_vehicleRigidBody.transform.rotation = rot;
             }
@@ -849,22 +851,23 @@ namespace DriveIt
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
             Vector3 fullBounds = vehicleMesh.bounds.size;
             Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;
-            m_rideHeight = m_vehicleInfo.m_lodMesh.bounds.min.y;
-            if (m_rideHeight < 0.0f) adjustedBounds.y += m_rideHeight;
-            m_rideHeight = Mathf.Max(m_rideHeight, 0.0f);
+            float boundsY = m_vehicleInfo.m_lodMesh.bounds.min.y;
+            float boundsZ = m_vehicleInfo.m_lodMesh.bounds.min.z;
+            float avgRadius = 0.0f;
 
             if (m_vehicleInfo.m_generatedInfo.m_tyres?.Length > 0 && (m_vehicleInfo.m_vehicleType == VehicleInfo.VehicleType.Car || m_vehicleInfo.m_vehicleType == VehicleInfo.VehicleType.Bicycle || m_vehicleInfo.m_vehicleType == VehicleInfo.VehicleType.Trolleybus))
             {
-                float height = m_vehicleInfo.m_generatedInfo.m_tyres[0].y;
-                if (height > m_rideHeight)
+                float height = Mathf.Max(m_vehicleInfo.m_generatedInfo.m_tyres[0].y, 0.0f);
+                if (height > boundsY)
                 {
-                    adjustedBounds.y -= height - m_rideHeight;
+                    adjustedBounds.y -= height - boundsY;
                 }
-                m_rideHeight = height;
+                boundsY = height;
 
                 foreach (Vector4 tirepos in m_vehicleInfo.m_generatedInfo.m_tyres)
                 {
-                    m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(tirepos.x, tirepos.y + ModSettings.SpringOffset, tirepos.z), MOMENT_WHEEL, Mathf.Min(tirepos.w, 1.0f), true, 0, 0, tirepos.z > 0.0f));
+                    m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(tirepos.x, tirepos.y + ModSettings.SpringOffset, tirepos.z), MOMENT_WHEEL, tirepos.w, true, 0, 0, tirepos.z > 0.0f));
+                    avgRadius += tirepos.w;
                 }
 
                 m_isConstrainedX = Wheel.rearCount == 0 || Wheel.frontCount == 0;
@@ -874,11 +877,24 @@ namespace DriveIt
             {
                 m_isFallbackSuspension = true;
 
+                if (0.0f > boundsY)
+                {
+                    adjustedBounds.y += boundsY;
+                }
+                boundsY = 0.0f;
+
                 m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(adjustedBounds.x * 0.5f, ModSettings.SpringOffset + RADIUS_D_WHEEL, adjustedBounds.z * 0.5f), MOMENT_WHEEL, RADIUS_D_WHEEL, true, 0, 0, true));
                 m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(-adjustedBounds.x * 0.5f, ModSettings.SpringOffset + RADIUS_D_WHEEL, adjustedBounds.z * 0.5f), MOMENT_WHEEL, RADIUS_D_WHEEL, true, 0, 0, true));
                 m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(0.0f, ModSettings.SpringOffset + RADIUS_D_WHEEL, 0.0f), MOMENT_WHEEL, RADIUS_D_WHEEL, true, 0, 0, false));
                 m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(adjustedBounds.x * 0.5f, ModSettings.SpringOffset + RADIUS_D_WHEEL, -adjustedBounds.z * 0.5f), MOMENT_WHEEL, RADIUS_D_WHEEL, true, 0, 0, true, true));
                 m_wheelObjects.Add(Wheel.InstanceWheel(gameObject.transform, new Vector3(-adjustedBounds.x * 0.5f, ModSettings.SpringOffset + RADIUS_D_WHEEL, -adjustedBounds.z * 0.5f), MOMENT_WHEEL, RADIUS_D_WHEEL, true, 0, 0, true, true));
+                avgRadius += 5.0f * RADIUS_D_WHEEL;
+            }
+
+            avgRadius /= Wheel.wheelCount;
+            for (int gear = 0; gear < ENGINE_GEAR_RATIOS.Length; gear++)
+            {
+                ENGINE_GEAR_RATIOS[gear] = Mathf.Lerp(ENGINE_GEAR_RATIOS_L[gear], ENGINE_GEAR_RATIOS_S[gear], Mathf.Clamp01((avgRadius - 0.2f) / 0.7f));
             }
 
             float frontTorque = 0.0f;
@@ -917,6 +933,7 @@ namespace DriveIt
                 }
             }
 
+            m_rideHeight = boundsY;
             m_roofHeight = adjustedBounds.y;
 
             float halfSA = (adjustedBounds.x * adjustedBounds.y + adjustedBounds.x * adjustedBounds.z + adjustedBounds.y * adjustedBounds.z);
@@ -932,7 +949,7 @@ namespace DriveIt
             m_vehicleRigidBody.mass = halfSA * ModSettings.MassFactor;
             m_vehicleRigidBody.transform.position = position;
             m_vehicleRigidBody.transform.rotation = rotation;
-            m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, m_rideHeight + adjustedBounds.y * ModSettings.MassCenterHeight, (ModSettings.MassCenterBias - 0.5f) * adjustedBounds.z * 0.5f);
+            m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, m_rideHeight + adjustedBounds.y * ModSettings.MassCenterHeight, boundsZ + ModSettings.MassCenterBias * adjustedBounds.z);
             m_vehicleRigidBody.velocity = Vector3.zero;
             m_vehicleRigidBody.maxDepenetrationVelocity = 2.0f;
 
@@ -949,7 +966,7 @@ namespace DriveIt
             m_vehicleRigidBody.constraints = m_vehicleConstraints;
 
             m_vehicleCollider.size = adjustedBounds;
-            m_vehicleCollider.center = new Vector3(0.0f, 0.5f * adjustedBounds.y + m_rideHeight, m_vehicleInfo.m_lodMesh.bounds.center.z);
+            m_vehicleCollider.center = new Vector3(0.0f, 0.5f * adjustedBounds.y + m_rideHeight, boundsZ + adjustedBounds.z * 0.5f);
 
             m_tangent = m_vehicleRigidBody.transform.TransformDirection(Vector3.forward);
             m_normal = m_vehicleRigidBody.transform.TransformDirection(Vector3.up);

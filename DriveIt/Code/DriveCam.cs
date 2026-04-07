@@ -280,7 +280,7 @@ namespace DriveIt
             // Limit pitch
             var eulerAngles = m_rotationOffset.eulerAngles;
             if (eulerAngles.x > 180f) eulerAngles.x -= 360f;
-            eulerAngles.x = Mathf.Clamp(eulerAngles.x, -Settings.ModSettings.CamMaxPitchDeg, Settings.ModSettings.CamMaxPitchDeg);
+            eulerAngles.x = Mathf.Clamp(eulerAngles.x, -Settings.ModSettings.CamMaxPitch, Settings.ModSettings.CamMaxPitch);
             eulerAngles.z = 0f;
             m_rotationOffset = Quaternion.Euler(eulerAngles);
         }

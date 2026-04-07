@@ -38,11 +38,14 @@ namespace DriveIt.Utils
         public const string TK_WHATSNEW_L2                 = "WHATSNEW_L2";
         public const string TK_WHATSNEW_L3                 = "WHATSNEW_L3";
         public const string TK_MOD_DESCRIPTION             = "MOD_DESCRIPTION";
+        public const string TK_SETTINGS_TAB_SETTINGS       = "SETTINGS_TAB_SETTINGS";
+        public const string TK_SETTINGS_TAB_KEYBINDS       = "SETTINGS_TAB_KEYBINDS";
         public const string TK_SETTINGS_GROUP_GENERAL      = "SETTINGS_GROUP_GENERAL";
         public const string TK_SETTINGS_GROUP_VEHICLE      = "SETTINGS_GROUP_VEHICLE";
         public const string TK_SETTINGS_GROUP_CAMERA       = "SETTINGS_GROUP_CAMERA";
         public const string TK_SETTINGS_GROUP_GAME         = "SETTINGS_GROUP_GAME";
         public const string TK_SETTINGS_GROUP_KEYS         = "SETTINGS_GROUP_KEYS";
+        public const string TK_SETTINGS_RESTOREDEFAULT     = "SETTINGS_RESTOREDEFAULT";
         public const string TK_SETTINGS_MAXVELOCITY        = "SETTINGS_MAXVELOCITY";
         public const string TK_SETTINGS_ENGINEPOWER        = "SETTINGS_ENGINEPOWER";
         public const string TK_SETTINGS_BRAKINGFORCE       = "SETTINGS_BRAKINGFORCE";
