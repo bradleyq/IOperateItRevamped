@@ -17,8 +17,9 @@ namespace DriveIt
         private const float THROTTLE_REST = 2.0f;
         private const float STEER_RESP = 1.75f;
         private const float STEER_REST = 1.75f;
-        private const float STEER_TILT_INERTIA = 0.25f;
-        private const float STEER_SWAY_BAR_K = 60000.0f;
+        private const float STEER_TILT_SCALE = 0.5f;
+        private const float CONSTRAINEDZ_STAB_BOOST = 3.0f;
+        private const float STEER_SWAY_BAR_K = 77000.0f;
         private const float STEER_MAX = 37.0f;
         private const float STEER_DECAY = 0.0075f;
         private const float GEAR_RESP = 0.2f;
@@ -26,7 +27,6 @@ namespace DriveIt
         private const float PARK_SPEED = 0.25f;
         private const float DRAG_FACTOR = 0.25f;
         private const float DRAG_DRIVETRAIN = 0.15f;
-        private const float DRAG_FREEZE = 0.9f;
         private const float DRAG_WHEEL_POWERED = 0.25f;
         private const float DRAG_WHEEL = 0.15f;
         private const float MOMENT_WHEEL = 1.5f;
@@ -42,8 +42,8 @@ namespace DriveIt
         private const float ENGINE_OVER_RPS = 1100.0f;
         private const float ENGINE_IDLE_RPS = 90.0f;
         private const float ENGINE_INERTIA = 0.01f;
-        private static readonly float[] ENGINE_GEAR_RATIOS_L = { -5.0f, 0.0f, 15.0f, 8.5f,   5.67f,  4.25f,   3.4f, 2.83f, 2.43f, 2.13f };
-        private static readonly float[] ENGINE_GEAR_RATIOS_S = { -30.0f, 0.0f, 30.0f, 22.5f, 16.88f, 12.66f, 10.13f, 8.44f, 7.23f, 6.33f };
+        private static readonly float[] ENGINE_GEAR_RATIOS_L = { -15.0f, 0.0f, 15.0f, 8.5f,   5.67f,  4.25f,   3.4f, 2.83f, 2.43f, 2.13f };
+        private static readonly float[] ENGINE_GEAR_RATIOS_S = { -33.0f, 0.0f, 33.0f, 22.5f, 16.88f, 12.66f, 10.13f, 8.44f, 7.23f, 6.33f };
         private static float[] ENGINE_GEAR_RATIOS = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
         private static readonly string[] ENGINE_GEAR_NAMES = { "R", "N", "1", "2", "3", "4", "5", "6", "7", "8" };
         private const int ENGINE_GEAR_REVERSE = 0;
@@ -62,9 +62,36 @@ namespace DriveIt
         private static readonly Color UI_FG_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
 
         private static float s_engine_inertia;
-        private static float s_steer_tilt_inertia;
         private static float s_drag_wheel_powered;
         private static float s_drag_wheel;
+
+        public class TiltKalmanFilter
+        {
+            // Process noise covariance (how much we expect the true value to change)
+            private static float q = 0.2f;
+
+            // Measurement noise covariance (how noisy the measurements are)
+            private static float r = 1000.0f;
+
+            // Estimate error covariance
+            private static float p = 1.0f;
+
+            // Current estimate
+            private static float x = 0.0f;
+
+            // Kalman gain
+            private static float k = 0.0f;
+
+            public static float Update(float measurement)
+            {
+                p = p + q;
+                k = p / (p + r);
+                x = x + k * (measurement - x);
+                p = (1f - k) * p;
+                return x;
+            }
+            public static float CurrentEstimate => x;
+        }
 
         public class Wheel : MonoBehaviour
         {
@@ -448,10 +475,9 @@ namespace DriveIt
                                     "\ng: " + (m_gear - 1) +
                                     "\nt: " + m_throttle +
                                     "\nb: " + m_brake +
-                                    "\ns: " + m_vehicleRigidBody.velocity.magnitude * DriveCommon.MS_TO_KMPH +
-                                    "\nrps: " + m_radps +
-                                    "\nrpst: " + m_radpsTrans +
-                                    "\nwct: " + Wheel.frontCount + " " + Wheel.rightCount + " " + Wheel.wheelCount;
+                                    "\nrps: " + m_radps + "\trpst: " + m_radpsTrans +
+                                    "\nwct: " + Wheel.frontCount + " " + Wheel.rightCount + " " + Wheel.wheelCount +
+                                    "\ntlt: " + m_tilt;
                 for (int index = 0; index < m_wheelObjects.Count; index++)
                 {
                     uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + " " + m_wheelObjects[index].slip + " " + m_wheelObjects[index].radps;
@@ -697,8 +723,12 @@ namespace DriveIt
                             float lateralCoeffK = ModSettings.GripCoeffK;
                             lateralCoeffK = (ModSettings.TCSLevel <= (int)DriveCommon.TRACTIONCTL_LEVEL.SPORT) ? (ModSettings.GripCoeffK * 0.75f + ModSettings.GripCoeffS * 0.25f) : lateralCoeffK;
                             lateralCoeffK = w.isSteerable ? ModSettings.GripCoeffS : lateralCoeffK;
-
+                            
                             w.frictionCoeffX = Mathf.Lerp(ModSettings.GripCoeffS, lateralCoeffK, Mathf.Max((w.slip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP), 0.0f));
+                            if (m_isConstrainedZ && !w.isFront)
+                            {
+                                w.frictionCoeffX *= CONSTRAINEDZ_STAB_BOOST;
+                            }
                         }
                     }
                 }
@@ -790,8 +820,20 @@ namespace DriveIt
                         DebugHelper.DrawDebugMarker(2.0f, w.contactPoint, Quaternion.LookRotation(w.tangent, w.normal), Color.yellow);
                     }
 
-                    float frictionScaleLong = Mathf.Min(w.normalImpulse * w.frictionCoeffZ, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, DriveCommon.FLOAT_ERROR);
-                    float frictionScaleLat = Mathf.Min(w.normalImpulse * ((m_isConstrainedZ && !w.isFront) ? 4.0f : 1.0f) * w.frictionCoeffX, flatImpulses.magnitude) / Mathf.Max(flatImpulses.magnitude, DriveCommon.FLOAT_ERROR);
+                    float frictionScaleLong; 
+                    float frictionScaleLat; 
+
+                    if (m_isConstrainedZ)
+                    {
+                        frictionScaleLong = Mathf.Min(w.normalImpulse * w.frictionCoeffZ, Mathf.Abs(flatImpulses.y)) / Mathf.Max(Mathf.Abs(flatImpulses.y), DriveCommon.FLOAT_ERROR);
+                        frictionScaleLat = Mathf.Min(w.normalImpulse * w.frictionCoeffX, Mathf.Abs(flatImpulses.x)) / Mathf.Max(Mathf.Abs(flatImpulses.x), DriveCommon.FLOAT_ERROR);
+                    }
+                    else
+                    {
+                        float flatMagniutde = flatImpulses.magnitude;
+                        frictionScaleLong = Mathf.Min(w.normalImpulse * w.frictionCoeffZ, flatMagniutde) / Mathf.Max(flatMagniutde, DriveCommon.FLOAT_ERROR);
+                        frictionScaleLat = Mathf.Min(w.normalImpulse * w.frictionCoeffX, flatMagniutde) / Mathf.Max(flatMagniutde, DriveCommon.FLOAT_ERROR);
+                    }
 
                     w.binormalImpulse = lateralComponent * frictionScaleLat;
                     w.binormalImpulse = lateralComponent * frictionScaleLat;
@@ -810,8 +852,10 @@ namespace DriveIt
             if (m_isConstrainedZ)
             {
                 Vector3 sideVec = Vector3.Cross(m_vehicleRigidBody.transform.forward, Vector3.up).normalized;
-                m_tilt = s_steer_tilt_inertia * m_tilt + Mathf.Atan(Vector3.Dot(netNetImpulse / m_vehicleRigidBody.mass, sideVec) / ACCEL_G) * 180.0f / Mathf.PI * 0.25f;
-                Quaternion rot = Quaternion.AngleAxis(m_tilt, m_vehicleRigidBody.transform.forward) * Quaternion.LookRotation(m_vehicleRigidBody.transform.forward);
+                float tilt = Mathf.Atan(Vector3.Dot(netNetImpulse, sideVec) / (m_vehicleRigidBody.mass * ACCEL_G * Time.fixedDeltaTime)) * 180.0f / Mathf.PI * STEER_TILT_SCALE;
+                TiltKalmanFilter.Update(tilt);
+                m_tilt = TiltKalmanFilter.CurrentEstimate;
+                Quaternion rot = Quaternion.AngleAxis(TiltKalmanFilter.CurrentEstimate, m_vehicleRigidBody.transform.forward) * Quaternion.LookRotation(m_vehicleRigidBody.transform.forward);
                 m_vehicleRigidBody.transform.rotation = rot;
             }
         }
@@ -827,7 +871,6 @@ namespace DriveIt
         private void SpawnVehicle(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Color vehicleColor, bool setColor)
         {
             s_engine_inertia = (float)System.Math.Pow(ENGINE_INERTIA, Time.fixedDeltaTime);
-            s_steer_tilt_inertia = (float)System.Math.Pow(STEER_TILT_INERTIA, Time.fixedDeltaTime);
             s_drag_wheel_powered = (float)(1.0 - System.Math.Pow(1.0 - DRAG_WHEEL_POWERED, Time.fixedDeltaTime));
             s_drag_wheel = (float)(1.0 - System.Math.Pow(1.0 - DRAG_WHEEL, Time.fixedDeltaTime));
 
@@ -938,14 +981,7 @@ namespace DriveIt
 
             float halfSA = (adjustedBounds.x * adjustedBounds.y + adjustedBounds.x * adjustedBounds.z + adjustedBounds.y * adjustedBounds.z);
             m_vehicleRigidBody.drag = DRAG_FACTOR * adjustedBounds.x * adjustedBounds.y / halfSA;
-            if (m_isConstrainedZ || m_isConstrainedX)
-            {
-                m_vehicleRigidBody.angularDrag = DRAG_FREEZE;
-            }
-            else
-            {
-                m_vehicleRigidBody.angularDrag = DRAG_FACTOR * adjustedBounds.y * adjustedBounds.z / halfSA;
-            }
+            m_vehicleRigidBody.angularDrag = DRAG_FACTOR * adjustedBounds.y * adjustedBounds.z / halfSA;
             m_vehicleRigidBody.mass = halfSA * ModSettings.MassFactor;
             m_vehicleRigidBody.transform.position = position;
             m_vehicleRigidBody.transform.rotation = rotation;

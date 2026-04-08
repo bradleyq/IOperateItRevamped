@@ -379,6 +379,15 @@ namespace DriveIt
             m_spNormal = Vector3.up;
             m_vehicleInfo.CalculateGeneratedInfo();
 
+            if (m_vehicleInfo.m_generatedInfo.m_tyres != null)
+            {
+                m_vehicleInfo.m_material.SetVectorArray(Singleton<VehicleManager>.instance.ID_TyreLocation, m_vehicleInfo.m_generatedInfo.m_tyres);
+            }
+            else
+            {
+                m_vehicleInfo.m_material.SetVectorArray(Singleton<VehicleManager>.instance.ID_TyreLocation, new Vector4[1] { Vector4.one });
+            }
+
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
             Vector3 fullBounds = vehicleMesh.bounds.size;
             m_headlight.transform.localPosition = new Vector3(0.0f, fullBounds.y * 0.5f, fullBounds.z * 0.5f + DriveCommon.FLOAT_ERROR);
