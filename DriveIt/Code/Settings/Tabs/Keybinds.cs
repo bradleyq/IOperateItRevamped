@@ -26,49 +26,49 @@ namespace DriveIt.Settings.Tabs
             var keySirenToggle = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYSIRENTOGGLE), ModSettings.KeySirenToggle);
             currentY += keySirenToggle.Panel.height + SettingsPanel.Margin;
 
-            var keyMoveForward = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYMOVEFORWARD"), ModSettings.KeyMoveForward);
+            var keyMoveForward = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYMOVEFORWARD), ModSettings.KeyMoveForward);
             currentY += keyMoveForward.Panel.height + SettingsPanel.Margin;
 
-            var keyMoveBackward = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYMOVEBACKWARD"), ModSettings.KeyMoveBackward);
+            var keyMoveBackward = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYMOVEBACKWARD), ModSettings.KeyMoveBackward);
             currentY += keyMoveBackward.Panel.height + SettingsPanel.Margin;
-
-            var keyMoveLeft = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYMOVELEFT"), ModSettings.KeyMoveLeft);
+            
+            var keyMoveLeft = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYMOVELEFT), ModSettings.KeyMoveLeft);
             currentY += keyMoveLeft.Panel.height + SettingsPanel.Margin;
 
-            var keyMoveRight = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYMOVERIGHT"), ModSettings.KeyMoveRight);
+            var keyMoveRight = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYMOVERIGHT), ModSettings.KeyMoveRight);
             currentY += keyMoveRight.Panel.height + SettingsPanel.Margin;
 
-            var keyResetVehicle = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_RESETVEHICLE"), ModSettings.KeyResetVehicle);
+            var keyResetVehicle = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYRESETVEHICLE), ModSettings.KeyResetVehicle);
             currentY += keyResetVehicle.Panel.height + SettingsPanel.Margin;
 
-            var keyGearUp = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_GEARUP"), ModSettings.KeyGearUp);
+            var keyGearUp = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYGEARUP), ModSettings.KeyGearUp);
             currentY += keyGearUp.Panel.height + SettingsPanel.Margin;
 
-            var keyGearDown = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_GEARDOWN"), ModSettings.KeyGearDown);
+            var keyGearDown = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYGEARDOWN), ModSettings.KeyGearDown);
             currentY += keyGearDown.Panel.height + SettingsPanel.Margin;
 
-            var keyCamCursorToggle = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYCAMCURSORTOGGLE"), ModSettings.KeyCamCursorToggle);
+            var keyCamCursorToggle = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYCAMCURSORTOGGLE), ModSettings.KeyCamCursorToggle);
             currentY += keyCamCursorToggle.Panel.height + SettingsPanel.Margin;
 
-            var keyCamZoomIn = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYCAMZOOMIN"), ModSettings.KeyCamZoomIn);
+            var keyCamZoomIn = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYCAMZOOMIN), ModSettings.KeyCamZoomIn);
             currentY += keyCamZoomIn.Panel.height + SettingsPanel.Margin;
 
-            var keyCamZoomOut = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYCAMZOOMOUT"), ModSettings.KeyCamZoomOut);
+            var keyCamZoomOut = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYCAMZOOMOUT), ModSettings.KeyCamZoomOut);
             currentY += keyCamZoomOut.Panel.height + SettingsPanel.Margin;
 
-            var keyCamReset = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYCAMRESET"), ModSettings.KeyCamReset);
+            var keyCamReset = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYCAMRESET), ModSettings.KeyCamReset);
             currentY += keyCamReset.Panel.height + SettingsPanel.Margin;
 
-            var keyCamRotateUp = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYROTATECAMUP"), ModSettings.KeyCamRotateUp);
+            var keyCamRotateUp = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYROTATECAMUP), ModSettings.KeyCamRotateUp);
             currentY += keyCamRotateUp.Panel.height + SettingsPanel.Margin;
 
-            var keyCamRotateDown = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYROTATECAMDOWN"), ModSettings.KeyCamRotateDown);
+            var keyCamRotateDown = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYROTATECAMDOWN), ModSettings.KeyCamRotateDown);
             currentY += keyCamRotateDown.Panel.height + SettingsPanel.Margin;
 
-            var keyCamRotateLeft = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYROTATECAMLEFT"), ModSettings.KeyCamRotateLeft);
+            var keyCamRotateLeft = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYROTATECAMLEFT), ModSettings.KeyCamRotateLeft);
             currentY += keyCamRotateLeft.Panel.height + SettingsPanel.Margin;
 
-            var keyCamRotateRight = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_KEYROTATECAMRIGHT"), ModSettings.KeyCamRotateRight);
+            var keyCamRotateRight = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYROTATECAMRIGHT), ModSettings.KeyCamRotateRight);
             currentY += keyCamRotateRight.Panel.height + SettingsPanel.Margin;
             #endregion
         }

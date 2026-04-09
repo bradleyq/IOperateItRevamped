@@ -6,9 +6,9 @@ using UnityEngine;
 
 namespace DriveIt.UI
 {
-    public class DriveButtons : MonoBehaviour
+    public class DriveButton : MonoBehaviour
     {
-        public static DriveButtons instance { get; private set; }
+        public static DriveButton instance { get; private set; }
 
         private CitizenVehicleWorldInfoPanel citizenVehicleInfo_Panel;
         private UIButton citizenVehicleInfo_Button;

@@ -358,7 +358,7 @@ namespace DriveIt
             if (!enabled)
             {
                 DriveCam.instance.EnableCam(m_vehicleRigidBody, 2.0f * m_vehicleCollider.size.z);
-                DriveButtons.instance.SetDisable();
+                DriveButton.instance.SetDisable();
             }
 
             enabled = true;
@@ -368,7 +368,7 @@ namespace DriveIt
         {
             StartCoroutine(m_collidersManager.DisableColliders());
             DriveCam.instance.DisableCam();
-            DriveButtons.instance.SetEnable();
+            DriveButton.instance.SetEnable();
             DestroyVehicle();
             enabled = false;
         }

@@ -101,57 +101,57 @@ namespace DriveIt.Settings.Tabs
             TCS_Dropdown.parent.eventVisibilityChanged += (_, isVisible) => TCS_Dropdown.selectedIndex = ModSettings.TCSLevel;
             currentY += TCS_Dropdown.parent.height + SettingsPanel.Margin;
 
-            var downForce_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_DOWNFORCE"), 0.0f, 50.0f, 1.0f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N"));
+            var downForce_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_DOWNFORCE), 0.0f, 50.0f, 1.0f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N"));
             downForce_Slider.eventValueChanged += (_, value) => ModSettings.DownForce = value;
             downForce_Slider.parent.eventVisibilityChanged += (_, isVisible) => downForce_Slider.value = ModSettings.DownForce;
             currentY += downForce_Slider.parent.height + SettingsPanel.Margin;
 
-            var driveBias_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_DRIVEBIAS"), 0.0f, 1.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
+            var driveBias_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_DRIVEBIAS), 0.0f, 1.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
             driveBias_Slider.eventValueChanged += (_, value) => ModSettings.DriveBias = value;
             driveBias_Slider.parent.eventVisibilityChanged += (_, isVisible) => driveBias_Slider.value = ModSettings.DriveBias;
             currentY += driveBias_Slider.parent.height + SettingsPanel.Margin;
 
-            var brakeBias_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_BRAKEBIAS"), 0.0f, 1.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
+            var brakeBias_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_BRAKEBIAS), 0.0f, 1.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
             brakeBias_Slider.eventValueChanged += (_, value) => ModSettings.BrakeBias = value;
             brakeBias_Slider.parent.eventVisibilityChanged += (_, isVisible) => brakeBias_Slider.value = ModSettings.BrakeBias;
             currentY += brakeBias_Slider.parent.height + SettingsPanel.Margin;
 
-            var gripCoeffS_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_GRIPCOEFFS"), 0.0f, 2.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
+            var gripCoeffS_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_GRIPCOEFFS), 0.0f, 2.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
             gripCoeffS_Slider.eventValueChanged += (_, value) => ModSettings.GripCoeffS = value;
             gripCoeffS_Slider.parent.eventVisibilityChanged += (_, isVisible) => gripCoeffS_Slider.value = ModSettings.GripCoeffS;
             currentY += gripCoeffS_Slider.parent.height + SettingsPanel.Margin;
 
-            var gripCoeffK_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_GRIPCOEFFK"), 0.0f, 2.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
+            var gripCoeffK_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_GRIPCOEFFK), 0.0f, 2.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
             gripCoeffK_Slider.eventValueChanged += (_, value) => ModSettings.GripCoeffK = value;
             gripCoeffK_Slider.parent.eventVisibilityChanged += (_, isVisible) => gripCoeffK_Slider.value = ModSettings.GripCoeffK;
             currentY += gripCoeffK_Slider.parent.height + SettingsPanel.Margin;
 
-            var springDamp_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_SPRINGDAMP"), 0.0f, 20.0f, 0.1f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.1f, numberFormat: "N"));
+            var springDamp_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_SPRINGDAMP), 0.0f, 20.0f, 0.1f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.1f, numberFormat: "N"));
             springDamp_Slider.eventValueChanged += (_, value) => ModSettings.SpringDamp = value;
             springDamp_Slider.parent.eventVisibilityChanged += (_, isVisible) => springDamp_Slider.value = ModSettings.SpringDamp;
             currentY += springDamp_Slider.parent.height + SettingsPanel.Margin;
 
-            var springOffset_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_SPRINGOFFSET"), -2.0f, 2.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
+            var springOffset_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_SPRINGOFFSET), -2.0f, 2.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
             springOffset_Slider.eventValueChanged += (_, value) => ModSettings.SpringOffset = value;
             springOffset_Slider.parent.eventVisibilityChanged += (_, isVisible) => springOffset_Slider.value = ModSettings.SpringOffset;
             currentY += springOffset_Slider.parent.height + SettingsPanel.Margin;
 
-            var springSwayBar_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_SPRINGSWAYBAR"), 0.0f, 200.0f, 1.0f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1.0f, numberFormat: "N"));
+            var springSwayBar_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_SPRINGSWAYBAR), 0.0f, 200.0f, 1.0f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1.0f, numberFormat: "N"));
             springSwayBar_Slider.eventValueChanged += (_, value) => ModSettings.SpringSwayBar = value;
             springSwayBar_Slider.parent.eventVisibilityChanged += (_, isVisible) => springSwayBar_Slider.value = ModSettings.SpringSwayBar;
             currentY += springSwayBar_Slider.parent.height + SettingsPanel.Margin;
 
-            var massFactor_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_MASSFACTOR"), 5.0f, 200.0f, 5.0f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 5.0f, numberFormat: "N"));
+            var massFactor_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_MASSFACTOR), 5.0f, 200.0f, 5.0f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 5.0f, numberFormat: "N"));
             massFactor_Slider.eventValueChanged += (_, value) => ModSettings.MassFactor = value;
             massFactor_Slider.parent.eventVisibilityChanged += (_, isVisible) => massFactor_Slider.value = ModSettings.MassFactor;
             currentY += massFactor_Slider.parent.height + SettingsPanel.Margin;
 
-            var massCenterHeight_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_MASSCENTERHEIGHT"), -1.0f, 1.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
+            var massCenterHeight_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_MASSCENTERHEIGHT), -1.0f, 1.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
             massCenterHeight_Slider.eventValueChanged += (_, value) => ModSettings.MassCenterHeight = value;
             massCenterHeight_Slider.parent.eventVisibilityChanged += (_, isVisible) => massCenterHeight_Slider.value = ModSettings.MassCenterHeight;
             currentY += massCenterHeight_Slider.parent.height + SettingsPanel.Margin;
 
-            var massCenterBias_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_MASSCENTERBIAS"), 0.0f, 1.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
+            var massCenterBias_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_MASSCENTERBIAS), 0.0f, 1.0f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
             massCenterBias_Slider.eventValueChanged += (_, value) => ModSettings.MassCenterBias = value;
             massCenterBias_Slider.parent.eventVisibilityChanged += (_, isVisible) => massCenterBias_Slider.value = ModSettings.MassCenterBias;
             currentY += massCenterBias_Slider.parent.height + SettingsPanel.Margin;
@@ -176,27 +176,27 @@ namespace DriveIt.Settings.Tabs
             cameraZ_Slider.parent.eventVisibilityChanged += (_, isVisible) => cameraZ_Slider.value = ModSettings.Offset.z;
             currentY += cameraZ_Slider.parent.height + SettingsPanel.Margin;
 
-            var cameraMouseRot_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_CAM_MOUSE_ROTATE_SENSITIVITY"), 0.1f, 4f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
+            var cameraMouseRot_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_CAM_MOUSE_SENSE), 0.1f, 4f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
             cameraMouseRot_Slider.eventValueChanged += (_, value) => ModSettings.CamMouseRotateSensitivity = value;
             cameraMouseRot_Slider.parent.eventVisibilityChanged += (_, isVisible) => cameraMouseRot_Slider.value = ModSettings.CamMouseRotateSensitivity;
             currentY += cameraMouseRot_Slider.parent.height + SettingsPanel.Margin;
 
-            var cameraKeyRot_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_CAM_KEY_ROTATE_SENSITIVITY"), 0.1f, 4f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
+            var cameraKeyRot_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_CAM_KEY_SENSE), 0.1f, 4f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
             cameraKeyRot_Slider.eventValueChanged += (_, value) => ModSettings.CamKeyRotateSensitivity = value;
             cameraKeyRot_Slider.parent.eventVisibilityChanged += (_, isVisible) => cameraKeyRot_Slider.value = ModSettings.CamKeyRotateSensitivity;
             currentY += cameraKeyRot_Slider.parent.height + SettingsPanel.Margin;
 
-            var cameraFOV_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_CAM_FIELD_OF_VIEW"), 30f, 120f, 1f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1f, numberFormat: "N0"));
+            var cameraFOV_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_CAM_FIELD_OF_VIEW), 30f, 120f, 1f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1f, numberFormat: "N0"));
             cameraFOV_Slider.eventValueChanged += (_, value) => ModSettings.CamFieldOfView = value;
             cameraFOV_Slider.parent.eventVisibilityChanged += (_, isVisible) => cameraFOV_Slider.value = ModSettings.CamFieldOfView;
             currentY += cameraFOV_Slider.parent.height + SettingsPanel.Margin;
 
-            var cameraPitch_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_CAM_MAX_PITCH_DEG"), 0f, 89f, 1f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1f, numberFormat: "N0"));
+            var cameraPitch_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_CAM_MAX_PITCH_DEG), 0f, 89f, 1f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1f, numberFormat: "N0"));
             cameraPitch_Slider.eventValueChanged += (_, value) => ModSettings.CamMaxPitch = value;
             cameraPitch_Slider.parent.eventVisibilityChanged += (_, isVisible) => cameraPitch_Slider.value = ModSettings.CamMaxPitch;
             currentY += cameraPitch_Slider.parent.height + SettingsPanel.Margin;
 
-            var cameraSmoothing_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_CAM_SMOOTHING"), 0.0f, 4f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
+            var cameraSmoothing_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_CAM_SMOOTHING), 0.0f, 4f, 0.05f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 0.05f, numberFormat: "N"));
             cameraSmoothing_Slider.eventValueChanged += (_, value) => ModSettings.CamSmoothing = value;
             cameraSmoothing_Slider.parent.eventVisibilityChanged += (_, isVisible) => cameraSmoothing_Slider.value = ModSettings.CamSmoothing;
             currentY += cameraSmoothing_Slider.parent.height + SettingsPanel.Margin;
