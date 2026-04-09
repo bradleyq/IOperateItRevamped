@@ -101,7 +101,7 @@ namespace DriveIt.Settings.Tabs
             TCS_Dropdown.parent.eventVisibilityChanged += (_, isVisible) => TCS_Dropdown.selectedIndex = ModSettings.TCSLevel;
             currentY += TCS_Dropdown.parent.height + SettingsPanel.Margin;
 
-            var downForce_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_DOWNFORCE"), 0.0f, 50.0f, 1f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N"));
+            var downForce_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_DOWNFORCE"), 0.0f, 50.0f, 1.0f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1, numberFormat: "N"));
             downForce_Slider.eventValueChanged += (_, value) => ModSettings.DownForce = value;
             downForce_Slider.parent.eventVisibilityChanged += (_, isVisible) => downForce_Slider.value = ModSettings.DownForce;
             currentY += downForce_Slider.parent.height + SettingsPanel.Margin;
@@ -135,6 +135,11 @@ namespace DriveIt.Settings.Tabs
             springOffset_Slider.eventValueChanged += (_, value) => ModSettings.SpringOffset = value;
             springOffset_Slider.parent.eventVisibilityChanged += (_, isVisible) => springOffset_Slider.value = ModSettings.SpringOffset;
             currentY += springOffset_Slider.parent.height + SettingsPanel.Margin;
+
+            var springSwayBar_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_SPRINGSWAYBAR"), 0.0f, 200.0f, 1.0f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 1.0f, numberFormat: "N"));
+            springSwayBar_Slider.eventValueChanged += (_, value) => ModSettings.SpringSwayBar = value;
+            springSwayBar_Slider.parent.eventVisibilityChanged += (_, isVisible) => springSwayBar_Slider.value = ModSettings.SpringSwayBar;
+            currentY += springSwayBar_Slider.parent.height + SettingsPanel.Margin;
 
             var massFactor_Slider = UISliders.AddPlainSliderWithValue(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate("SETTINGS_MASSFACTOR"), 5.0f, 200.0f, 5.0f, 0f, new UISliders.SliderValueFormat(valueMultiplier: 1, roundToNearest: 5.0f, numberFormat: "N"));
             massFactor_Slider.eventValueChanged += (_, value) => ModSettings.MassFactor = value;

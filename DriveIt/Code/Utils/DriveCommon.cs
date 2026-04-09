@@ -118,7 +118,7 @@ namespace DriveIt.Utils
         public const string SND_TIRE_PAVEMENT           = "Sounds/TirePavement";
         public const string SND_TIRE_PAVEMENT_NAME      = "Tire Pavement";
 
-        public const float  SND_RANGE                   = 200.0f;
+        public const float  SND_RANGE                   = 50.0f;
 
         public const string SHADER_WIREFRAME            = "Shaders/wireframeshader";
         public const string SHADER_WIREFRAME_ASSET      = "Wireframe";
@@ -173,13 +173,13 @@ namespace DriveIt.Utils
                     AudioClip clip;
                 
                     clip = DriveCommonLoadAudioClip(SND_TIRE_SQUEAL);
-                    s_driveSoundTireSqueal = DriveCommonSoundEffect(clip, 2.0f, true, true);
+                    s_driveSoundTireSqueal = DriveCommonSoundEffect(clip, SND_TIRE_SQUEAL_NAME, 1.0f, true, true);
 
                     clip = DriveCommonLoadAudioClip(SND_TIRE_GRAVEL);
-                    s_driveSoundTireGravel = DriveCommonSoundEffect(clip, 2.0f, true, true);
+                    s_driveSoundTireGravel = DriveCommonSoundEffect(clip, SND_TIRE_GRAVEL_NAME, 1.0f, true, true);
 
                     clip = DriveCommonLoadAudioClip(SND_TIRE_PAVEMENT);
-                    s_driveSoundTirePavement = DriveCommonSoundEffect(clip, 2.0f, true, true);
+                    s_driveSoundTirePavement = DriveCommonSoundEffect(clip, SND_TIRE_PAVEMENT_NAME, 1.0f, true, true);
                 }
 
                 s_driveWireframeShader = DriveCommonLoadShader(SHADER_WIREFRAME, SHADER_WIREFRAME_ASSET);
@@ -285,19 +285,19 @@ namespace DriveIt.Utils
             return shaderBundle.LoadAsset<Shader>(assetName);
         }
 
-        private static SoundEffect DriveCommonSoundEffect(AudioClip clip, float volume, bool loop, bool random)
+        private static SoundEffect DriveCommonSoundEffect(AudioClip clip, string name, float volume, bool loop, bool random)
         {
 
             ICities.UserAudioSettings settings = new ICities.UserAudioSettings();
             settings.volume = volume;
             settings.pitch = 1.0f;
             settings.loop = loop;
-            settings.is3D = false;
+            settings.is3D = true;
             settings.range = SND_RANGE;
             settings.fadeLength = 0.1f;
             settings.randomTime = random;
 
-            SoundEffect clipEffect = s_effectsWrapper.CreateSoundEffect(SND_TIRE_SQUEAL_NAME, clip, ref settings) as SoundEffect;
+            SoundEffect clipEffect = s_effectsWrapper.CreateSoundEffect(name, clip, ref settings) as SoundEffect;
 
             return clipEffect;
         }

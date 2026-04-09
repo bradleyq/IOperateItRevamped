@@ -19,7 +19,6 @@ namespace DriveIt
         private const float STEER_REST = 1.75f;
         private const float STEER_TILT_SCALE = 0.5f;
         private const float CONSTRAINEDZ_STAB_BOOST = 3.0f;
-        private const float STEER_SWAY_BAR_K = 77000.0f;
         private const float STEER_MAX = 37.0f;
         private const float STEER_DECAY = 0.0075f;
         private const float GEAR_RESP = 0.2f;
@@ -472,15 +471,15 @@ namespace DriveIt
             if (Event.current.type == EventType.Repaint && Logging.DetailLogging)
             {
                 string uiString = "dm: " + m_driveMode +
-                                    "\ng: " + (m_gear - 1) +
-                                    "\nt: " + m_throttle +
-                                    "\nb: " + m_brake +
-                                    "\nrps: " + m_radps + "\trpst: " + m_radpsTrans +
-                                    "\nwct: " + Wheel.frontCount + " " + Wheel.rightCount + " " + Wheel.wheelCount +
-                                    "\ntlt: " + m_tilt;
+                                  "\ng: " + (m_gear - 1) +
+                                  "\nt: " + m_throttle +
+                                  "\nb: " + m_brake +
+                                  "\nrps: " + m_radps + "\trpst: " + m_radpsTrans +
+                                  "\nwct: " + Wheel.frontCount + " " + Wheel.rightCount + " " + Wheel.wheelCount +
+                                  "\ntlt: " + m_tilt;
                 for (int index = 0; index < m_wheelObjects.Count; index++)
                 {
-                    uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + " " + m_wheelObjects[index].slip + " " + m_wheelObjects[index].radps;
+                    uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + "\t " + m_wheelObjects[index].slip + "\t " + m_wheelObjects[index].radps;
                 }
 
                 GUIStyle m_style = new GUIStyle(GUI.skin.label);
@@ -766,11 +765,11 @@ namespace DriveIt
             {
                 if (w.isFront)
                 {
-                    w.normalImpulse = Mathf.Max(w.normalImpulse + (w.compression - frontCompression) * STEER_SWAY_BAR_K * Time.fixedDeltaTime, 0.0f);
+                    w.normalImpulse = Mathf.Max(w.normalImpulse + (w.compression - frontCompression) * ModSettings.SpringSwayBar * DriveCommon.KN_TO_N * Time.fixedDeltaTime, 0.0f);
                 }
                 else
                 {
-                    w.normalImpulse += Mathf.Max(w.normalImpulse + (w.compression - rearCompression) * STEER_SWAY_BAR_K * Time.fixedDeltaTime, 0.0f);
+                    w.normalImpulse += Mathf.Max(w.normalImpulse + (w.compression - rearCompression) * ModSettings.SpringSwayBar * DriveCommon.KN_TO_N * Time.fixedDeltaTime, 0.0f);
                 }
             }
 
@@ -835,7 +834,6 @@ namespace DriveIt
                         frictionScaleLat = Mathf.Min(w.normalImpulse * w.frictionCoeffX, flatMagniutde) / Mathf.Max(flatMagniutde, DriveCommon.FLOAT_ERROR);
                     }
 
-                    w.binormalImpulse = lateralComponent * frictionScaleLat;
                     w.binormalImpulse = lateralComponent * frictionScaleLat;
                     w.tangentImpulse = longComponent * frictionScaleLong;
 

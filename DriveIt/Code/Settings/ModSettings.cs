@@ -26,6 +26,7 @@ namespace DriveIt.Settings
         private const float             GRIPCOEFFK = 0.85f;
         private const float             SPRINGDAMP = 2.0f;
         private const float             SPRINGOFFSET = -0.1f;
+        private const float             SPRINGSWAYBAR = 77.0f;
         private const float             MASSFACTOR = 85.0f;
         private const float             MASSCENTERHEIGHT = 0.05f;
         private const float             MASSCENTERBIAS = 0.5f;
@@ -62,6 +63,7 @@ namespace DriveIt.Settings
             GripCoeffK = GRIPCOEFFK;
             SpringDamp = SPRINGDAMP;
             SpringOffset = SPRINGOFFSET;
+            SpringSwayBar = SPRINGSWAYBAR;
             MassFactor = MASSFACTOR;
             MassCenterHeight = MASSCENTERHEIGHT;
             MassCenterBias = MASSCENTERBIAS;
@@ -148,6 +150,11 @@ namespace DriveIt.Settings
         public float XMLSpringOffset { get => SpringOffset; set => SpringOffset = value; }
         [XmlIgnore]
         internal static float SpringOffset = SPRINGOFFSET;
+
+        [XmlElement("SpringSwayBar")]
+        public float XMLSpringSwayBar { get => SpringSwayBar; set => SpringSwayBar = value; }
+        [XmlIgnore]
+        internal static float SpringSwayBar = SPRINGSWAYBAR;
 
         [XmlElement("MassFactor")]
         public float XMLMassFactor { get => MassFactor; set => MassFactor = value; }
