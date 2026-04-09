@@ -887,8 +887,6 @@ namespace DriveIt
             m_nextGearChange = 0.0f;
             m_isFallbackSuspension = false;
 
-            m_vehicleInfo.CalculateGeneratedInfo();
-
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
             Vector3 fullBounds = vehicleMesh.bounds.size;
             Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;

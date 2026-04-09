@@ -394,7 +394,6 @@ namespace DriveIt
             m_spTangent = Vector3.forward;
             m_spBinormal = Vector3.right;
             m_spNormal = Vector3.up;
-            m_vehicleInfo.CalculateGeneratedInfo();
 
             if (m_vehicleInfo.m_generatedInfo.m_tyres != null)
             {
