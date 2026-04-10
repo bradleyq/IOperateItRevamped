@@ -74,6 +74,7 @@ namespace DriveIt
         private List<EffectInfo> m_regularEffects = new List<EffectInfo>();
         private List<EffectInfo> m_dustEffects = new List<EffectInfo>();
         private List<EffectInfo> m_specialEffects = new List<EffectInfo>();
+        private List<GameObject> m_subMeshObjects = new List<GameObject>();
 
         private Dictionary<string, string> m_customUndergroundMappings = new Dictionary<string, string>();
         private Dictionary<NetInfo, NetInfoBackup> m_backupPrefabData = new Dictionary<NetInfo, NetInfoBackup>();
@@ -98,7 +99,7 @@ namespace DriveIt
             instance = this;
 
             m_visualObject = new GameObject("DriveEffects");
-            m_visualObject.transform.parent = gameObject.transform;
+            m_visualObject.transform.SetParent(gameObject.transform, false);
             m_visualObject.AddComponent<MeshFilter>();
             m_visualObject.AddComponent<MeshRenderer>();
             m_visualObject.GetComponent<MeshRenderer>().enabled = true;
@@ -109,7 +110,7 @@ namespace DriveIt
             m_headlight.intensity = LIGHT_HEADLIGHT_INTENSITY;
             m_headlight.range = LIGHT_HEADLIGHT_RANGE;
             m_headlight.spotAngle = LIGHT_HEADLIGHT_ANGLE;
-            m_headlight.transform.parent = m_visualObject.transform;
+            m_headlight.transform.SetParent(m_visualObject.transform, false);
             m_headlight.color = Color.white;
             m_headlight.enabled = false;
 
@@ -118,7 +119,7 @@ namespace DriveIt
             m_taillight.type = LightType.Point;
             m_taillight.intensity = LIGHT_TAILLIGHT_IDLE_INTENSITY;
             m_taillight.range = LIGHT_TAILLIGHT_RANGE;
-            m_taillight.transform.parent = m_visualObject.transform;
+            m_taillight.transform.SetParent(m_visualObject.transform, false);
             m_taillight.color = Color.red;
             m_taillight.enabled = false;
 
@@ -225,6 +226,11 @@ namespace DriveIt
                 Matrix4x4.TRS(Mathf.Max(m_spCompression + ModSettings.SpringOffset, ModSettings.SpringOffset) * Vector3.up, Quaternion.LookRotation(m_spTangent, m_spNormal), Vector3.one));
 
             m_visualObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
+
+            foreach(GameObject subMeshObject in m_subMeshObjects)
+            {
+                subMeshObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
+            }
 
             m_audioGroup.UpdatePlayers(Singleton<AudioManager>.instance.CurrentListenerInfo, Singleton<AudioManager>.instance.MasterVolume);
         }
@@ -405,6 +411,7 @@ namespace DriveIt
             }
 
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
+
             Vector3 fullBounds = vehicleMesh.bounds.size;
             m_headlight.transform.localPosition = new Vector3(0.0f, fullBounds.y * 0.5f, fullBounds.z * 0.5f + DriveCommon.FLOAT_ERROR);
             m_taillight.transform.localPosition = new Vector3(0.0f, fullBounds.y * 0.5f, -fullBounds.z * 0.5f - DriveCommon.FLOAT_ERROR);
@@ -421,6 +428,36 @@ namespace DriveIt
             }
 
             m_visualObject.SetActive(true);
+
+            foreach (VehicleInfo.MeshInfo subMesh in m_vehicleInfo.m_subMeshes)
+            {
+                if (subMesh.m_subInfo != null && ((subMesh.m_vehicleFlagsRequired | subMesh.m_vehicleFlagsForbidden) & s_controller.vehicleFlags) == subMesh.m_vehicleFlagsRequired)
+                {
+                    VehicleInfoBase subInfo = subMesh.m_subInfo;
+                    GameObject subMeshObject = new GameObject(subInfo.name);
+                    subMeshObject.transform.SetParent(m_visualObject.transform, false);
+
+                    if (subInfo.m_generatedInfo.m_tyres != null)
+                    {
+                        subInfo.m_material.SetVectorArray(Singleton<VehicleManager>.instance.ID_TyreLocation, subInfo.m_generatedInfo.m_tyres);
+                    }
+                    else
+                    {
+                        subInfo.m_material.SetVectorArray(Singleton<VehicleManager>.instance.ID_TyreLocation, new Vector4[1] { Vector4.one });
+                    }
+
+                    MeshFilter meshFilter = subMeshObject.AddComponent<MeshFilter>();
+                    meshFilter.sharedMesh = subInfo.m_mesh;
+
+                    MeshRenderer meshRenderer = subMeshObject.AddComponent<MeshRenderer>();
+                    meshRenderer.sharedMaterial = subInfo.m_material;
+                    meshRenderer.enabled = true;
+
+                    subMeshObject.SetActive(true);
+
+                    m_subMeshObjects.Add(subMeshObject);
+                }
+            }
 
             for (int i = 0; i < s_controller.wheels.Count; i++)
             {
@@ -458,6 +495,12 @@ namespace DriveIt
             {
                 trail.enabled = false;
             }
+
+            foreach (GameObject subMeshObject in m_subMeshObjects)
+            {
+                Destroy(subMeshObject);
+            }
+            m_subMeshObjects.Clear();
 
             if (disable)
             {
@@ -498,6 +541,15 @@ namespace DriveIt
                 }
             }
 
+            // override the underground material for all pedestrians.
+            Singleton<CitizenManager>.instance.m_properties.m_undergroundShader = Shader.Find("Custom/Citizens/Citizen/Default");
+            for (uint prefabIndex = 0; prefabIndex < PrefabCollection<CitizenInfo>.PrefabCount(); prefabIndex++)
+            {
+                CitizenInfo prefabCitizenInfo = PrefabCollection<CitizenInfo>.GetPrefab(prefabIndex);
+                if (prefabCitizenInfo == null) continue;
+                prefabCitizenInfo.m_undergroundLodMaterial = prefabCitizenInfo.m_lodMaterialCombined;
+            }
+
             int prefabCount = PrefabCollection<NetInfo>.PrefabCount();
 
             // only modify prefabs with MetroTunnels item layer or underground render layer.
@@ -526,6 +578,14 @@ namespace DriveIt
                     foreach (NetInfo.Segment s in prefabNetInfo.m_segments)
                     {
                         if (s.m_material && (!s.m_material.shader || s.m_material.shader.name != "Custom/Net/Metro"))
+                        {
+                            bCanReplace = false;
+                        }
+                    }
+
+                    foreach (NetInfo.Node n in prefabNetInfo.m_nodes)
+                    {
+                        if (n.m_material && (!n.m_material.shader || n.m_material.shader.name != "Custom/Net/Metro"))
                         {
                             bCanReplace = false;
                         }
@@ -640,6 +700,15 @@ namespace DriveIt
                         subVehicleInfo.m_undergroundLodMaterial = null;
                     }
                 }
+            }
+
+            // restore the underground material for all pedestrians. Cities will auto generate new ones.
+            Singleton<CitizenManager>.instance.m_properties.m_undergroundShader = Shader.Find("Custom/Citizens/Citizen/Underground");
+            for (uint prefabIndex = 0; prefabIndex < PrefabCollection<CitizenInfo>.PrefabCount(); prefabIndex++)
+            {
+                CitizenInfo prefabCitizenInfo = PrefabCollection<CitizenInfo>.GetPrefab(prefabIndex);
+                if (prefabCitizenInfo == null) continue;
+                prefabCitizenInfo.m_undergroundLodMaterial = null;
             }
 
             // restore road prefab segment and node data to before driving.

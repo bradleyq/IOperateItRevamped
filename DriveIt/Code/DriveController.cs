@@ -264,6 +264,7 @@ namespace DriveIt
         private Color m_vehicleColor;
         private bool m_setColor;
         private VehicleInfo m_vehicleInfo;
+        private Vehicle.Flags m_vehicleFlags;
 
         private List<Wheel> m_wheelObjects = new List<Wheel>();
 
@@ -311,6 +312,8 @@ namespace DriveIt
         public bool parallelWheels {  get => m_isConstrainedX; }
         public bool fallbackWheels { get => m_isFallbackSuspension; }
         public List<Wheel> wheels { get => m_wheelObjects; }
+        public Vehicle.Flags vehicleFlags { get => m_vehicleFlags; }
+
 
         public bool OnEsc()
         {
@@ -338,9 +341,9 @@ namespace DriveIt
             return m_vehicleInfo != null;
         }
 
-        public void StartDriving(Vector3 position, Quaternion rotation) => StartDriving(position, rotation, m_vehicleInfo, m_vehicleColor, m_setColor);
+        public void StartDriving(Vector3 position, Quaternion rotation) => StartDriving(position, rotation, m_vehicleInfo, 0, m_vehicleColor, m_setColor);
 
-        public void StartDriving(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Color vehicleColor, bool setColor)
+        public void StartDriving(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Vehicle.Flags flags, Color vehicleColor, bool setColor)
         {
             Vector3 spawnPosition = position;
             Quaternion spawnRotation = rotation;
@@ -353,7 +356,7 @@ namespace DriveIt
                 DestroyVehicle(false);
             }
 
-            SpawnVehicle(spawnPosition + new Vector3(0.0f, -ModSettings.SpringOffset, 0.0f), spawnRotation, vehicleInfo, vehicleColor, setColor);
+            SpawnVehicle(spawnPosition + new Vector3(0.0f, -ModSettings.SpringOffset, 0.0f), spawnRotation, vehicleInfo, flags, vehicleColor, setColor);
 
             if (!enabled)
             {
@@ -866,7 +869,7 @@ namespace DriveIt
             }
         }
 
-        private void SpawnVehicle(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Color vehicleColor, bool setColor)
+        private void SpawnVehicle(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Vehicle.Flags vehicleFlags, Color vehicleColor, bool setColor)
         {
             s_engine_inertia = (float)System.Math.Pow(ENGINE_INERTIA, Time.fixedDeltaTime);
             s_drag_wheel_powered = (float)(1.0 - System.Math.Pow(1.0 - DRAG_WHEEL_POWERED, Time.fixedDeltaTime));
@@ -879,6 +882,7 @@ namespace DriveIt
             m_prevVelocity = Vector3.zero;
             m_prevPrevVelocity = Vector3.zero;
             m_vehicleInfo = vehicleInfo;
+            m_vehicleFlags = vehicleFlags;
             m_driveMode = ENGINE_MODE_NEUTRAL;
             m_distanceTravelled = 0.0f;
             m_steer = 0.0f;
