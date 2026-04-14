@@ -4,6 +4,7 @@ using ColossalFramework.UI;
 using DriveIt.Settings;
 using DriveIt.Utils;
 using UnityEngine;
+using static RenderManager;
 
 namespace DriveIt
 {
@@ -54,8 +55,7 @@ namespace DriveIt
 
             SetCursorVisibility(false);
 
-            m_targetRigidBody = rigidBody;
-            m_followDistance = Mathf.Clamp(distance, 0.0f, LOOK_MAX_DIST);
+            RetargetCam(rigidBody, distance);
             m_lastValidDir = m_mainCamera.transform.TransformDirection(Vector3.forward);
             m_rotation = m_mainCamera.transform.rotation;
             m_rotationOffset = Quaternion.identity;
@@ -72,6 +72,12 @@ namespace DriveIt
             m_rotation = Quaternion.identity;
             m_rotationOffset = Quaternion.identity;
             Logging.KeyMessage("Drive cam disabled");
+        }
+
+        public void RetargetCam(Rigidbody rigidBody, float distance)
+        {
+            m_targetRigidBody = rigidBody;
+            m_followDistance = Mathf.Clamp(distance, 0.0f, LOOK_MAX_DIST);
         }
         private void SetUIVisibility(bool visibility)
         {

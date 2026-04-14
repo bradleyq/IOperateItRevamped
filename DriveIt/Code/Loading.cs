@@ -31,7 +31,6 @@ namespace DriveIt
                 gameObject = new GameObject(Utils.DriveCommon.MOD_NAME);
                 gameObject.AddComponent<MainPanel>();
                 gameObject.AddComponent<DriveButton>();
-                gameObject.AddComponent<DriveEffects>();
                 gameObject.AddComponent<DriveController>();
                 gameObject.AddComponent<DriveCam>();
             }
