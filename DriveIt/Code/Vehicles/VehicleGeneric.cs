@@ -52,8 +52,6 @@ namespace DriveIt.Vehicles
         private static float s_drag_wheel;
         private static VehicleGeneric s_primaryVehicle = null;
 
-        private static float lastupdate = 0.0f;
-
         protected static int ENGINE_GEAR_NEUTRAL = 2;
         protected static float[] ENGINE_GEAR_RATIOS = { -5.0f, -10.0f, 0.0f, 10.0f, 5.0f };
         protected static string[] ENGINE_GEAR_NAMES = { "R2", "R1", "N", "D1", "D2" };
@@ -131,9 +129,9 @@ namespace DriveIt.Vehicles
             public Vector3 wheelGroundBinormal { get => binormal; }
             public Vector3 wheelContactPoint { get => contactPoint; }
             public Vector3 wheelContactVelocity { get => contactVelocity; }
-            public float wheelBinormalImpulse {  get => impulse.x; }
             public float wheelNormalImpulse {  get => impulse.y; }
             public float wheelTangentImpulse {  get => impulse.z; }
+            public float wheelBinormalImpulse {  get => impulse.x; }
             public float wheelTorqueFract { get => torqueFract; }
             public float wheelBrakeFract { get => brakeFract; }
             public float wheelRadps {  get => radps; }
@@ -269,25 +267,22 @@ namespace DriveIt.Vehicles
                 {
                     Vector3 prelimContactVel = vehicle.m_vehicleRigidBody.GetPointVelocity(this.contactPoint);
                     float radDelta = Vector3.Dot(prelimContactVel, this.tangent) / this.radius - this.radps;
-                    this.AddVelocity(Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), this.impulse.y * this.radius * this.frictionCoeffZ / this.moment));
+                    this.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), this.impulse.y * this.radius * this.frictionCoeffZ / this.moment);
                 }
 
-                float normDotUp = Vector3.Dot(this.normal, upVec);
-
+                // calculate fist pass normal impulses. Update wheel suspension position.
                 this.onGround = false;
                 this.impulse = Vector3.zero;
-                this.compression = 0.0f;
                 this.slip = 1.0f;
-
+                float normDotUp = Vector3.Dot(this.normal, upVec);
                 if (normDotUp > VALID_INCLINE)
                 {
-                    Vector3 wheelOrigin = this.origin;
-                    Vector3 originWheelBottom = vehicle.m_vehicleRigidBody.transform.TransformPoint(wheelOrigin + Vector3.down * this.radius);
+                    Vector3 originWheelBottom = vehicle.m_vehicleRigidBody.transform.TransformPoint(this.origin + Vector3.down * this.radius);
                     float compression = Mathf.Max(Vector3.Dot(this.heightSample - originWheelBottom, this.normal) / normDotUp, 0.0f);
                     float springVel = (compression - this.compression) / Time.fixedDeltaTime;
                     float deltaVel = -ModSettings.SpringDamp * Mathf.Exp(-ModSettings.SpringDamp * Time.fixedDeltaTime) * (compression + springVel * Time.fixedDeltaTime) + springVel * Mathf.Exp(-ModSettings.SpringDamp * Time.fixedDeltaTime) - springVel;
 
-                    this.gameObject.transform.localPosition = new Vector3(wheelOrigin.x, wheelOrigin.y + compression, wheelOrigin.z);
+                    this.gameObject.transform.localPosition = new Vector3(this.origin.x, this.origin.y + compression, this.origin.z);
                     this.compression = compression;
 
                     if (deltaVel < 0.0f)
@@ -297,11 +292,12 @@ namespace DriveIt.Vehicles
                         this.contactPoint = this.gameObject.transform.TransformPoint(new Vector3(0.0f, -this.radius, 0.0f));
                         this.contactVelocity = vehicle.m_vehicleRigidBody.GetPointVelocity(this.contactPoint);
                         Vector3 flatVel = this.contactVelocity - Vector3.Dot(this.contactVelocity, this.normal) * this.normal;
-                        this.slip = Mathf.Clamp01(Vector3.Magnitude(flatVel - (this.radps * this.wheelRadius * this.tangent)) / Mathf.Clamp(flatVel.magnitude, GRIP_SLIP_SPEED_LOW, GRIP_SLIP_SPEED_HIGH));
+                        this.slip = Mathf.Clamp01(Vector3.Magnitude(flatVel - (this.radps * this.radius * this.tangent)) / Mathf.Clamp(flatVel.magnitude, GRIP_SLIP_SPEED_LOW, GRIP_SLIP_SPEED_HIGH));
                     }
                 }
                 else
                 {
+                    this.compression = 0.0f;
                     this.gameObject.transform.localPosition = this.origin;
                 }
             }
@@ -941,7 +937,7 @@ namespace DriveIt.Vehicles
                     frictionScaleLong = Mathf.Min(w.wheelNormalImpulse * w.wheelFrictionCoeffZ, flatMagniutde) / Mathf.Max(flatMagniutde, DriveCommon.FLOAT_ERROR);
                     frictionScaleLat = Mathf.Min(w.wheelNormalImpulse * w.wheelFrictionCoeffX, flatMagniutde) / Mathf.Max(flatMagniutde, DriveCommon.FLOAT_ERROR);
 
-                    w.AddImpulses(impulseX: lateralComponent * frictionScaleLat, impulseY: 0.0f, impulseZ: longComponent * frictionScaleLong);
+                    w.AddImpulses(impulseX: lateralComponent * frictionScaleLat, impulseZ: longComponent * frictionScaleLong);
 
                     netImpulse += w.wheelNormalImpulse * w.wheelGroundNormal;
                     netImpulse += w.wheelBinormalImpulse * w.wheelGroundBinormal;
