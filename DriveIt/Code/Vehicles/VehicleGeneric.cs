@@ -12,12 +12,12 @@ namespace DriveIt.Vehicles
         private const float RESET_SCAN_HEIGHT = 2.0f;
         private const float RESET_HEIGHT = 0.1f;
         private const float RESET_FREQ = 2.0f;
-        private const float MASS_FACTOR = 85.0f;
         private const float THROTTLE_RESP = 2.0f;
         private const float THROTTLE_REST = 2.0f;
+        private const float MASS_FACTOR = 85.0f;
+        private const float RADIUS_D_WHEEL = 0.2f;
         private const float STEER_RESP = 1.75f;
         private const float STEER_REST = 1.75f;
-        private const float STEER_TILT_SCALE = 0.5f;
         private const float DEPEN_VELOCITY = 2.0f;
         private const float STEER_MAX = 15.0f;
         private const float STEER_DECAY = 0.0075f;
@@ -29,7 +29,6 @@ namespace DriveIt.Vehicles
         private const float DRAG_WHEEL_POWERED = 0.25f;
         private const float DRAG_WHEEL = 0.15f;
         private const float MOMENT_WHEEL = 1.5f;
-        private const float RADIUS_D_WHEEL = 0.2f;
         private const float VALID_INCLINE = 0.5f;
         private const float GRIP_HIGH_SLIP = 0.5f;
         private const float GRIP_OPTIM_SLIP = 0.2f;
@@ -45,12 +44,13 @@ namespace DriveIt.Vehicles
         private const int ENGINE_MODE_NEUTRAL = 0;
         private const int ENGINE_MODE_FORWARD = 1;
         private const float ENGINE_AUTO_SHIFT_THRESH = 0.1f;
-        private const float ACCEL_G = 10f;
 
         private static float s_engine_inertia;
         private static float s_drag_wheel_powered;
         private static float s_drag_wheel;
         private static VehicleGeneric s_primaryVehicle = null;
+
+        protected const float ACCEL_G = 10f;
 
         protected DriveEffects m_effects;
         protected Rigidbody m_vehicleRigidBody;
@@ -105,6 +105,7 @@ namespace DriveIt.Vehicles
         public int leftCount { get => m_wheelCount - m_rightWheels; }
         public bool inlineWheels { get => rightCount == 0 || leftCount == 0; }
         public bool parallelWheels { get => rearCount == 0 || frontCount == 0; }
+        public float springHeight { get => springOffset;  }
         
         public enum VehicleType
         {
@@ -866,7 +867,8 @@ namespace DriveIt.Vehicles
         {
             if (Event.current.type == EventType.Repaint && Logging.DetailLogging)
             {
-                string uiString = "dm: " + m_driveMode +
+                string uiString = "v: " + this +
+                                  "\ndm: " + m_driveMode +
                                   "\ng: " + (m_gear - 1) +
                                   "\nt: " + m_throttle +
                                   "\nb: " + m_brake +
@@ -874,7 +876,7 @@ namespace DriveIt.Vehicles
                                   "\nwct: " + frontCount + " " + rightCount + " " + wheelCount;
                 for (int index = 0; index < m_wheelObjects.Count; index++)
                 {
-                    uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + "\t " + m_wheelObjects[index].wheelRadps;
+                    uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + "\t " + m_wheelObjects[index].wheelCompression + "\t " + m_wheelObjects[index].wheelRadps;
                 }
 
                 GUIStyle m_style = new GUIStyle(GUI.skin.label);

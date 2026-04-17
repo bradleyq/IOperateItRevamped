@@ -114,7 +114,7 @@ namespace DriveIt
             m_isSirenEnabled = false;
             m_isLightEnabled = false;
             m_isDusty = false;
-            m_isStandardVehicle = m_vehicleInstance is Vehicles.VehicleCar;
+            m_isStandardVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike;
             m_spCompression = 0.0f;
             m_spTangent = Vector3.forward;
             m_spBinormal = Vector3.right;
@@ -150,7 +150,9 @@ namespace DriveIt
 
             foreach (VehicleInfo.MeshInfo subMesh in m_vehicleInfo.m_subMeshes)
             {
-                if (subMesh.m_subInfo != null && ((subMesh.m_vehicleFlagsRequired | subMesh.m_vehicleFlagsForbidden) & m_vehicleInstance.vehicleFlags) == subMesh.m_vehicleFlagsRequired)
+                if (subMesh.m_subInfo != null && 
+                    subMesh.m_parkedFlagsRequired == 0 && 
+                    ((subMesh.m_vehicleFlagsRequired | subMesh.m_vehicleFlagsForbidden) & m_vehicleInstance.vehicleFlags) == subMesh.m_vehicleFlagsRequired)
                 {
                     VehicleInfoBase subInfo = subMesh.m_subInfo;
                     GameObject subMeshObject = new GameObject(subInfo.name);
@@ -375,7 +377,7 @@ namespace DriveIt
             }
 
             materialBlock.SetMatrix(Singleton<VehicleManager>.instance.ID_TyreMatrix, 
-                Matrix4x4.TRS(Mathf.Clamp(m_spCompression + ModSettings.SpringOffset, Mathf.Min(ModSettings.SpringOffset, MAX_VISUAL_COMPRESSION), MAX_VISUAL_COMPRESSION) * Vector3.up, 
+                Matrix4x4.TRS(Mathf.Clamp(m_spCompression + m_vehicleInstance.springHeight, Mathf.Min(m_vehicleInstance.springHeight, MAX_VISUAL_COMPRESSION), MAX_VISUAL_COMPRESSION) * Vector3.up, 
                               Quaternion.LookRotation(m_spTangent, m_spNormal), 
                               Vector3.one));
 
@@ -528,8 +530,10 @@ namespace DriveIt
                 float wblength = Mathf.Abs(frontAvg.z - rearAvg.z);
                 m_spTangent = Vector3.Normalize(frontAvg - rearAvg);
                 m_spCompression = frontAvg.y * Mathf.Abs(rearAvg.z) / wblength + rearAvg.y * Mathf.Abs(frontAvg.z) / wblength;
+                Logging.Message("compression " + frontAvg.y + " " + rearAvg.y + " " + m_spCompression);
             }
-            
+
+
             m_spNormal = Vector3.Normalize(Vector3.Cross(m_spTangent, m_spBinormal));
 
             m_isDusty = dustyCount >= m_vehicleInstance.wheelCount / 2;

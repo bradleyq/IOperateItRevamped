@@ -31,14 +31,14 @@ namespace DriveIt.Settings
         private const float             MASSCENTERHEIGHT = 0.1f;
         private const float             MASSCENTERBIAS = 0.55f;
 
-        private const float             BIKEENGINEPOWER = 50f;
-        private const float             BIKEBRAKINGFORCE = 10f;
+        private const float             BIKEENGINEPOWER = 150f;
+        private const float             BIKEBRAKINGFORCE = 8f;
         private const float             BIKEDOWNFORCE = 15.0f;
         private const float             BIKEDRIVEBIAS = 0.6f;
         private const float             BIKEBRAKEBIAS = 0.0f;
         private const float             BIKESPRINGDAMP = 4.0f;
         private const float             BIKESPRINGOFFSET = -0.05f;
-        private const float             BIKEMASSCENTERHEIGHT = 0.1f;
+        private const float             BIKEMASSCENTERHEIGHT = 0.05f;
         private const float             BIKEMASSCENTERBIAS = 0.5f;
 
         private const float             BOATENGINEPOWER = 5000f;
@@ -53,13 +53,13 @@ namespace DriveIt.Settings
 
         private const float             CARENGINEPOWER = 350f;
         private const float             CARBRAKINGFORCE = 50f;
-        private const float             CARDOWNFORCE = 10.0f;
-        private const float             CARDRIVEBIAS = 0.6f;
-        private const float             CARBRAKEBIAS = 0.4f;
-        private const float             CARSPRINGDAMP = 2.0f;
+        private const float             CARDOWNFORCE = 15.0f;
+        private const float             CARDRIVEBIAS = 0.65f;
+        private const float             CARBRAKEBIAS = 0.65f;
+        private const float             CARSPRINGDAMP = 2.2f;
         private const float             CARSPRINGOFFSET = -0.1f;
-        private const float             CARSPRINGSWAYBAR = 77.0f;
-        private const float             CARMASSCENTERHEIGHT = 0.1f;
+        private const float             CARSPRINGSWAYBAR = 85.0f;
+        private const float             CARMASSCENTERHEIGHT = 0.05f;
         private const float             CARMASSCENTERBIAS = 0.55f;
 
         private const float             HELIENGINEPOWER = 350f;
@@ -85,16 +85,16 @@ namespace DriveIt.Settings
         private const float             TRAILERMASSCENTERHEIGHT = 0.1f;
         private const float             TRAILERMASSCENTERBIAS = 0.5f;
 
-        private const float             TRAINENGINEPOWER = 350f;
-        private const float             TRAINBRAKINGFORCE = 50f;
+        private const float             TRAINENGINEPOWER = 500f;
+        private const float             TRAINBRAKINGFORCE = 75f;
         private const float             TRAINDOWNFORCE = 10.0f;
-        private const float             TRAINDRIVEBIAS = 0.6f;
-        private const float             TRAINBRAKEBIAS = 0.4f;
-        private const float             TRAINSPRINGDAMP = 2.0f;
-        private const float             TRAINSPRINGOFFSET = -0.1f;
-        private const float             TRAINSPRINGSWAYBAR = 77.0f;
+        private const float             TRAINDRIVEBIAS = 0.5f;
+        private const float             TRAINBRAKEBIAS = 0.6f;
+        private const float             TRAINSPRINGDAMP = 2.5f;
+        private const float             TRAINSPRINGOFFSET = -0.4f;
+        private const float             TRAINSPRINGSWAYBAR = 100.0f;
         private const float             TRAINMASSCENTERHEIGHT = 0.1f;
-        private const float             TRAINMASSCENTERBIAS = 0.55f;
+        private const float             TRAINMASSCENTERBIAS = 0.5f;
 
         private static readonly Vector3 OFFSET = new Vector3(0f, 2f, 0f);
         private const float             CAMMOUSEROTATESENSITIVITY = 1f;
