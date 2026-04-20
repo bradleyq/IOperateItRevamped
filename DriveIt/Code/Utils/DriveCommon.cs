@@ -36,7 +36,6 @@ namespace DriveIt.Utils
         #region DriveIt Translation String Keys
         public const string TK_WHATSNEW_L1                  = "WHATSNEW_L1";
         public const string TK_WHATSNEW_L2                  = "WHATSNEW_L2";
-        public const string TK_WHATSNEW_L3                  = "WHATSNEW_L3";
         public const string TK_MOD_DESCRIPTION              = "MOD_DESCRIPTION";
         public const string TK_SETTINGS_TAB_SETTINGS        = "SETTINGS_TAB_SETTINGS";
         public const string TK_SETTINGS_TAB_BIKE            = "SETTINGS_TAB_BIKE";
@@ -113,6 +112,11 @@ namespace DriveIt.Utils
         public const string TK_SPAWNBTN_TEXT                = "SPAWNBTN_TEXT";
         public const string TK_ROAD_SELECT                  = "ROAD_SELECT";
         public const string TK_TERRAIN_SELECT               = "TERRAIN_SELECT";
+        #endregion
+
+        #region DriveIt Vehicle Specific Translation Strings
+        public const string TK_SETTINGS_SPRINGOFFSET_BOAT   = "SETTINGS_SPRINGOFFSET_BOAT";
+
         #endregion
 
         #region DriveIt General Constants

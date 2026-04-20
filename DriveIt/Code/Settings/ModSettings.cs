@@ -41,13 +41,12 @@ namespace DriveIt.Settings
         private const float             BIKEMASSCENTERHEIGHT = 0.05f;
         private const float             BIKEMASSCENTERBIAS = 0.5f;
 
-        private const float             BOATENGINEPOWER = 5000f;
-        private const float             BOATBRAKINGFORCE = 100f;
-        private const float             BOATDOWNFORCE = 10.0f;
-        private const float             BOATDRIVEBIAS = 0.0f;
-        private const float             BOATBRAKEBIAS = 0.0f;
-        private const float             BOATSPRINGDAMP = 4.0f;
-        private const float             BOATSPRINGOFFSET = -0.3f;
+        private const float             BOATENGINEPOWER = 25000f;
+        private const float             BOATBRAKINGFORCE = 200f;
+        private const float             BOATDOWNFORCE = 5.0f;
+        private const float             BOATDRIVEBIAS = 0.25f;
+        private const float             BOATBRAKEBIAS = 0.25f;
+        private const float             BOATSPRINGOFFSET = -0.6f;
         private const float             BOATMASSCENTERHEIGHT = 0.1f;
         private const float             BOATMASSCENTERBIAS = 0.5f;
 
@@ -66,7 +65,7 @@ namespace DriveIt.Settings
         private const float             HELISPRINGDAMP = 2.0f;
         private const float             HELISPRINGOFFSET = -0.1f;
         private const float             HELIMASSCENTERHEIGHT = 0.1f;
-        private const float             HELIMASSCENTERBIAS = 0.55f;
+        private const float             HELIMASSCENTERBIAS = 0.5f;
 
         private const float             PLANEENGINEPOWER = 40000f;
         private const float             PLANEBRAKINGFORCE = 100f;
@@ -85,14 +84,14 @@ namespace DriveIt.Settings
         private const float             TRAILERMASSCENTERHEIGHT = 0.1f;
         private const float             TRAILERMASSCENTERBIAS = 0.5f;
 
-        private const float             TRAINENGINEPOWER = 500f;
-        private const float             TRAINBRAKINGFORCE = 75f;
-        private const float             TRAINDOWNFORCE = 10.0f;
+        private const float             TRAINENGINEPOWER = 2000f;
+        private const float             TRAINBRAKINGFORCE = 100f;
+        private const float             TRAINDOWNFORCE = 5.0f;
         private const float             TRAINDRIVEBIAS = 0.5f;
-        private const float             TRAINBRAKEBIAS = 0.6f;
-        private const float             TRAINSPRINGDAMP = 2.5f;
-        private const float             TRAINSPRINGOFFSET = -0.4f;
-        private const float             TRAINSPRINGSWAYBAR = 100.0f;
+        private const float             TRAINBRAKEBIAS = 0.5f;
+        private const float             TRAINSPRINGDAMP = 4.0f;
+        private const float             TRAINSPRINGOFFSET = -0.2f;
+        private const float             TRAINSPRINGSWAYBAR = 125.0f;
         private const float             TRAINMASSCENTERHEIGHT = 0.1f;
         private const float             TRAINMASSCENTERBIAS = 0.5f;
 
@@ -150,7 +149,6 @@ namespace DriveIt.Settings
             BoatDownForce = BOATDOWNFORCE;
             BoatDriveBias = BOATDRIVEBIAS;
             BoatBrakeBias = BOATBRAKEBIAS;
-            BoatSpringDamp = BOATSPRINGDAMP;
             BoatSpringOffset = BOATSPRINGOFFSET;
             BoatMassCenterHeight = BOATMASSCENTERHEIGHT;
             BoatMassCenterBias = BOATMASSCENTERBIAS;
@@ -376,11 +374,6 @@ namespace DriveIt.Settings
         public float XMLBoatBrakeBias { get => BoatBrakeBias; set => BoatBrakeBias = value; }
         [XmlIgnore]
         internal static float BoatBrakeBias = BOATBRAKEBIAS;
-
-        [XmlElement("BoatSpringDamp")]
-        public float XMLBoatSpringDamp { get => BoatSpringDamp; set => BoatSpringDamp = value; }
-        [XmlIgnore]
-        internal static float BoatSpringDamp = BOATSPRINGDAMP;
 
         [XmlElement("BoatSpringOffset")]
         public float XMLBoatSpringOffset { get => BoatSpringOffset; set => BoatSpringOffset = value; }

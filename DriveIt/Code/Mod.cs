@@ -25,7 +25,6 @@ namespace DriveIt
                 {
                     DriveCommon.TK_WHATSNEW_L1,
                     DriveCommon.TK_WHATSNEW_L2,
-                    DriveCommon.TK_WHATSNEW_L3,
                 }
             }
         };

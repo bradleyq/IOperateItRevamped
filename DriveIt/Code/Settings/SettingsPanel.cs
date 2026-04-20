@@ -4,6 +4,7 @@ using ColossalFramework.UI;
 using DriveIt.Utils;
 using System.ComponentModel;
 using UnityEngine;
+using static AlgernonCommons.UI.UISliders;
 
 namespace DriveIt
 {
@@ -15,7 +16,15 @@ namespace DriveIt
         public const float StandardComponentHeight = 30f;
         public const float StandardSubpanelMargin = 15f;
 
-        private static UIScrollablePanel CreateScrollable(UITabContainer container, UIPanel panel)
+        public static UISlider CreateSlider(UIComponent parent, float xPos, float yPos, string text, float min, float max, float step, float mult, string nf, string sfx, float width = 600f)
+        {
+            SliderValueFormat format = new SliderValueFormat(mult, mult * step, nf, sfx);
+            UISlider slider = AddPlainSliderWithValue(parent, xPos, yPos, text, min, max, step, 0.0f, format, width);
+            slider.enableMouseWheel = false;
+            return slider;
+        }
+
+        public static UIScrollablePanel CreateScrollable(UITabContainer container, UIPanel panel)
         {
             UIScrollablePanel scrollPanel = panel.AddUIComponent<UIScrollablePanel>();
             UIScrollbar settingsScroll = UIScrollbars.AddScrollbar(panel, scrollPanel);

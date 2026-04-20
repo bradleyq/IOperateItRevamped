@@ -1,6 +1,5 @@
 ﻿using AlgernonCommons;
 using ColossalFramework;
-using DriveIt.Settings;
 using DriveIt.Utils;
 using DriveIt.Vehicles;
 using System.Collections.Generic;
@@ -62,7 +61,9 @@ namespace DriveIt
         private bool m_isLightEnabled = false;
         private bool m_isDusty = false;
         private bool m_vehicleColorSet = false;
-        private bool m_isStandardVehicle = false;
+        private bool m_isTireVehicle = false;
+        private bool m_isHeadlightVehicle = false;
+        private bool m_isTaillightVehicle = false;
         private float m_spCompression;
         private Vector3 m_spTangent;
         private Vector3 m_spBinormal;
@@ -114,7 +115,9 @@ namespace DriveIt
             m_isSirenEnabled = false;
             m_isLightEnabled = false;
             m_isDusty = false;
-            m_isStandardVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike;
+            m_isTireVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrailer;
+            m_isHeadlightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrain;
+            m_isTaillightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrailer;
             m_spCompression = 0.0f;
             m_spTangent = Vector3.forward;
             m_spBinormal = Vector3.right;
@@ -362,14 +365,14 @@ namespace DriveIt
                 materialBlock.SetColor(Singleton<VehicleManager>.instance.ID_Color, m_vehicleColor);
             }
 
-            m_headlight.enabled = m_isLightEnabled && m_isStandardVehicle;
+            m_headlight.enabled = m_isLightEnabled && m_isHeadlightVehicle;
 
             float tailIntensity = m_isLightEnabled ? LIGHT_TEXTURE_IDLE_INTENSITY : 0.0f;
             tailIntensity = m_vehicleInstance.brake > 0.0f ? LIGHT_TAILLIGHT_INTENSITY : tailIntensity;
             if (tailIntensity > 0.0f)
             {
                 m_taillight.intensity = tailIntensity;
-                m_taillight.enabled = m_isStandardVehicle;
+                m_taillight.enabled = m_isTaillightVehicle;
             }
             else
             {
@@ -453,7 +456,7 @@ namespace DriveIt
                 VehicleGeneric.Wheel w = m_vehicleInstance.wheels[i];
                 WheelExtraValues we = m_extraValues[i];
 
-                if (m_isStandardVehicle)
+                if (m_isTireVehicle)
                 {
                     TrailRenderer trail = m_usedTireTrails[i];
                     bool trailFound = trail;
@@ -845,6 +848,7 @@ namespace DriveIt
             if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeySirenToggle.Key))
                 m_isSirenEnabled = !m_isSirenEnabled;
         }
+
         private void AddEffects()
         {
             if (m_vehicleInfo.m_effects != null)
@@ -864,17 +868,21 @@ namespace DriveIt
                             {
                                 m_engineSoundEffects.Add(esEffect0);
                             }
+                            else if (effect.m_effect is LightEffect lightEffect0)
+                            {
+                                m_lightEffects.Add(lightEffect0);
+                            }
                             else if (effect.m_effect is MultiEffect multiEffect)
                             {
                                 foreach (var sub in multiEffect.m_effects)
                                 {
-                                    if (sub.m_effect is LightEffect lightEffect)
-                                    {
-                                        m_lightEffects.Add(lightEffect);
-                                    }
-                                    else if (sub.m_effect is EngineSoundEffect esEffect1)
+                                    if (sub.m_effect is EngineSoundEffect esEffect1)
                                     {
                                         m_engineSoundEffects.Add(esEffect1);
+                                    }
+                                    else if (sub.m_effect is LightEffect lightEffect1)
+                                    {
+                                        m_lightEffects.Add(lightEffect1);
                                     }
                                     else
                                     {
@@ -924,7 +932,7 @@ namespace DriveIt
                 VehicleGeneric.Wheel w = m_vehicleInstance.wheels[iter];
                 WheelExtraValues we = m_extraValues[iter];
 
-                if (w.isOnGround && w.wheelGroundType == MapUtils.COLLISION_TYPE.ROAD && m_isStandardVehicle)
+                if (w.isOnGround && w.wheelGroundType == MapUtils.COLLISION_TYPE.ROAD && m_isTireVehicle)
                 {
                     EffectInfo.SpawnArea tireArea = new EffectInfo.SpawnArea(w.transform.localToWorldMatrix, effectMeshData);
                     DriveCommon.s_driveSoundTireSqueal.PlaySound(default, listenerInfo, s_audioGroup, w.wheelContactPoint, w.wheelContactVelocity, DriveCommon.SND_RANGE, 1.5f * Mathf.Clamp01(we.smoothOptimSlip), 0.8f + 0.4f * we.smoothSlip);

@@ -459,7 +459,7 @@ namespace DriveIt.Vehicles
             m_vehicleRigidBody.drag = vehicleDrag * adjustedBounds.x * adjustedBounds.y / halfSA;
             m_vehicleRigidBody.angularDrag = vehicleDrag * adjustedBounds.y * adjustedBounds.z / halfSA;
             m_vehicleRigidBody.mass = halfSA * MASS_FACTOR;
-            m_vehicleRigidBody.transform.position = position;
+            m_vehicleRigidBody.transform.position = position + (adjustedY < 0.0f ? Vector3.down * adjustedY : Vector3.zero);
             m_vehicleRigidBody.transform.rotation = rotation;
             m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, adjustedY + adjustedBounds.y * massCenterHeight, adjustedZ + massCenterBias * adjustedBounds.z);
             m_vehicleRigidBody.velocity = Vector3.zero;
@@ -536,7 +536,7 @@ namespace DriveIt.Vehicles
             float length = adjustedBounds.z;
             m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, true));
             m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, true));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(0.0f, adjustedY + springOffset, 0.0f), momentWheel, RADIUS_D_WHEEL, true, false));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(0.0f, adjustedY + springOffset + RADIUS_D_WHEEL, 0.0f), momentWheel, RADIUS_D_WHEEL, true, false));
             m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, -length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, true, true));
             m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, -length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, true, true));
         }
@@ -876,7 +876,7 @@ namespace DriveIt.Vehicles
                                   "\nwct: " + frontCount + " " + rightCount + " " + wheelCount;
                 for (int index = 0; index < m_wheelObjects.Count; index++)
                 {
-                    uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + "\t " + m_wheelObjects[index].wheelCompression + "\t " + m_wheelObjects[index].wheelRadps;
+                    uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + "\t " + m_wheelObjects[index].isOnGround + "\t " + m_wheelObjects[index].wheelSlip + "\t " + m_wheelObjects[index].wheelRadps;
                 }
 
                 GUIStyle m_style = new GUIStyle(GUI.skin.label);
