@@ -119,6 +119,11 @@ namespace DriveIt.Utils
 
         #endregion
 
+        #region Controller Strings
+        public const string AXIS_THROTTLEBRAKE = "ZoomCamera";
+        public const string AXIS_STEER = "Horizontal";
+        #endregion
+
         #region DriveIt General Constants
         public const float ROAD_WALL_HEIGHT = 0.75f;            // per tick height delta before the slope is considered a wall
         public const float ROAD_THICKNESS = 1.5f;               // height delta below road surface to be considered still part of the road

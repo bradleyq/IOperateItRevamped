@@ -57,7 +57,7 @@ namespace DriveIt.Settings
         private const float             CARBRAKEBIAS = 0.65f;
         private const float             CARSPRINGDAMP = 2.2f;
         private const float             CARSPRINGOFFSET = -0.1f;
-        private const float             CARSPRINGSWAYBAR = 85.0f;
+        private const float             CARSPRINGSWAYBAR = 177.0f;
         private const float             CARMASSCENTERHEIGHT = 0.05f;
         private const float             CARMASSCENTERBIAS = 0.55f;
 

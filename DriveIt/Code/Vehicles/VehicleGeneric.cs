@@ -16,8 +16,8 @@ namespace DriveIt.Vehicles
         private const float THROTTLE_REST = 2.0f;
         private const float MASS_FACTOR = 85.0f;
         private const float RADIUS_D_WHEEL = 0.2f;
-        private const float STEER_RESP = 1.75f;
-        private const float STEER_REST = 1.75f;
+        private const float STEER_RESP = 1.5f;
+        private const float STEER_REST = 1.5f;
         private const float DEPEN_VELOCITY = 2.0f;
         private const float STEER_MAX = 15.0f;
         private const float STEER_DECAY = 0.0075f;
@@ -870,13 +870,13 @@ namespace DriveIt.Vehicles
                 string uiString = "v: " + this +
                                   "\ndm: " + m_driveMode +
                                   "\ng: " + (m_gear - 1) +
-                                  "\nt: " + m_throttle +
-                                  "\nb: " + m_brake +
-                                  "\nrps: " + m_radps + "\trpst: " + m_radpsTrans +
+                                  "\nt: " + m_throttle.ToString("0.000") + " b: " + m_brake.ToString("0.000") + " " +
+                                  "\ns: " + m_steer.ToString("0.000") +
+                                  "\nrps: " + m_radps.ToString("0.000") + "rpst: " + m_radpsTrans.ToString("0.000") +
                                   "\nwct: " + frontCount + " " + rightCount + " " + wheelCount;
                 for (int index = 0; index < m_wheelObjects.Count; index++)
                 {
-                    uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + "\t " + m_wheelObjects[index].isOnGround + "\t " + m_wheelObjects[index].wheelSlip + "\t " + m_wheelObjects[index].wheelRadps;
+                    uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + " " + m_wheelObjects[index].isOnGround + " " + m_wheelObjects[index].wheelSlip.ToString("0.000") + " " + m_wheelObjects[index].wheelRadps.ToString("0.000");
                 }
 
                 GUIStyle m_style = new GUIStyle(GUI.skin.label);
@@ -1000,7 +1000,9 @@ namespace DriveIt.Vehicles
         {
             bool throttling = false;
             bool braking = false;
-            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveForward.Key))
+            float steer = Input.GetAxisRaw(DriveCommon.AXIS_STEER);
+            float tb = -Input.GetAxisRaw(DriveCommon.AXIS_THROTTLEBRAKE);
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveForward.Key) || tb > 0.0f)
             {
                 if (ModSettings.AutoTrans)
                 {
@@ -1010,6 +1012,10 @@ namespace DriveIt.Vehicles
                         {
                             m_throttle = 0.0f;
                             m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
+                            if (tb > 0.0f) // override with controller value if present
+                            {
+                                m_brake = tb;
+                            }
                             braking = true;
                         }
                     }
@@ -1022,17 +1028,24 @@ namespace DriveIt.Vehicles
                     {
                         m_brake = 0.0f;
                         m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
+                        if (tb > 0.0f) // override with controller value if present
+                        {
+                            m_throttle = tb;
+                        }
                         throttling = true;
                     }
                 }
                 else // ManualTrans
                 {
                     m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
+                    if (tb > 0.0f) // override with controller value if present
+                    {
+                        m_throttle = tb;
+                    }
                     throttling = true;
                 }
-
             }
-            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveBackward.Key))
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveBackward.Key) || tb < 0.0f)
             {
                 if (ModSettings.AutoTrans)
                 {
@@ -1042,6 +1055,10 @@ namespace DriveIt.Vehicles
                         {
                             m_throttle = 0.0f;
                             m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
+                            if (tb < 0.0f) // override with controller value if present
+                            {
+                                m_brake = -tb;
+                            }
                             braking = true;
                         }
                     }
@@ -1054,12 +1071,20 @@ namespace DriveIt.Vehicles
                     {
                         m_brake = 0.0f;
                         m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
+                        if (tb < 0.0f) // override with controller value if present
+                        {
+                            m_throttle = -tb;
+                        }
                         throttling = true;
                     }
                 }
                 else // ManualTrans
                 {
                     m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
+                    if (tb < 0.0f) // override with controller value if present
+                    {
+                        m_brake = -tb;
+                    }
                     braking = true;
                 }
             }
@@ -1095,6 +1120,11 @@ namespace DriveIt.Vehicles
                 float factor = (m_steer > 0.0f) ? STEER_RESP + STEER_REST : STEER_RESP;
                 m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * factor, -steerLimit, steerLimit);
                 m_isTurning = true;
+            }
+            if (steer != 0.0f)
+            {
+                m_isTurning = true;
+                m_steer = steer;
             }
             if (!m_isTurning)
             {
