@@ -59,6 +59,7 @@ namespace DriveIt.Utils
         public const string TK_SETTINGS_GROUP_GAME          = "SETTINGS_GROUP_GAME";
         public const string TK_SETTINGS_GROUP_KEYS          = "SETTINGS_GROUP_KEYS";
         public const string TK_SETTINGS_RESTOREDEFAULT      = "SETTINGS_RESTOREDEFAULT";
+        public const string TK_SETTINGS_GRAVITY             = "SETTINGS_GRAVITY";
         public const string TK_SETTINGS_MAXVELOCITY         = "SETTINGS_MAXVELOCITY";
         public const string TK_SETTINGS_ENGINEPOWER         = "SETTINGS_ENGINEPOWER";
         public const string TK_SETTINGS_BRAKINGFORCE        = "SETTINGS_BRAKINGFORCE";
@@ -96,6 +97,7 @@ namespace DriveIt.Utils
         public const string TK_SETTINGS_KEYMOVEBACKWARD     = "SETTINGS_KEYMOVEBACKWARD";
         public const string TK_SETTINGS_KEYMOVELEFT         = "SETTINGS_KEYMOVELEFT";
         public const string TK_SETTINGS_KEYMOVERIGHT        = "SETTINGS_KEYMOVERIGHT";
+        public const string TK_SETTINGS_KEYHANDBRAKE        = "SETTINGS_KEYHANDBRAKE";
         public const string TK_SETTINGS_KEYRESETVEHICLE     = "SETTINGS_KEYRESETVEHICLE";
         public const string TK_SETTINGS_KEYGEARUP           = "SETTINGS_KEYGEARUP";
         public const string TK_SETTINGS_KEYGEARDOWN         = "SETTINGS_KEYGEARDOWN";
@@ -119,9 +121,13 @@ namespace DriveIt.Utils
 
         #endregion
 
-        #region Controller Strings
+        #region Control Axis Settings
         public const string AXIS_THROTTLEBRAKE = "ZoomCamera";
         public const string AXIS_STEER = "Horizontal";
+        public const string AXIS_RH = "RotationHorizontalCamera";
+        public const string AXIS_RV = "RotationVerticalCamera";
+        public const string AXIS_MOUSEX = "Mouse X";
+        public const string AXIS_MOUSEY = "Mouse Y";
         #endregion
 
         #region DriveIt General Constants
@@ -184,6 +190,12 @@ namespace DriveIt.Utils
         public static SoundEffect s_driveSoundTireGravel;
         public static SoundEffect s_driveSoundTirePavement;
         public static Shader s_driveWireframeShader;
+        public static string s_handbrakeController1;
+        public static string s_handbrakeController2;
+        public static string s_upshiftController1;
+        public static string s_upshiftController2;
+        public static string s_downshiftController1;
+        public static string s_downshiftController2;
 
         private static bool bInit = false;
 
@@ -236,6 +248,25 @@ namespace DriveIt.Utils
                 }
 
                 s_driveWireframeShader = DriveCommonLoadShader(SHADER_WIREFRAME, SHADER_WIREFRAME_ASSET);
+
+                if (Application.platform == RuntimePlatform.OSXPlayer)
+                {
+                    s_handbrakeController1 = "joystick button 13";
+                    s_handbrakeController2 = "joystick button 14";
+                    s_upshiftController1 = "joystick button 19";
+                    s_upshiftController2 = "joystick button 17";
+                    s_downshiftController1 = "joystick button 18";
+                    s_downshiftController2 = "joystick button 16";
+                }
+                else
+                {
+                    s_handbrakeController1 = "joystick button 4";
+                    s_handbrakeController2 = "joystick button 5";
+                    s_upshiftController1 = "joystick button 3";
+                    s_upshiftController2 = "joystick button 1";
+                    s_downshiftController1 = "joystick button 2";
+                    s_downshiftController2 = "joystick button 0";
+                }
             }
         }
 

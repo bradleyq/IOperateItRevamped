@@ -3,6 +3,7 @@ using ColossalFramework;
 using DriveIt.Settings;
 using DriveIt.Utils;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
 namespace DriveIt.Vehicles
@@ -50,8 +51,6 @@ namespace DriveIt.Vehicles
         private static float s_drag_wheel;
         private static VehicleGeneric s_primaryVehicle = null;
 
-        protected const float ACCEL_G = 10f;
-
         protected DriveEffects m_effects;
         protected Rigidbody m_vehicleRigidBody;
         protected BoxCollider m_vehicleCollider;
@@ -74,6 +73,7 @@ namespace DriveIt.Vehicles
         protected float m_distanceTravelled = 0.0f;
         protected float m_steer = 0.0f;
         protected float m_brake = 0.0f;
+        protected float m_handbrake = 0.0f;
         protected float m_throttle = 0.0f;
         protected float m_nextGearChange = 0.0f;
         protected float m_radps = 0.0f;
@@ -87,6 +87,7 @@ namespace DriveIt.Vehicles
         public float tachometer { get => m_radps / ENGINE_PEAK_RPS; }
         public float steer { get => m_steer * steerMax; }
         public float brake { get => m_brake; }
+        public float handbrake { get => m_handbrake; }
         public float throttle { get => m_throttle; }
         public string gear { get => m_gearNames[m_gear]; }
         public float speed { get => m_vehicleRigidBody.velocity.magnitude; }
@@ -132,7 +133,8 @@ namespace DriveIt.Vehicles
             public float wheelTangentImpulse {  get => impulse.z; }
             public float wheelBinormalImpulse {  get => impulse.x; }
             public float wheelTorqueFract { get => torqueFract; }
-            public float wheelBrakeFract { get => brakeFract; }
+            public float wheelBrakeForce { get => brakeForce; }
+            public float wheelHandbrakeForce { get => handbrakeForce; }
             public float wheelRadps {  get => radps; }
             public float wheelSlip { get => slip; }
             public float wheelOptimSlip { get => slip - GRIP_OPTIM_SLIP; }
@@ -164,7 +166,8 @@ namespace DriveIt.Vehicles
             private float radps;
             private float drag;
             private float torqueFract;
-            private float brakeFract;
+            private float brakeForce;
+            private float handbrakeForce;
             private float compression;
             private float frictionCoeffX;
             private float frictionCoeffZ;
@@ -196,7 +199,8 @@ namespace DriveIt.Vehicles
                 w.radps = 0.0f;
                 w.drag = 0.0f;
                 w.torqueFract = 0.0f;
-                w.brakeFract = 0.0f;
+                w.brakeForce = 0.0f;
+                w.handbrakeForce = 0.0f;
                 w.compression = 0.0f;
                 w.frictionCoeffX = ModSettings.GripCoeffK;
                 w.frictionCoeffZ = ModSettings.GripCoeffK;
@@ -213,10 +217,11 @@ namespace DriveIt.Vehicles
                 return w;
             }
 
-            public void AdjustWheel(float torqueFract = 0.0f, float brakeFract = 0.0f, float drag = 0.0f)
+            public void AdjustWheel(float torqueFract = 0.0f, float brakeForce = 0.0f, float handbrakeForce = 0.0f, float drag = 0.0f)
             {
                 this.torqueFract = torqueFract;
-                this.brakeFract = brakeFract;
+                this.brakeForce = brakeForce;
+                this.handbrakeForce = handbrakeForce;
                 this.drag = drag;
             }
 
@@ -408,6 +413,7 @@ namespace DriveIt.Vehicles
             m_distanceTravelled = 0.0f;
             m_steer = 0.0f;
             m_brake = 0.0f;
+            m_handbrake = 0.0f;
             m_throttle = 0.0f;
             m_nextGearChange = 0.0f;
 
@@ -420,6 +426,8 @@ namespace DriveIt.Vehicles
             float rearTorque = 0.0f;
             float frontBraking = 0.0f;
             float rearBraking = 0.0f;
+            float frontEBraking = 0.0f;
+            float rearEBraking = 0.0f;
 
             InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
 
@@ -429,11 +437,13 @@ namespace DriveIt.Vehicles
             {
                 frontTorque = 1.0f / frontCount;
                 frontBraking = brakingForce * DriveCommon.KN_TO_N / frontCount;
+                frontEBraking = frontBraking;
             }
             else if (frontCount == 0 && rearCount > 0)
             {
                 rearTorque = 1.0f / rearCount;
                 rearBraking = brakingForce * DriveCommon.KN_TO_N / rearCount;
+                rearEBraking = rearBraking;
             }
             else if (frontCount > 0 && rearCount > 0)
             {
@@ -441,17 +451,19 @@ namespace DriveIt.Vehicles
                 rearTorque = (1.0f - driveBias) / rearCount;
                 frontBraking = brakeBias * brakingForce * DriveCommon.KN_TO_N / frontCount;
                 rearBraking = (1.0f - brakeBias) * brakingForce * DriveCommon.KN_TO_N / rearCount;
+                frontEBraking = 0.0f;
+                rearEBraking = brakingForce * DriveCommon.KN_TO_N / rearCount;
             }
 
             foreach (Wheel w in m_wheelObjects)
             {
                 if (w.isFront)
                 {
-                    w.AdjustWheel(frontTorque, frontBraking, frontTorque > 0.0f ? s_drag_wheel_powered : s_drag_wheel);
+                    w.AdjustWheel(frontTorque, frontBraking, frontEBraking, frontTorque > 0.0f ? s_drag_wheel_powered : s_drag_wheel);
                 }
                 else
                 {
-                    w.AdjustWheel(rearTorque, rearBraking, rearTorque > 0.0f ? s_drag_wheel_powered : s_drag_wheel);
+                    w.AdjustWheel(rearTorque, rearBraking, rearEBraking, rearTorque > 0.0f ? s_drag_wheel_powered : s_drag_wheel);
                 }
             }
 
@@ -501,6 +513,7 @@ namespace DriveIt.Vehicles
             m_distanceTravelled = 0.0f;
             m_steer = 0.0f;
             m_brake = 0.0f;
+            m_handbrake = 0.0f;
             m_throttle = 0.0f;
             m_nextGearChange = 0.0f;
             m_radps = 0.0f;
@@ -597,13 +610,17 @@ namespace DriveIt.Vehicles
                 {
                     coeffZ = Mathf.Lerp(ModSettings.GripCoeffS, ModSettings.GripCoeffK, Mathf.Max((wheel.wheelSlip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP), 0.0f));
 
-                    // boost in lateral friction on lower TCS levels or steerables so the cars feel less slidy (unrealistic)
-                    float lateralCoeffK = ModSettings.GripCoeffK;
-                    lateralCoeffK = (ModSettings.TCSLevel <= (int)DriveCommon.TRACTIONCTL_LEVEL.SPORT) ? (ModSettings.GripCoeffK * 0.75f + ModSettings.GripCoeffS * 0.25f) : lateralCoeffK;
-                    lateralCoeffK = wheel.isSteerable ? ModSettings.GripCoeffS : lateralCoeffK;
-
-                    coeffX = Mathf.Lerp(ModSettings.GripCoeffS, lateralCoeffK, Mathf.Max((wheel.wheelSlip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP), 0.0f));
+                    coeffX = wheel.isSteerable ? ModSettings.GripCoeffS : ModSettings.GripCoeffK;
+                    coeffX = Mathf.Lerp(ModSettings.GripCoeffS, coeffX, Mathf.Max((wheel.wheelSlip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP), 0.0f));
                 }
+                else
+                {
+                    coeffZ = 0.8f * Mathf.Lerp( ModSettings.GripCoeffS, ModSettings.GripCoeffK, wheel.wheelSlip);
+
+                    coeffX = wheel.isSteerable ? ModSettings.GripCoeffS : ModSettings.GripCoeffK;
+                    coeffX = 0.8f * Mathf.Lerp(ModSettings.GripCoeffS, coeffX, wheel.wheelSlip);
+                }
+
                 wheel.SetFriction(coeffX, coeffZ);
             }
         }
@@ -772,7 +789,12 @@ namespace DriveIt.Vehicles
                 // braking ABS
                 float totalBrake = (w.wheelSlip < GRIP_OPTIM_SLIP * 0.75f || !ModSettings.BrakingABS || !w.isOnGround) ? m_brake : 0.0f;
 
-                wheelTorque -= Mathf.Sign(w.wheelRadps) * Mathf.Min(totalBrake * w.wheelBrakeFract * w.wheelRadius, Mathf.Abs(w.wheelRadps) * w.wheelMoment / Time.fixedDeltaTime);
+                wheelTorque -= Mathf.Sign(w.wheelRadps) * Mathf.Min(totalBrake * w.wheelBrakeForce * w.wheelRadius, Mathf.Abs(wheelTorque + w.wheelRadps * w.wheelMoment / Time.fixedDeltaTime));
+
+                // braking Handbrake
+                float handBrake = m_handbrake;
+
+                wheelTorque -= Mathf.Sign(w.wheelRadps) * Mathf.Min(handBrake * w.wheelHandbrakeForce * w.wheelRadius, Mathf.Abs(wheelTorque + w.wheelRadps * w.wheelMoment / Time.fixedDeltaTime));
 
                 w.AddVelocity(wheelTorque * Time.fixedDeltaTime / w.wheelMoment);
             }
@@ -867,23 +889,24 @@ namespace DriveIt.Vehicles
         {
             if (Event.current.type == EventType.Repaint && Logging.DetailLogging)
             {
-                string uiString = "v: " + this +
-                                  "\ndm: " + m_driveMode +
-                                  "\ng: " + (m_gear - 1) +
-                                  "\nt: " + m_throttle.ToString("0.000") + " b: " + m_brake.ToString("0.000") + " " +
-                                  "\ns: " + m_steer.ToString("0.000") +
-                                  "\nrps: " + m_radps.ToString("0.000") + "rpst: " + m_radpsTrans.ToString("0.000") +
-                                  "\nwct: " + frontCount + " " + rightCount + " " + wheelCount;
+                StringBuilder debugString = new StringBuilder();
+                debugString.AppendFormat("v: {0}\n", this);
+                debugString.AppendFormat("dm: {0} g: {1}\n", m_driveMode, m_gear);
+                debugString.AppendFormat("t: {0} b: {1} hb: {2}\n", m_throttle.ToString("0.000"), m_brake.ToString("0.000"), m_handbrake.ToString("0.000"));
+                debugString.AppendFormat("st: {0}\n", m_steer.ToString("0.000"));
+                debugString.AppendFormat("rps: {0} rpst: {1}\n", m_radps.ToString("0.000"), m_radpsTrans.ToString("0.000"));
+                debugString.AppendFormat("wct: {0} rwct: {1} fwct: {2}\n", wheelCount, rightCount, frontCount);
                 for (int index = 0; index < m_wheelObjects.Count; index++)
                 {
-                    uiString += "\nw" + index + ": " + m_wheelObjects[index].wheelOrigin + " " + m_wheelObjects[index].isOnGround + " " + m_wheelObjects[index].wheelSlip.ToString("0.000") + " " + m_wheelObjects[index].wheelRadps.ToString("0.000");
+                    Wheel w = m_wheelObjects[index];
+                    debugString.AppendFormat("w[{0}] o:{1} g:{2} s:{3} rps:{4}\n", index, w.wheelOrigin, w.isOnGround, w.wheelSlip.ToString("0.000"), w.wheelRadps.ToString("0.000"));
                 }
 
                 GUIStyle m_style = new GUIStyle(GUI.skin.label);
                 m_style.fontSize = 20;
                 m_style.normal.textColor = Color.white;
 
-                GUI.Label(new Rect(100f, 100f, 700f, 700f), uiString, m_style);
+                GUI.Label(new Rect(100f, 100f, 700f, 700f), debugString.ToString(), m_style);
             }
         }
 
@@ -894,7 +917,7 @@ namespace DriveIt.Vehicles
 
             PhysicsPreProcess(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel, upVec, forwardVec);
 
-            m_vehicleRigidBody.AddForce(Vector3.down * (ACCEL_G * m_vehicleRigidBody.mass) - upVec * downForce * Mathf.Abs(Vector3.Dot(vehicleVel, forwardVec)), ForceMode.Force);
+            m_vehicleRigidBody.AddForce(Vector3.down * (ModSettings.Gravity * m_vehicleRigidBody.mass) - upVec * downForce * Mathf.Abs(Vector3.Dot(vehicleVel, forwardVec)), ForceMode.Force);
 
             foreach (Wheel w in m_wheelObjects)
             {
@@ -946,8 +969,6 @@ namespace DriveIt.Vehicles
                     }
                     normalContribution = w.wheelNormalImpulse / normalContribution;
 
-                    Vector2 flatImpulses = Vector2.zero;
-
                     float longSpeed = Vector3.Dot(w.wheelContactVelocity, w.wheelGroundTangent);
                     float lateralSpeed = Vector3.Dot(w.wheelContactVelocity, w.wheelGroundBinormal);
 
@@ -957,23 +978,15 @@ namespace DriveIt.Vehicles
                         longComponent = normalContribution * m_vehicleRigidBody.mass * (w.wheelRadps * w.wheelRadius - longSpeed);
                     }
 
-                    flatImpulses.y = longComponent;
-
                     float lateralComponent = -normalContribution * m_vehicleRigidBody.mass * lateralSpeed;
-
-                    flatImpulses.x = lateralComponent;
 
                     if (w.wheelOptimSlip > 0.0f)
                     {
                         DebugHelper.DrawDebugMarker(2.0f, w.wheelContactPoint, Quaternion.LookRotation(w.wheelGroundTangent, w.wheelGroundNormal), Color.yellow);
                     }
 
-                    float frictionScaleLong;
-                    float frictionScaleLat;
-
-                    float flatMagniutde = flatImpulses.magnitude;
-                    frictionScaleLong = Mathf.Min(w.wheelNormalImpulse * w.wheelFrictionCoeffZ, flatMagniutde) / Mathf.Max(flatMagniutde, DriveCommon.FLOAT_ERROR);
-                    frictionScaleLat = Mathf.Min(w.wheelNormalImpulse * w.wheelFrictionCoeffX, flatMagniutde) / Mathf.Max(flatMagniutde, DriveCommon.FLOAT_ERROR);
+                    float frictionScaleLong = Mathf.Min(w.wheelNormalImpulse * w.wheelFrictionCoeffZ, Mathf.Abs(longComponent)) / Mathf.Max(Mathf.Abs(longComponent), DriveCommon.FLOAT_ERROR);
+                    float frictionScaleLat = Mathf.Min(w.wheelNormalImpulse * w.wheelFrictionCoeffX, Mathf.Abs(lateralComponent)) / Mathf.Max(Mathf.Abs(lateralComponent), DriveCommon.FLOAT_ERROR);
 
                     w.AddImpulses(impulseX: lateralComponent * frictionScaleLat, impulseZ: longComponent * frictionScaleLong);
 
@@ -998,6 +1011,7 @@ namespace DriveIt.Vehicles
 
         private void HandleInputOnFixedUpdate(int invert)
         {
+            // Throttle and Brake
             bool throttling = false;
             bool braking = false;
             float steer = Input.GetAxisRaw(DriveCommon.AXIS_STEER);
@@ -1107,6 +1121,7 @@ namespace DriveIt.Vehicles
                 m_brake = Mathf.Clamp01(m_brake - Time.fixedDeltaTime * THROTTLE_REST);
             }
 
+            // Steering
             m_isTurning = false;
             float steerLimit = Mathf.Clamp(1.0f - STEER_DECAY * Vector3.Magnitude(m_vehicleRigidBody.velocity), 0.01f, 1.0f);
             if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveRight.Key))
@@ -1137,6 +1152,16 @@ namespace DriveIt.Vehicles
                     m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * STEER_REST, -steerLimit, 0.0f);
                 }
             }
+
+            // Handbrake
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyHandbrake.Key) || Input.GetKey(DriveCommon.s_handbrakeController1) || Input.GetKey(DriveCommon.s_handbrakeController2))
+            {
+                m_handbrake = Mathf.Clamp01(m_handbrake + Time.fixedDeltaTime * THROTTLE_RESP);
+            }
+            else
+            {
+                m_handbrake = Mathf.Clamp01(m_handbrake - Time.fixedDeltaTime * THROTTLE_REST);
+            }
         }
 
         private void HandleInputOnUpdate()
@@ -1151,12 +1176,16 @@ namespace DriveIt.Vehicles
             }
             if (!ModSettings.AutoTrans)
             {
-                if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyGearUp.Key) && m_nextGearChange < Time.time && m_gear < m_gearRatios.Length - 1)
+                if ((Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyGearUp.Key) || Input.GetKeyDown(DriveCommon.s_upshiftController1) || Input.GetKeyDown(DriveCommon.s_upshiftController2)) 
+                    && m_nextGearChange < Time.time 
+                    && m_gear < m_gearRatios.Length - 1)
                 {
                     m_gear += 1;
                     m_nextGearChange = Time.time + GEAR_RESP;
                 }
-                if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyGearDown.Key) && m_nextGearChange < Time.time && m_gear > 0)
+                if ((Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyGearDown.Key) || Input.GetKeyDown(DriveCommon.s_downshiftController1) || Input.GetKeyDown(DriveCommon.s_downshiftController2))
+                    && m_nextGearChange < Time.time 
+                    && m_gear > 0)
                 {
                     m_gear -= 1;
                     m_nextGearChange = Time.time + GEAR_RESP;

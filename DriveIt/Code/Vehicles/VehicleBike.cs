@@ -97,7 +97,7 @@ namespace DriveIt.Vehicles
                 netNetImpulse += w.wheelTangentImpulse * w.wheelGroundTangent;
             }
             Vector3 sideVec = Vector3.Cross(m_vehicleRigidBody.transform.forward, Vector3.up).normalized;
-            float tilt = Mathf.Atan(Vector3.Dot(netNetImpulse, sideVec) / (m_vehicleRigidBody.mass * ACCEL_G * Time.fixedDeltaTime)) * 180.0f / Mathf.PI * STEER_TILT_SCALE;
+            float tilt = Mathf.Atan(Vector3.Dot(netNetImpulse, sideVec) / (m_vehicleRigidBody.mass * ModSettings.Gravity * Time.fixedDeltaTime)) * 180.0f / Mathf.PI * STEER_TILT_SCALE;
             TiltKalmanFilter.Update(tilt);
             m_tilt = TiltKalmanFilter.CurrentEstimate;
             Quaternion rot = Quaternion.AngleAxis(TiltKalmanFilter.CurrentEstimate, m_vehicleRigidBody.transform.forward) * Quaternion.LookRotation(m_vehicleRigidBody.transform.forward);

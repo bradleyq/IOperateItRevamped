@@ -9,7 +9,7 @@ namespace DriveIt
 {
     public class DriveItLoading : PatcherLoadingBase<SettingsPanel, PatcherBase>
     {
-        protected override List<AppMode> PermittedModes => new List<AppMode> { AppMode.Game, AppMode.MapEditor };
+        protected override List<AppMode> PermittedModes => new List<AppMode> { AppMode.Game };
         protected override bool CreatedChecksPassed() { return true; }
         public override void OnLevelUnloading()
         {

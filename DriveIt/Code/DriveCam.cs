@@ -79,6 +79,15 @@ namespace DriveIt
             m_targetRigidBody = rigidBody;
             m_followDistance = Mathf.Clamp(distance, 0.0f, LOOK_MAX_DIST);
         }
+
+        public bool OnPause()
+        {
+            if (Cursor.visible)
+            {
+                return false;
+            }
+            return true;
+        }
         private void SetUIVisibility(bool visibility)
         {
             Singleton<NotificationManager>.instance.NotificationsVisible = visibility;
@@ -257,17 +266,22 @@ namespace DriveIt
             m_followDistance = Mathf.Clamp(m_followDistance, 0.0f, LOOK_MAX_DIST);
 
             float yawDegree = 0f, pitchDegree = 0f;
-            {
-                // mouse rotation
-                yawDegree = Input.GetAxis("Mouse X") * ROTATE_MOUSE_SCALE * Settings.ModSettings.CamMouseRotateSensitivity;
-                pitchDegree = -Input.GetAxis("Mouse Y") * ROTATE_MOUSE_SCALE * Settings.ModSettings.CamMouseRotateSensitivity;
+            float controllerYaw = Input.GetAxisRaw(DriveCommon.AXIS_RH);
+            float controllerPitch = Input.GetAxisRaw(DriveCommon.AXIS_RV);
 
-                // key rotation
-                if (Input.GetKey((KeyCode)Settings.ModSettings.KeyCamRotateRight.Key)) yawDegree += Settings.ModSettings.CamKeyRotateSensitivity * ROTATE_KEY_SCALE * Time.deltaTime;
-                if (Input.GetKey((KeyCode)Settings.ModSettings.KeyCamRotateLeft.Key)) yawDegree -= Settings.ModSettings.CamKeyRotateSensitivity * ROTATE_KEY_SCALE * Time.deltaTime;
-                if (Input.GetKey((KeyCode)Settings.ModSettings.KeyCamRotateUp.Key)) pitchDegree -= Settings.ModSettings.CamKeyRotateSensitivity * ROTATE_KEY_SCALE * Time.deltaTime;
-                if (Input.GetKey((KeyCode)Settings.ModSettings.KeyCamRotateDown.Key)) pitchDegree += Settings.ModSettings.CamKeyRotateSensitivity * ROTATE_KEY_SCALE * Time.deltaTime;
-            }
+            // mouse rotation
+            yawDegree = Input.GetAxis(DriveCommon.AXIS_MOUSEX) * ROTATE_MOUSE_SCALE * Settings.ModSettings.CamMouseRotateSensitivity;
+            pitchDegree = -Input.GetAxis(DriveCommon.AXIS_MOUSEY) * ROTATE_MOUSE_SCALE * Settings.ModSettings.CamMouseRotateSensitivity;
+
+            // key rotation
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyCamRotateRight.Key)) yawDegree += Settings.ModSettings.CamKeyRotateSensitivity * ROTATE_KEY_SCALE * Time.deltaTime;
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyCamRotateLeft.Key)) yawDegree -= Settings.ModSettings.CamKeyRotateSensitivity * ROTATE_KEY_SCALE * Time.deltaTime;
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyCamRotateUp.Key)) pitchDegree -= Settings.ModSettings.CamKeyRotateSensitivity * ROTATE_KEY_SCALE * Time.deltaTime;
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyCamRotateDown.Key)) pitchDegree += Settings.ModSettings.CamKeyRotateSensitivity * ROTATE_KEY_SCALE * Time.deltaTime;
+
+            // controller rotation
+            if (controllerYaw != 0.0f) yawDegree += controllerYaw * Settings.ModSettings.CamKeyRotateSensitivity * ROTATE_KEY_SCALE * Time.deltaTime;
+            if (controllerPitch != 0.0f) pitchDegree += controllerPitch * Settings.ModSettings.CamKeyRotateSensitivity * ROTATE_KEY_SCALE * Time.deltaTime;
 
             if (yawDegree != 0f || pitchDegree != 0f)
             {

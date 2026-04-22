@@ -17,8 +17,9 @@ namespace DriveIt.Settings
         private const bool              AUTOTRANS = true;
         private const bool              BRAKINGABS = true;
         private const int               TCSLEVEL = 0;
-        private const float             GRIPCOEFFS = 1.1f;
-        private const float             GRIPCOEFFK = 0.85f;
+        private const float             GRIPCOEFFS = 1.15f;
+        private const float             GRIPCOEFFK = 0.8f;
+        private const float             GRAVITY = 10.0f;
 
         private const float             ENGINEPOWER = 350f;
         private const float             BRAKINGFORCE = 50f;
@@ -55,9 +56,9 @@ namespace DriveIt.Settings
         private const float             CARDOWNFORCE = 15.0f;
         private const float             CARDRIVEBIAS = 0.65f;
         private const float             CARBRAKEBIAS = 0.65f;
-        private const float             CARSPRINGDAMP = 2.2f;
+        private const float             CARSPRINGDAMP = 3.3f;
         private const float             CARSPRINGOFFSET = -0.1f;
-        private const float             CARSPRINGSWAYBAR = 177.0f;
+        private const float             CARSPRINGSWAYBAR = 97.0f;
         private const float             CARMASSCENTERHEIGHT = 0.05f;
         private const float             CARMASSCENTERBIAS = 0.55f;
 
@@ -251,6 +252,11 @@ namespace DriveIt.Settings
         #endregion
 
         #region Generic Vehicle Settings
+        [XmlElement("Gravity")]
+        public float XMLGravity { get => Gravity; set => Gravity = value; }
+        [XmlIgnore]
+        internal static float Gravity = GRAVITY;
+
         [XmlElement("EnginePower")]
         public float XMLEnginePower { get => EnginePower; set => EnginePower = value; }
         [XmlIgnore]
@@ -666,6 +672,11 @@ namespace DriveIt.Settings
         public KeyOnlyBinding XMLKeyMoveRight { get => KeyMoveRight; set => KeyMoveRight = value; }
         [XmlIgnore]
         internal static KeyOnlyBinding KeyMoveRight = new KeyOnlyBinding(KeyCode.D);
+
+        [XmlElement("KeyHandbrake")]
+        public KeyOnlyBinding XMLKeyHandbrake { get => KeyHandbrake; set => KeyHandbrake = value; }
+        [XmlIgnore]
+        internal static KeyOnlyBinding KeyHandbrake = new KeyOnlyBinding(KeyCode.Space);
 
         [XmlElement("KeyResetVehicle")]
         public KeyOnlyBinding XMLKeyResetVehicle { get => KeyResetVehicle; set => KeyResetVehicle = value; }

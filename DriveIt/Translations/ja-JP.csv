@@ -60,6 +60,7 @@
 "SETTINGS_KEYMOVEBACKWARD","Reverse/Brake",""
 "SETTINGS_KEYMOVELEFT","Steer Left",""
 "SETTINGS_KEYMOVERIGHT","Steer Right",""
+"SETTINGS_KEYHANDBRAKE","E-Brake/Handbrake",""
 "SETTINGS_KEYRESETVEHICLE","Reset Vehicle Rotation",""
 "SETTINGS_KEYGEARUP","Upshift",""
 "SETTINGS_KEYGEARDOWN","Downshift",""

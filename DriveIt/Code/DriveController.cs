@@ -124,8 +124,8 @@ namespace DriveIt
         public void StopDriving()
         {
             StartCoroutine(m_collidersManager.DisableColliders());
-            DriveCam.instance.DisableCam();
-            DriveButton.instance.SetEnable();
+            DriveCam.instance?.DisableCam();
+            DriveButton.instance?.SetEnable();
             if (m_vehicle)
             {
                 m_vehicle.Deinitialize();
@@ -175,12 +175,9 @@ namespace DriveIt
             }
         }
 
-        private void LateUpdate()
-        {
-        }
-
         private void OnDestroy()
         {
+            StopDriving();
             m_collidersManager.DestroyColliders();
         }
     }
