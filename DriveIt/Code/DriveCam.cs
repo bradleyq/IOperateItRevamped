@@ -116,6 +116,8 @@ namespace DriveIt
         private void ConfigureCamera()
         {
             ToolsModifierControl.cameraController.enabled = false;
+            ToolsModifierControl.cameraController.DisableFocusEffects();
+
             m_savedView = new CameraController.SavedCameraView(ToolsModifierControl.cameraController);
 
             m_mainCamera = Singleton<RenderManager>.instance.CurrentCameraInfo.m_camera;
