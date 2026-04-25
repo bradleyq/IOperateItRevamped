@@ -54,7 +54,8 @@ namespace DriveIt.Vehicles
         protected override float massCenterBias { get => ModSettings.BikeMassCenterBias; }
         protected override float steerMax { get => STEER_MAX; }
 
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints,
+            ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
         {
             float height = Mathf.Max(m_vehicleInfo.m_generatedInfo.m_tyres[0].y, 0.0f);
             if (height > adjustedY)
@@ -85,6 +86,11 @@ namespace DriveIt.Vehicles
                     w.SetFriction(w.wheelFrictionCoeffX * STAB_BOOST, w.wheelFrictionCoeffZ);
                 }
             }
+        }
+
+        protected override void PhysicsAdjustSuspension(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
+        {
+
         }
 
         protected override void PhysicsPostProcess(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)

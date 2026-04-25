@@ -30,9 +30,6 @@ namespace DriveIt.Vehicles
         private const float DRAG_WHEEL_POWERED = 0.25f;
         private const float DRAG_WHEEL = 0.15f;
         private const float MOMENT_WHEEL = 1.5f;
-        private const float VALID_INCLINE = 0.5f;
-        private const float GRIP_HIGH_SLIP = 0.5f;
-        private const float GRIP_OPTIM_SLIP = 0.2f;
         private const float GRIP_SLIP_SPEED_LOW = 8.0f;
         private const float GRIP_SLIP_SPEED_HIGH = 40.0f;
         private const float DIFF_LSD_FACTOR_LOW = 0.05f;
@@ -41,15 +38,19 @@ namespace DriveIt.Vehicles
         private const float ENGINE_OVER_RPS = 1100.0f;
         private const float ENGINE_IDLE_RPS = 90.0f;
         private const float ENGINE_INERTIA = 0.01f;
-        private const int ENGINE_MODE_REVERSE = -1;
-        private const int ENGINE_MODE_NEUTRAL = 0;
-        private const int ENGINE_MODE_FORWARD = 1;
         private const float ENGINE_AUTO_SHIFT_THRESH = 0.1f;
 
         private static float s_engine_inertia;
         private static float s_drag_wheel_powered;
         private static float s_drag_wheel;
         private static VehicleGeneric s_primaryVehicle = null;
+
+        protected const float VALID_INCLINE = 0.5f;
+        protected const float GRIP_HIGH_SLIP = 0.5f;
+        protected const float GRIP_OPTIM_SLIP = 0.2f;
+        protected const int ENGINE_MODE_REVERSE = -1;
+        protected const int ENGINE_MODE_NEUTRAL = 0;
+        protected const int ENGINE_MODE_FORWARD = 1;
 
         protected DriveEffects m_effects;
         protected Rigidbody m_vehicleRigidBody;
@@ -429,10 +430,6 @@ namespace DriveIt.Vehicles
             float frontEBraking = 0.0f;
             float rearEBraking = 0.0f;
 
-            InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
-
-            m_boundMin = Mathf.Min(0.0f, adjustedY);
-
             if (rearCount == 0 && frontCount > 0)
             {
                 frontTorque = 1.0f / frontCount;
@@ -454,6 +451,10 @@ namespace DriveIt.Vehicles
                 frontEBraking = 0.0f;
                 rearEBraking = brakingForce * DriveCommon.KN_TO_N / rearCount;
             }
+
+            InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints, ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
+
+            m_boundMin = Mathf.Min(0.0f, adjustedY);
 
             foreach (Wheel w in m_wheelObjects)
             {
@@ -537,13 +538,9 @@ namespace DriveIt.Vehicles
         protected virtual float momentWheel { get => MOMENT_WHEEL; }
         protected virtual float parkSpeed { get => PARK_SPEED; }
 
-        protected void InitializeFallbackWheels(float y, float width, float length)
-        {
-
-        }
-
         // Initialize the vehicle wheel configuration, calculate hitbox parameters, and configure constriants
-        protected virtual void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected virtual void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints, 
+            ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
         {
             float width = adjustedBounds.x;
             float length = adjustedBounds.z;

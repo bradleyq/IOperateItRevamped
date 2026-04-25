@@ -23,7 +23,8 @@ namespace DriveIt.Vehicles
         protected override float massCenterHeight { get => ModSettings.TrainMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.TrainMassCenterBias; }
 
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints,
+            ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
         {
             bool validWheels = true;
             float groundHeight = 1000.0f;
@@ -42,7 +43,7 @@ namespace DriveIt.Vehicles
             if (validWheels)
             {
                 adjustedY = groundHeight - springOffset;
-                base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
+                base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints, ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
 
                 float height = Mathf.Max(m_vehicleInfo.m_generatedInfo.m_tyres[0].y, 0.0f);
                 if (height > adjustedY)
@@ -50,12 +51,6 @@ namespace DriveIt.Vehicles
                     adjustedBounds.y -= height - adjustedY;
                 }
                 adjustedY = height;
-
-                //foreach (Vector4 tirepos in m_vehicleInfo.m_generatedInfo.m_tyres)
-                //{
-                //    m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(tirepos.x, tirepos.y + springOffset, tirepos.z), momentWheel, tirepos.w, true, true, tirepos.z <= 0.0f));
-                //}
-
             }
             else
             {
@@ -65,13 +60,15 @@ namespace DriveIt.Vehicles
                 }
                 adjustedY = 0.0f;
 
-                base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
+                base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints, ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
             }
 
 
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;
             m_gearNeutral = ENGINE_GEAR_NEUTRAL;
+            frontEBraking = 0.0f;
+            rearEBraking = 0.0f;
         }
 
         protected override void PhysicsFrictionCalculation(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)

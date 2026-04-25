@@ -22,7 +22,8 @@ namespace DriveIt.Vehicles
         protected override float massCenterHeight { get => ModSettings.BoatMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.BoatMassCenterBias; }
         protected override float vehicleDrag { get => DRAG_FACTOR; }
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints,
+            ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
         {
             if (0.0f > adjustedY)
             {
@@ -30,13 +31,15 @@ namespace DriveIt.Vehicles
                 adjustedY = 0.0f;
             }
 
-            base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
+            base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints, ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
 
             adjustedBounds.y += springOffset;
             adjustedY -= springOffset;
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;
             m_gearNeutral = ENGINE_GEAR_NEUTRAL;
+            frontEBraking = 0.0f;
+            rearEBraking = 0.0f;
         }
 
         protected override void PhysicsFrictionCalculation(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
@@ -45,6 +48,11 @@ namespace DriveIt.Vehicles
             {
                 w.SetFriction(ModSettings.GripCoeffK * STAB_BOOST, ModSettings.GripCoeffK);
             }
+        }
+
+        protected override void PhysicsAdjustSuspension(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
+        {
+
         }
     }
 }

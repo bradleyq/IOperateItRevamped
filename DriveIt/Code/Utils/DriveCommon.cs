@@ -124,6 +124,7 @@ namespace DriveIt.Utils
         #region Control Axis Settings
         public const string AXIS_THROTTLEBRAKE = "ZoomCamera";
         public const string AXIS_STEER = "Horizontal";
+        public const string AXIS_PITCH = "Vertical";
         public const string AXIS_RH = "RotationHorizontalCamera";
         public const string AXIS_RV = "RotationVerticalCamera";
         public const string AXIS_MOUSEX = "Mouse X";
