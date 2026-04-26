@@ -123,6 +123,13 @@ namespace DriveIt.Vehicles
 
                 w.AddVelocity(wheelTorque * Time.fixedDeltaTime / w.wheelMoment);
             }
+
+            float thrust = GetPower(m_radps) / Vector3.Dot(vehicleVel, forwardVec);
+        }
+
+        protected override void PhysicsPostProcess(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
+        {
+
         }
     }
 }
