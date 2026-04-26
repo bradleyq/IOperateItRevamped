@@ -430,6 +430,8 @@ namespace DriveIt.Vehicles
             float frontEBraking = 0.0f;
             float rearEBraking = 0.0f;
 
+            InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
+            
             if (rearCount == 0 && frontCount > 0)
             {
                 frontTorque = 1.0f / frontCount;
@@ -452,7 +454,7 @@ namespace DriveIt.Vehicles
                 rearEBraking = brakingForce * DriveCommon.KN_TO_N / rearCount;
             }
 
-            InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints, ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
+            InitializeAdjust(ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
 
             m_boundMin = Mathf.Min(0.0f, adjustedY);
 
@@ -539,8 +541,7 @@ namespace DriveIt.Vehicles
         protected virtual float parkSpeed { get => PARK_SPEED; }
 
         // Initialize the vehicle wheel configuration, calculate hitbox parameters, and configure constriants
-        protected virtual void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints, 
-            ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
+        protected virtual void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
         {
             float width = adjustedBounds.x;
             float length = adjustedBounds.z;
@@ -549,6 +550,11 @@ namespace DriveIt.Vehicles
             m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(0.0f, adjustedY + springOffset + RADIUS_D_WHEEL, 0.0f), momentWheel, RADIUS_D_WHEEL, true, false));
             m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, -length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, true, true));
             m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, -length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, true, true));
+        }
+        
+        protected virtual void InitializeAdjust(ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
+        {
+
         }
 
         // PreProcess function that runs before any physics calculation.

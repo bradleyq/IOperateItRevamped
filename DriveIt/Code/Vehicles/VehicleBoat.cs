@@ -22,8 +22,7 @@ namespace DriveIt.Vehicles
         protected override float massCenterHeight { get => ModSettings.BoatMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.BoatMassCenterBias; }
         protected override float vehicleDrag { get => DRAG_FACTOR; }
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints,
-            ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
         {
             if (0.0f > adjustedY)
             {
@@ -31,13 +30,17 @@ namespace DriveIt.Vehicles
                 adjustedY = 0.0f;
             }
 
-            base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints, ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
+            base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
 
             adjustedBounds.y += springOffset;
             adjustedY -= springOffset;
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;
             m_gearNeutral = ENGINE_GEAR_NEUTRAL;
+        }
+
+        protected override void InitializeAdjust(ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
+        {
             frontEBraking = 0.0f;
             rearEBraking = 0.0f;
         }

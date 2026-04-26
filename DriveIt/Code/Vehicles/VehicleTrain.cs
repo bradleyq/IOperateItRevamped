@@ -23,8 +23,7 @@ namespace DriveIt.Vehicles
         protected override float massCenterHeight { get => ModSettings.TrainMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.TrainMassCenterBias; }
 
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints,
-            ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
         {
             bool validWheels = true;
             float groundHeight = 1000.0f;
@@ -43,7 +42,7 @@ namespace DriveIt.Vehicles
             if (validWheels)
             {
                 adjustedY = groundHeight - springOffset;
-                base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints, ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
+                base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
 
                 float height = Mathf.Max(m_vehicleInfo.m_generatedInfo.m_tyres[0].y, 0.0f);
                 if (height > adjustedY)
@@ -60,13 +59,17 @@ namespace DriveIt.Vehicles
                 }
                 adjustedY = 0.0f;
 
-                base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints, ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
+                base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
             }
 
 
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;
             m_gearNeutral = ENGINE_GEAR_NEUTRAL;
+        }
+
+        protected override void InitializeAdjust(ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
+        {
             frontEBraking = 0.0f;
             rearEBraking = 0.0f;
         }
