@@ -85,7 +85,7 @@ namespace DriveIt.Vehicles
 
         public float odometer { get => m_distanceTravelled; }
         public float speedometer { get => m_vehicleRigidBody.velocity.magnitude * DriveCommon.MS_TO_KMPH / ModSettings.MaxVelocity; }
-        public float tachometer { get => m_radps / ENGINE_PEAK_RPS; }
+        public float tachometer { get => m_radps / enginePeakRPS; }
         public float steer { get => m_steer * steerMax; }
         public float brake { get => m_brake; }
         public float handbrake { get => m_handbrake; }
@@ -409,7 +409,6 @@ namespace DriveIt.Vehicles
             m_prevPrevVelocity = Vector3.zero;
             m_vehicleInfo = vehicleInfo;
             m_vehicleFlags = vehicleFlags;
-            m_gear = m_gearNeutral;
             m_driveMode = ENGINE_MODE_NEUTRAL;
             m_distanceTravelled = 0.0f;
             m_steer = 0.0f;
@@ -457,6 +456,7 @@ namespace DriveIt.Vehicles
             InitializeAdjust(ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
 
             m_boundMin = Mathf.Min(0.0f, adjustedY);
+            m_gear = m_gearNeutral;
 
             foreach (Wheel w in m_wheelObjects)
             {
@@ -471,9 +471,9 @@ namespace DriveIt.Vehicles
             }
 
             float halfSA = (adjustedBounds.x * adjustedBounds.y + adjustedBounds.x * adjustedBounds.z + adjustedBounds.y * adjustedBounds.z);
-            m_vehicleRigidBody.drag = vehicleDrag * adjustedBounds.x * adjustedBounds.y / halfSA;
-            m_vehicleRigidBody.angularDrag = vehicleDrag * adjustedBounds.y * adjustedBounds.z / halfSA;
-            m_vehicleRigidBody.mass = halfSA * MASS_FACTOR;
+            m_vehicleRigidBody.drag = linearDrag * adjustedBounds.x * adjustedBounds.y / halfSA;
+            m_vehicleRigidBody.angularDrag = angularDrag * adjustedBounds.y * adjustedBounds.z / halfSA;
+            m_vehicleRigidBody.mass = halfSA * massFactor;
             m_vehicleRigidBody.transform.position = position + (adjustedY < 0.0f ? Vector3.down * adjustedY : Vector3.zero);
             m_vehicleRigidBody.transform.rotation = rotation;
             m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, adjustedY + adjustedBounds.y * massCenterHeight, adjustedZ + massCenterBias * adjustedBounds.z);
@@ -483,6 +483,8 @@ namespace DriveIt.Vehicles
 
             m_vehicleCollider.size = adjustedBounds;
             m_vehicleCollider.center = new Vector3(0.0f, adjustedY + 0.5f * adjustedBounds.y, adjustedZ + adjustedBounds.z * 0.5f);
+
+            InitializeEnd();
 
             if (IsPrimary()) DriveEffects.SetPrimary(m_effects);
             m_effects.UpdateVehicleInfo(vehicleInfo, vehicleColor, setColor);
@@ -535,10 +537,15 @@ namespace DriveIt.Vehicles
         protected virtual float springSwayBar { get=> ModSettings.SpringSwayBar; }
         protected virtual float massCenterHeight {  get => ModSettings.MassCenterHeight; }
         protected virtual float massCenterBias {  get => ModSettings.MassCenterBias; }
-        protected virtual float vehicleDrag { get => DRAG_FACTOR; }
+        protected virtual float linearDrag { get => DRAG_FACTOR; }
+        protected virtual float angularDrag { get => DRAG_FACTOR; }
         protected virtual float steerMax { get => STEER_MAX; }
         protected virtual float momentWheel { get => MOMENT_WHEEL; }
         protected virtual float parkSpeed { get => PARK_SPEED; }
+        protected virtual float enginePeakRPS { get => ENGINE_PEAK_RPS; }
+        protected virtual float engineOverRPS { get => ENGINE_OVER_RPS; }
+        protected virtual float engineIdleRPS { get => ENGINE_IDLE_RPS; }
+        protected virtual float massFactor { get => MASS_FACTOR; }
 
         // Initialize the vehicle wheel configuration, calculate hitbox parameters, and configure constriants
         protected virtual void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
@@ -553,6 +560,11 @@ namespace DriveIt.Vehicles
         }
         
         protected virtual void InitializeAdjust(ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
+        {
+
+        }
+
+        protected virtual void InitializeEnd()
         {
 
         }
@@ -648,7 +660,7 @@ namespace DriveIt.Vehicles
 
             if (m_gear == m_gearNeutral)
             {
-                engineRps = m_throttle * ENGINE_PEAK_RPS;
+                engineRps = m_throttle * enginePeakRPS;
             }
             else
             {
@@ -656,7 +668,7 @@ namespace DriveIt.Vehicles
             }
 
             m_prevRadps = m_radps;
-            engineRps = Mathf.Clamp(engineRps, ENGINE_IDLE_RPS, ENGINE_OVER_RPS);
+            engineRps = Mathf.Clamp(engineRps, engineIdleRPS, engineOverRPS);
             m_radps = Mathf.Lerp(engineRps, m_radps, s_engine_inertia);
         }
 
@@ -664,8 +676,8 @@ namespace DriveIt.Vehicles
         protected virtual float GetTorque(float radps) // Torque curve 27x(k-x)/(4k^3)+max(3(k/2-x)^3/k^4,0)
         {
             // Check https://www.desmos.com/calculator/fp0csjaazj for formulation.
-            float k = ENGINE_PEAK_RPS;
-            float x = Mathf.Max(radps, ENGINE_IDLE_RPS);
+            float k = enginePeakRPS;
+            float x = Mathf.Max(radps, engineIdleRPS);
             float rawval = 27.0f * x * (k - x) / (4.0f * k * k * k) + Mathf.Max(3 * Mathf.Pow(k * 0.5f - x, 3.0f) / (k * k * k * k), 0.0f);
             return enginePower * DriveCommon.KW_TO_W * (1.0f - DRAG_DRIVETRAIN) * rawval;
         }
@@ -673,7 +685,7 @@ namespace DriveIt.Vehicles
         // Power curve. Should not be modified. Derived from torque curve.
         protected float GetPower(float radps) // Power curve 27x^2(k-x)/(4k^3)
         {
-            return GetTorque(radps) * Mathf.Max(radps, ENGINE_IDLE_RPS);
+            return GetTorque(radps) * Mathf.Max(radps, engineIdleRPS);
         }
 
         // Function runs immediately after PhysicsFeedbackWheelAndEngine with auto transmissions. Selects a new gear based on engine state.
@@ -898,7 +910,7 @@ namespace DriveIt.Vehicles
                 debugString.AppendFormat("t: {0} b: {1} hb: {2}\n", m_throttle.ToString("0.000"), m_brake.ToString("0.000"), m_handbrake.ToString("0.000"));
                 debugString.AppendFormat("st: {0}\n", m_steer.ToString("0.000"));
                 debugString.AppendFormat("rps: {0} rpst: {1}\n", m_radps.ToString("0.000"), m_radpsTrans.ToString("0.000"));
-                debugString.AppendFormat("wct: {0} rwct: {1} fwct: {2}\n", wheelCount, rightCount, frontCount);
+                debugString.AppendFormat("m: {0} wct: {1} rwct: {2} fwct: {3}\n", m_vehicleRigidBody.mass, wheelCount, rightCount, frontCount);
                 for (int index = 0; index < m_wheelObjects.Count; index++)
                 {
                     Wheel w = m_wheelObjects[index];
@@ -987,6 +999,10 @@ namespace DriveIt.Vehicles
                     {
                         DebugHelper.DrawDebugMarker(2.0f, w.wheelContactPoint, Quaternion.LookRotation(w.wheelGroundTangent, w.wheelGroundNormal), Color.yellow);
                     }
+                    else
+                    {
+                        DebugHelper.DrawDebugMarker(2.0f, w.wheelContactPoint, Quaternion.LookRotation(w.wheelGroundTangent, w.wheelGroundNormal), Color.green);
+                    }
 
                     float frictionScaleLong = Mathf.Min(w.wheelNormalImpulse * w.wheelFrictionCoeffZ, Mathf.Abs(longComponent)) / Mathf.Max(Mathf.Abs(longComponent), DriveCommon.FLOAT_ERROR);
                     float frictionScaleLat = Mathf.Min(w.wheelNormalImpulse * w.wheelFrictionCoeffX, Mathf.Abs(lateralComponent)) / Mathf.Max(Mathf.Abs(lateralComponent), DriveCommon.FLOAT_ERROR);
@@ -1012,7 +1028,7 @@ namespace DriveIt.Vehicles
             }
         }
 
-        private void HandleInputOnFixedUpdate(int invert)
+        protected virtual void HandleInputOnFixedUpdate(int invert)
         {
             // Throttle and Brake
             bool throttling = false;
@@ -1167,7 +1183,7 @@ namespace DriveIt.Vehicles
             }
         }
 
-        private void HandleInputOnUpdate()
+        protected virtual void HandleInputOnUpdate()
         {
             if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyResetVehicle.Key) && m_lastReset + RESET_FREQ < Time.time)
             {

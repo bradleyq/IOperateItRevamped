@@ -21,7 +21,8 @@ namespace DriveIt.Vehicles
         protected override float springSwayBar { get => 0.0f; }
         protected override float massCenterHeight { get => ModSettings.BoatMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.BoatMassCenterBias; }
-        protected override float vehicleDrag { get => DRAG_FACTOR; }
+        protected override float linearDrag { get => DRAG_FACTOR; }
+        protected override float angularDrag { get => DRAG_FACTOR; }
         protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
         {
             if (0.0f > adjustedY)

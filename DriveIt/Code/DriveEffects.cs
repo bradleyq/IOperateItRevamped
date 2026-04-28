@@ -533,7 +533,6 @@ namespace DriveIt
                 float wblength = Mathf.Abs(frontAvg.z - rearAvg.z);
                 m_spTangent = Vector3.Normalize(frontAvg - rearAvg);
                 m_spCompression = frontAvg.y * Mathf.Abs(rearAvg.z) / wblength + rearAvg.y * Mathf.Abs(frontAvg.z) / wblength;
-                Logging.Message("compression " + frontAvg.y + " " + rearAvg.y + " " + m_spCompression);
             }
 
 

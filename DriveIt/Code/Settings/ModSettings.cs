@@ -68,8 +68,8 @@ namespace DriveIt.Settings
         private const float             HELIMASSCENTERHEIGHT = 0.1f;
         private const float             HELIMASSCENTERBIAS = 0.5f;
 
-        private const float             PLANEENGINEPOWER = 40000f;
-        private const float             PLANEBRAKINGFORCE = 100f;
+        private const float             PLANEENGINEPOWER = 30000f;
+        private const float             PLANEBRAKINGFORCE = 300f;
         private const float             PLANEDOWNFORCE = -100.0f;
         private const float             PLANEBRAKEBIAS = 0.4f;
         private const float             PLANESPRINGDAMP = 4.0f;
