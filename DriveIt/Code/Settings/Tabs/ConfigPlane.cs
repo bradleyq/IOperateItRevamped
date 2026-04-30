@@ -26,7 +26,7 @@ namespace DriveIt.Settings.Tabs
             brakingForce_Slider.parent.eventVisibilityChanged += (_, isVisible) => brakingForce_Slider.value = ModSettings.PlaneBrakingForce;
             currentY += brakingForce_Slider.parent.height + SettingsPanel.Margin;
 
-            var downForce_Slider = SettingsPanel.CreateSlider(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_DOWNFORCE), -1000.0f, 0.0f, 1.0f, 1.0f, "N0", " Ns/m");
+            var downForce_Slider = SettingsPanel.CreateSlider(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_DOWNFORCE_PLANE), -0.25f, 0.0f, 0.01f, -8.0f, "N2", null);
             downForce_Slider.eventValueChanged += (_, value) => ModSettings.PlaneDownForce = value;
             downForce_Slider.parent.eventVisibilityChanged += (_, isVisible) => downForce_Slider.value = ModSettings.PlaneDownForce;
             currentY += downForce_Slider.parent.height + SettingsPanel.Margin;
@@ -41,7 +41,7 @@ namespace DriveIt.Settings.Tabs
             springDamp_Slider.parent.eventVisibilityChanged += (_, isVisible) => springDamp_Slider.value = ModSettings.PlaneSpringDamp;
             currentY += springDamp_Slider.parent.height + SettingsPanel.Margin;
 
-            var springOffset_Slider = SettingsPanel.CreateSlider(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_SPRINGOFFSET), -2.0f, 2.0f, 0.025f, -1000.0f, "N0", " mm");
+            var springOffset_Slider = SettingsPanel.CreateSlider(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_SPRINGOFFSET_PLANE), -3.0f, 3.0f, 0.05f, -100.0f, "N0", " cm");
             springOffset_Slider.eventValueChanged += (_, value) => ModSettings.PlaneSpringOffset = value;
             springOffset_Slider.parent.eventVisibilityChanged += (_, isVisible) => springOffset_Slider.value = ModSettings.PlaneSpringOffset;
             currentY += springOffset_Slider.parent.height + SettingsPanel.Margin;

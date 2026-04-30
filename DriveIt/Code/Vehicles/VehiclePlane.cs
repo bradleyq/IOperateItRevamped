@@ -20,14 +20,15 @@ namespace DriveIt.Vehicles
         private const float STEER_MAX = 37.0f;
         private const float GEAR_RESP = 0.1f;
         private const float MIN_POWER_VEL = 1.0f;
-        private const float COEFF_LIFT = 0.07f;
+        private const float COEFF_LIFT_NORM = 0.07f;
         private const float COEFF_ROT = 0.01f;
         private const float COEFF_STAB = 2.0f;
         private const float STAB_COMPV = 0.75f;
         private const float STAB_COMPH = 0.2f;
         private const float AIR_DENSITY_SEA = 1.225f;
-        private const float AIR_DENSITY_DECAY = -0.0002f;
+        private const float AIR_DENSITY_DECAY = -0.00011856f;
         private const float MASS_FACTOR = 20.0f;
+        private const float MAX_WHEEL_WIDTH = 10.0f;
 
         private static float s_engine_inertia;
 
@@ -37,7 +38,7 @@ namespace DriveIt.Vehicles
         protected override float driveBias { get => 0.5f; }
         protected override float brakeBias { get => ModSettings.PlaneBrakeBias; }
         protected override float springDamp { get => ModSettings.PlaneSpringDamp; }
-        protected override float springOffset { get => ModSettings.PlaneSpringOffset; }
+        protected override float springOffset { get => -0.05f; }
         protected override float springSwayBar { get => 0.0f; }
         protected override float massCenterHeight { get => ModSettings.PlaneMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.PlaneMassCenterBias; }
@@ -61,17 +62,20 @@ namespace DriveIt.Vehicles
 
         protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
         {
-            float height = Mathf.Max(m_vehicleInfo.m_generatedInfo.m_tyres[0].y, 0.0f);
-            if (height > adjustedY)
+            if (0.0f > adjustedY)
             {
-                adjustedBounds.y -= height - adjustedY;
+                adjustedBounds.y += adjustedY;
+                adjustedY = 0.0f;
+
             }
-            adjustedY = height;
 
-            base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
+            Vector3 tmpBounds = adjustedBounds;
+            tmpBounds.x = Mathf.Min(tmpBounds.x, MAX_WHEEL_WIDTH);
 
-            adjustedBounds.y += springOffset;
-            adjustedY -= springOffset;
+            base.InitializeInternal(ref tmpBounds, ref adjustedY, ref adjustedZ, ref constraints);
+
+            adjustedBounds.y += ModSettings.PlaneSpringOffset;
+            adjustedY -= ModSettings.PlaneSpringOffset;
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;
             m_gearNeutral = ENGINE_GEAR_NEUTRAL;
@@ -79,11 +83,12 @@ namespace DriveIt.Vehicles
             m_wingLever = adjustedBounds.x * 0.5f;
             m_rudderLever = adjustedBounds.y * 0.5f;
             m_tailLever = adjustedBounds.z * 0.5f;
-            m_liftCoeff = COEFF_LIFT * adjustedBounds.x * adjustedBounds.z;
-            m_rollCoeff = COEFF_ROT * adjustedBounds.x * adjustedBounds.z;
-            m_pitchCoeff = COEFF_ROT * adjustedBounds.x * adjustedBounds.z;
-            m_vstabCoeff = COEFF_STAB * adjustedBounds.y * adjustedBounds.z;
-            m_hstabCoeff = COEFF_STAB * adjustedBounds.x * adjustedBounds.z;
+            m_liftCoeff = -ModSettings.PlaneDownForce * adjustedBounds.x * adjustedBounds.z;
+            float controlScale = -ModSettings.PlaneDownForce / COEFF_LIFT_NORM;
+            m_rollCoeff = controlScale * COEFF_ROT * adjustedBounds.x * adjustedBounds.z;
+            m_pitchCoeff = controlScale * COEFF_ROT * adjustedBounds.x * adjustedBounds.z;
+            m_vstabCoeff = controlScale * COEFF_STAB * adjustedBounds.y * adjustedBounds.z;
+            m_hstabCoeff = controlScale * COEFF_STAB * adjustedBounds.x * adjustedBounds.z;
             m_vehicleFlags &= ~(Vehicle.Flags.Flying | Vehicle.Flags.Landing | Vehicle.Flags.TakingOff);
         }
         protected override void InitializeAdjust(ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
@@ -247,7 +252,7 @@ namespace DriveIt.Vehicles
                 StringBuilder debugString = new StringBuilder();
                 debugString.AppendFormat("v: {0}\n", this);
                 debugString.AppendFormat("s: {0} p: {1}\n", m_steer, m_pitch);
-                debugString.AppendFormat("a: {0}\n", m_vehicleRigidBody.transform.position.y);
+                debugString.AppendFormat("m: {0} a: {1}\n", m_vehicleRigidBody.mass, m_vehicleRigidBody.transform.position.y);
 
                 GUIStyle m_style = new GUIStyle(GUI.skin.label);
                 m_style.fontSize = 20;

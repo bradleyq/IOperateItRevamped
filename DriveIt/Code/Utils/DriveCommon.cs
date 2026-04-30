@@ -118,6 +118,8 @@ namespace DriveIt.Utils
 
         #region DriveIt Vehicle Specific Translation Strings
         public const string TK_SETTINGS_SPRINGOFFSET_BOAT   = "SETTINGS_SPRINGOFFSET_BOAT";
+        public const string TK_SETTINGS_DOWNFORCE_PLANE     = "SETTINGS_DOWNFORCE_PLANE";
+        public const string TK_SETTINGS_SPRINGOFFSET_PLANE  = "SETTINGS_SPRINGOFFSET_PLANE";
 
         #endregion
 

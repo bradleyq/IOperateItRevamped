@@ -70,10 +70,10 @@ namespace DriveIt.Settings
 
         private const float             PLANEENGINEPOWER = 35000f;
         private const float             PLANEBRAKINGFORCE = 300f;
-        private const float             PLANEDOWNFORCE = -100.0f;
+        private const float             PLANEDOWNFORCE = -0.07f;
         private const float             PLANEBRAKEBIAS = 0.4f;
         private const float             PLANESPRINGDAMP = 4.0f;
-        private const float             PLANESPRINGOFFSET = -0.1f;
+        private const float             PLANESPRINGOFFSET = -1.0f;
         private const float             PLANEMASSCENTERHEIGHT = 0.1f;
         private const float             PLANEMASSCENTERBIAS = 0.5f;
 

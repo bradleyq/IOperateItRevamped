@@ -930,6 +930,7 @@ namespace DriveIt
 
             foreach (var regularEffect in m_regularEffects)
             {
+                regularEffect.RenderEffect(default, area2, velocity, acceleration, 1f, -1f, Singleton<SimulationManager>.instance.m_simulationTimeDelta, Singleton<RenderManager>.instance.CurrentCameraInfo);
                 regularEffect.PlayEffect(default, area, velocity, acceleration, 1f, listenerInfo, s_audioGroup);
             }
             foreach (var engineEffect in m_engineSoundEffects)
