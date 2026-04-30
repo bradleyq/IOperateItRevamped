@@ -1,5 +1,7 @@
-﻿using DriveIt.Settings;
+﻿using AlgernonCommons;
+using DriveIt.Settings;
 using DriveIt.Utils;
+using System.Text;
 using UnityEngine;
 
 namespace DriveIt.Vehicles
@@ -9,19 +11,22 @@ namespace DriveIt.Vehicles
         private static readonly float[] ENGINE_GEAR_RATIOS = { 0.05f, 0.0f, 1.0f };
         private static readonly string[] ENGINE_GEAR_NAMES = { "R", "N", "F" };
         private const int ENGINE_GEAR_NEUTRAL = 1;
-        private const float DRAG_FACTOR = 0.75f;
         private const float ENGINE_PEAK_RPS = 300.0f;
         private const float ENGINE_OVER_RPS = 315.0f;
-        private const float ENGINE_IDLE_RPS = 10.0f;
+        private const float ENGINE_IDLE_RPS = 5.0f;
         private const float ENGINE_INERTIA = 0.8f;
+        private const float DRAG_FACTOR_ROT = 0.85f;
+        private const float DRAG_FACTOR = 0.4f;
+        private const float STEER_MAX = 37.0f;
         private const float GEAR_RESP = 0.1f;
         private const float MIN_POWER_VEL = 1.0f;
         private const float COEFF_LIFT = 0.07f;
-        private const float COEFF_ROT = 0.0125f;
-        private const float COEFF_STAB = 0.3f;
-        private const float STAB_COMP = 0.25f;
+        private const float COEFF_ROT = 0.01f;
+        private const float COEFF_STAB = 2.0f;
+        private const float STAB_COMPV = 0.75f;
+        private const float STAB_COMPH = 0.2f;
         private const float AIR_DENSITY_SEA = 1.225f;
-        private const float AIR_DENSITY_DECAY = -0.00011856f;
+        private const float AIR_DENSITY_DECAY = -0.0002f;
         private const float MASS_FACTOR = 20.0f;
 
         private static float s_engine_inertia;
@@ -36,7 +41,9 @@ namespace DriveIt.Vehicles
         protected override float springSwayBar { get => 0.0f; }
         protected override float massCenterHeight { get => ModSettings.PlaneMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.PlaneMassCenterBias; }
-        protected override float angularDrag { get => DRAG_FACTOR; }
+        protected override float steerMax { get => STEER_MAX; }
+        protected override float linearDrag { get => DRAG_FACTOR; }
+        protected override float angularDrag { get => DRAG_FACTOR_ROT; }
         protected override float enginePeakRPS { get => ENGINE_PEAK_RPS; }
         protected override float engineOverRPS { get => ENGINE_OVER_RPS;  }
         protected override float engineIdleRPS {  get => ENGINE_IDLE_RPS; }
@@ -77,11 +84,24 @@ namespace DriveIt.Vehicles
             m_pitchCoeff = COEFF_ROT * adjustedBounds.x * adjustedBounds.z;
             m_vstabCoeff = COEFF_STAB * adjustedBounds.y * adjustedBounds.z;
             m_hstabCoeff = COEFF_STAB * adjustedBounds.x * adjustedBounds.z;
+            m_vehicleFlags &= ~(Vehicle.Flags.Flying | Vehicle.Flags.Landing | Vehicle.Flags.TakingOff);
         }
         protected override void InitializeAdjust(ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
         {
             frontTorque = 0.0f;
             rearTorque = 0.0f;
+        }
+
+        protected override void PhysicsPreProcess(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
+        {
+            if (m_effects.IsExtrasEnabled())
+            {
+                m_vehicleFlags |= Vehicle.Flags.Flying;
+            }
+            else
+            {
+                m_vehicleFlags &= ~Vehicle.Flags.Flying;
+            }
         }
 
         protected override void PhysicsFeedbackWheelAndEngine(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
@@ -173,19 +193,25 @@ namespace DriveIt.Vehicles
             netForce += dir * GetPower(m_radps) / Mathf.Max(dir * fc, MIN_POWER_VEL) * (density / AIR_DENSITY_SEA) * forwardVec;
 
             // lift
-            netForce += m_liftCoeff * fc * fc * density * upVec;
+            float scale = 1.0f;
+            if (vehicleVel.sqrMagnitude > 0.0f && Vector3.Dot(vehicleVel.normalized, Vector3.up) < 1.0f - DriveCommon.FLOAT_ERROR)
+            {
+                scale = Mathf.Max(Mathf.Abs(Vector3.Dot(Vector3.Cross(Vector3.up, vehicleVel).normalized, sideVec) * m_liftCoeff * fc * fc * density), DriveCommon.FLOAT_ERROR);
+                scale = Mathf.Min(scale, m_vehicleRigidBody.mass * ModSettings.Gravity) / scale;
+            }
+            netForce += scale * m_liftCoeff * fc * fc * density * upVec;
 
             // vertical stabilizers
             dir = Mathf.Sign(sc);
             tmp = -dir * m_vstabCoeff * sc * sc * density * sideVec;
-            netForce += (1.0f - STAB_COMP) * tmp;
-            netStab += STAB_COMP * tmp;
+            netForce += (1.0f - STAB_COMPV) * tmp;
+            netStab += STAB_COMPV * tmp;
 
             // horizontal stabilizers (wings)
             dir = Mathf.Sign(uc);
             tmp = -dir * m_hstabCoeff * uc * uc * density * upVec;
-            netForce += (1.0f - STAB_COMP) * tmp;
-            netStab += STAB_COMP * tmp;
+            netForce += (1.0f - STAB_COMPH) * tmp;
+            netStab += STAB_COMPH * tmp;
 
             m_vehicleRigidBody.AddForce(netForce, ForceMode.Force);
             m_vehicleRigidBody.AddForceAtPosition(netStab, m_vehicleRigidBody.transform.TransformPoint(new Vector3(0.0f, m_rudderLever, -m_tailLever)), ForceMode.Force);
@@ -204,7 +230,6 @@ namespace DriveIt.Vehicles
 
         protected override void PhysicsPostProcess(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
         {
-
         }
 
         protected override void HandleInputOnFixedUpdate(int invert)
@@ -213,6 +238,23 @@ namespace DriveIt.Vehicles
 
             float pitch = Input.GetAxisRaw(DriveCommon.AXIS_PITCH);
             m_pitch = pitch;
+        }
+
+        private void OnGUI()
+        {
+            if (Event.current.type == EventType.Repaint && Logging.DetailLogging)
+            {
+                StringBuilder debugString = new StringBuilder();
+                debugString.AppendFormat("v: {0}\n", this);
+                debugString.AppendFormat("s: {0} p: {1}\n", m_steer, m_pitch);
+                debugString.AppendFormat("a: {0}\n", m_vehicleRigidBody.transform.position.y);
+
+                GUIStyle m_style = new GUIStyle(GUI.skin.label);
+                m_style.fontSize = 20;
+                m_style.normal.textColor = Color.white;
+
+                GUI.Label(new Rect(100f, 100f, 700f, 700f), debugString.ToString(), m_style);
+            }
         }
     }
 }

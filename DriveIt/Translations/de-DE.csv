@@ -55,7 +55,7 @@
 "SETTINGS_CAM_SMOOTHING","Camera Smoothing",""
 "SETTINGS_KEYUUITOGGLE","Toggle Main Panel (Requires UUI)",""
 "SETTINGS_KEYLIGHTTOGGLE","Toggle Headlights",""
-"SETTINGS_KEYSIRENTOGGLE","Toggle Siren for Special Vehicles",""
+"SETTINGS_KEYEXTRASTOGGLE","Toggle Special Effects (Sirens, Landing Gear, etc.)",""
 "SETTINGS_KEYMOVEFORWARD","Forward/Throttle",""
 "SETTINGS_KEYMOVEBACKWARD","Reverse/Brake",""
 "SETTINGS_KEYMOVELEFT","Steer Left",""

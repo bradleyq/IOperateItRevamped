@@ -92,7 +92,7 @@ namespace DriveIt.Utils
         public const string TK_SETTINGS_CAM_SMOOTHING       = "SETTINGS_CAM_SMOOTHING";
         public const string TK_SETTINGS_KEYUUITOGGLE        = "SETTINGS_KEYUUITOGGLE";
         public const string TK_SETTINGS_KEYLIGHTTOGGLE      = "SETTINGS_KEYLIGHTTOGGLE";
-        public const string TK_SETTINGS_KEYSIRENTOGGLE      = "SETTINGS_KEYSIRENTOGGLE";
+        public const string TK_SETTINGS_KEYEXTRASTOGGLE      = "SETTINGS_KEYEXTRASTOGGLE";
         public const string TK_SETTINGS_KEYMOVEFORWARD      = "SETTINGS_KEYMOVEFORWARD";
         public const string TK_SETTINGS_KEYMOVEBACKWARD     = "SETTINGS_KEYMOVEBACKWARD";
         public const string TK_SETTINGS_KEYMOVELEFT         = "SETTINGS_KEYMOVELEFT";

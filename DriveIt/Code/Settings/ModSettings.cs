@@ -68,7 +68,7 @@ namespace DriveIt.Settings
         private const float             HELIMASSCENTERHEIGHT = 0.1f;
         private const float             HELIMASSCENTERBIAS = 0.5f;
 
-        private const float             PLANEENGINEPOWER = 30000f;
+        private const float             PLANEENGINEPOWER = 35000f;
         private const float             PLANEBRAKINGFORCE = 300f;
         private const float             PLANEDOWNFORCE = -100.0f;
         private const float             PLANEBRAKEBIAS = 0.4f;
@@ -648,10 +648,10 @@ namespace DriveIt.Settings
         [XmlIgnore]
         internal static KeyOnlyBinding KeyLightToggle = new KeyOnlyBinding(KeyCode.H);
 
-        [XmlElement("KeySirenToggle")]
-        public KeyOnlyBinding XMLKeySirenToggle { get => KeySirenToggle; set => KeySirenToggle = value; }
+        [XmlElement("KeyExtrasToggle")]
+        public KeyOnlyBinding XMLKeyExtrasToggle { get => KeyExtrasToggle; set => KeyExtrasToggle = value; }
         [XmlIgnore]
-        internal static KeyOnlyBinding KeySirenToggle = new KeyOnlyBinding(KeyCode.G);
+        internal static KeyOnlyBinding KeyExtrasToggle = new KeyOnlyBinding(KeyCode.G);
 
         [XmlElement("KeyMoveForward")]
         public KeyOnlyBinding XMLKeyMoveForward { get => KeyMoveForward; set => KeyMoveForward = value; }

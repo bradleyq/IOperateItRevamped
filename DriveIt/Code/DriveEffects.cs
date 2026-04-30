@@ -57,7 +57,7 @@ namespace DriveIt
         private Light m_headlight;
         private Light m_taillight;
         private Vector4 m_lightState;
-        private bool m_isSirenEnabled = false;
+        private bool m_isExtrasEnabled = false;
         private bool m_isLightEnabled = false;
         private bool m_isDusty = false;
         private bool m_vehicleColorSet = false;
@@ -76,7 +76,7 @@ namespace DriveIt
         private List<EffectInfo> m_regularEffects = new List<EffectInfo>();
         private List<EffectInfo> m_dustEffects = new List<EffectInfo>();
         private List<EffectInfo> m_specialEffects = new List<EffectInfo>();
-        private List<GameObject> m_subMeshObjects = new List<GameObject>();
+        private Dictionary<VehicleInfo.MeshInfo, MeshRenderer> m_subMeshMap = new Dictionary<VehicleInfo.MeshInfo, MeshRenderer>();
 
         private static GUIStyle s_speedoStyle;
         private static GUIStyle s_gearStyle;
@@ -102,6 +102,11 @@ namespace DriveIt
             }
         }
 
+        public bool IsExtrasEnabled()
+        {
+            return m_isExtrasEnabled;
+        }
+
         public void Initialize(VehicleGeneric vehicle)
         {
             m_vehicleInstance = vehicle;
@@ -112,7 +117,7 @@ namespace DriveIt
             this.enabled = true;
             m_vehicleColor.a = 0; // Make sure blinking is not set.
             m_lightState = Vector4.zero;
-            m_isSirenEnabled = false;
+            m_isExtrasEnabled = false;
             m_isLightEnabled = false;
             m_isDusty = false;
             m_isTireVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrailer;
@@ -154,8 +159,7 @@ namespace DriveIt
             foreach (VehicleInfo.MeshInfo subMesh in m_vehicleInfo.m_subMeshes)
             {
                 if (subMesh.m_subInfo != null && 
-                    subMesh.m_parkedFlagsRequired == 0 && 
-                    ((subMesh.m_vehicleFlagsRequired | subMesh.m_vehicleFlagsForbidden) & m_vehicleInstance.vehicleFlags) == subMesh.m_vehicleFlagsRequired)
+                    subMesh.m_parkedFlagsRequired == 0)
                 {
                     VehicleInfoBase subInfo = subMesh.m_subInfo;
                     GameObject subMeshObject = new GameObject(subInfo.name);
@@ -179,7 +183,7 @@ namespace DriveIt
 
                     subMeshObject.SetActive(true);
 
-                    m_subMeshObjects.Add(subMeshObject);
+                    m_subMeshMap.Add(subMesh, meshRenderer);
                 }
             }
 
@@ -227,18 +231,18 @@ namespace DriveIt
             m_usedTireTrails.Clear();
             m_extraValues.Clear();
 
-            foreach (GameObject subMeshObject in m_subMeshObjects)
+            foreach (MeshRenderer subMesh in m_subMeshMap.Values)
             {
-                Destroy(subMeshObject);
+                Destroy(subMesh.gameObject);
             }
-            m_subMeshObjects.Clear();
+            m_subMeshMap.Clear();
             m_visualObject.SetActive(false);
             this.enabled = false;
             m_vehicleColorSet = false;
             m_vehicleColor = default;
             m_vehicleInfo = null;
             m_lightState = Vector4.zero;
-            m_isSirenEnabled = false;
+            m_isExtrasEnabled = false;
             m_isLightEnabled = false;
             m_isDusty = false;
             m_spCompression = 0.0f;
@@ -386,15 +390,19 @@ namespace DriveIt
 
             m_visualObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
 
-            foreach(GameObject subMeshObject in m_subMeshObjects)
+            foreach(MeshRenderer subMesh in m_subMeshMap.Values)
             {
-                subMeshObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
+                if (subMesh.enabled)
+                {
+                    subMesh.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
+                }
             }
         }
 
         private void FixedUpdate()
         {
             UpdateWheelEffects();
+            UpdateMesh();
         }
 
         private void LateUpdate()
@@ -539,6 +547,15 @@ namespace DriveIt
             m_spNormal = Vector3.Normalize(Vector3.Cross(m_spTangent, m_spBinormal));
 
             m_isDusty = dustyCount >= m_vehicleInstance.wheelCount / 2;
+        }
+
+        private void UpdateMesh()
+        {
+            foreach(VehicleInfo.MeshInfo subInfo in m_subMeshMap.Keys)
+            {
+                MeshRenderer subMesh = m_subMeshMap[subInfo];
+                subMesh.enabled = ((subInfo.m_vehicleFlagsRequired | subInfo.m_vehicleFlagsForbidden) & m_vehicleInstance.vehicleFlags) == subInfo.m_vehicleFlagsRequired;
+            }
         }
 
         private static void OverridePrefabs()
@@ -844,8 +861,8 @@ namespace DriveIt
             if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyLightToggle.Key))
                 m_isLightEnabled = !m_isLightEnabled;
 
-            if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeySirenToggle.Key))
-                m_isSirenEnabled = !m_isSirenEnabled;
+            if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyExtrasToggle.Key))
+                m_isExtrasEnabled = !m_isExtrasEnabled;
         }
 
         private void AddEffects()
@@ -885,7 +902,7 @@ namespace DriveIt
                                     }
                                     else
                                     {
-                                        m_regularEffects.Add(effect.m_effect);
+                                        m_regularEffects.Add(sub.m_effect);
                                     }
                                 }
                             }
@@ -958,7 +975,7 @@ namespace DriveIt
                 }
             }
 
-            if (m_isSirenEnabled)
+            if (m_isExtrasEnabled)
             {
                 foreach (var specialEffect in m_specialEffects)
                 {

@@ -23,8 +23,8 @@ namespace DriveIt.Settings.Tabs
             var keyLightToggle = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYLIGHTTOGGLE), ModSettings.KeyLightToggle);
             currentY += keyLightToggle.Panel.height + SettingsPanel.Margin;
 
-            var keySirenToggle = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYSIRENTOGGLE), ModSettings.KeySirenToggle);
-            currentY += keySirenToggle.Panel.height + SettingsPanel.Margin;
+            var keyExtrasToggle = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYEXTRASTOGGLE), ModSettings.KeyExtrasToggle);
+            currentY += keyExtrasToggle.Panel.height + SettingsPanel.Margin;
 
             var keyMoveForward = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYMOVEFORWARD), ModSettings.KeyMoveForward);
             currentY += keyMoveForward.Panel.height + SettingsPanel.Margin;
