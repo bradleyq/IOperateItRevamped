@@ -145,15 +145,6 @@ namespace DriveIt
 
             m_visualObject.GetComponent<MeshFilter>().sharedMesh = vehicleMesh;
             m_visualObject.GetComponent<MeshRenderer>().sharedMaterial = m_vehicleInfo.m_material;
-
-            if (m_vehicleColorSet)
-            {
-                MaterialPropertyBlock materialBlock = Singleton<VehicleManager>.instance.m_materialBlock;
-                materialBlock.Clear();
-                materialBlock.SetColor(Singleton<VehicleManager>.instance.ID_Color, m_vehicleColor);
-                m_visualObject.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
-            }
-
             m_visualObject.SetActive(true);
 
             foreach (VehicleInfo.MeshInfo subMesh in m_vehicleInfo.m_subMeshes)
@@ -184,6 +175,10 @@ namespace DriveIt
                     subMeshObject.SetActive(true);
 
                     m_subMeshMap.Add(subMesh, meshRenderer);
+                }
+                else if (subMesh.m_subInfo == null)
+                {
+                    m_subMeshMap.Add(subMesh, m_visualObject.GetComponent<MeshRenderer>());
                 }
             }
 
@@ -233,7 +228,10 @@ namespace DriveIt
 
             foreach (MeshRenderer subMesh in m_subMeshMap.Values)
             {
-                Destroy(subMesh.gameObject);
+                if (subMesh.gameObject != m_visualObject)
+                {
+                    Destroy(subMesh.gameObject);
+                }
             }
             m_subMeshMap.Clear();
             m_visualObject.SetActive(false);
@@ -392,7 +390,7 @@ namespace DriveIt
 
             foreach(MeshRenderer subMesh in m_subMeshMap.Values)
             {
-                if (subMesh.enabled)
+                if (subMesh.enabled && subMesh.gameObject != m_visualObject)
                 {
                     subMesh.GetComponent<MeshRenderer>().SetPropertyBlock(materialBlock);
                 }
@@ -554,7 +552,7 @@ namespace DriveIt
             foreach(VehicleInfo.MeshInfo subInfo in m_subMeshMap.Keys)
             {
                 MeshRenderer subMesh = m_subMeshMap[subInfo];
-                subMesh.enabled = ((subInfo.m_vehicleFlagsRequired | subInfo.m_vehicleFlagsForbidden) & m_vehicleInstance.vehicleFlags) == subInfo.m_vehicleFlagsRequired;
+                subMesh.enabled = ((subInfo.m_vehicleFlagsRequired | subInfo.m_vehicleFlagsForbidden) & m_vehicleInstance.vehicleFlags) == subInfo.m_vehicleFlagsRequired && (subInfo.m_variationMask & m_vehicleInstance.variationMaskInv) == 0;
             }
         }
 

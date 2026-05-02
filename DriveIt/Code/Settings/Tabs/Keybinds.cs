@@ -38,6 +38,12 @@ namespace DriveIt.Settings.Tabs
             var keyMoveRight = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYMOVERIGHT), ModSettings.KeyMoveRight);
             currentY += keyMoveRight.Panel.height + SettingsPanel.Margin;
 
+            var keyPitchUp = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYPITCHUP), ModSettings.KeyPitchUp);
+            currentY += keyPitchUp.Panel.height + SettingsPanel.Margin;
+
+            var keyPitchDown = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYPITCHDOWN), ModSettings.KeyPitchDown);
+            currentY += keyPitchDown.Panel.height + SettingsPanel.Margin;
+
             var keyHandbrake = OptionsKeymapping.AddKeymapping(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_KEYHANDBRAKE), ModSettings.KeyHandbrake);
             currentY += keyHandbrake.Panel.height + SettingsPanel.Margin;
 

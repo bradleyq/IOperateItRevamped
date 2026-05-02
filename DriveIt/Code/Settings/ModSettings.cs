@@ -73,16 +73,16 @@ namespace DriveIt.Settings
         private const float             PLANEDOWNFORCE = -0.07f;
         private const float             PLANEBRAKEBIAS = 0.4f;
         private const float             PLANESPRINGDAMP = 4.0f;
-        private const float             PLANESPRINGOFFSET = -1.0f;
+        private const float             PLANESPRINGOFFSET = -1.5f;
         private const float             PLANEMASSCENTERHEIGHT = 0.1f;
         private const float             PLANEMASSCENTERBIAS = 0.5f;
 
-        private const float             TRAILERBRAKINGFORCE = 50f;
-        private const float             TRAILERDOWNFORCE = 10.0f;
+        private const float             TRAILERBRAKINGFORCE = 75f;
+        private const float             TRAILERDOWNFORCE = 0.0f;
         private const float             TRAILERSPRINGDAMP = 2.0f;
         private const float             TRAILERSPRINGOFFSET = -0.1f;
-        private const float             TRAILERSPRINGSWAYBAR = 77.0f;
-        private const float             TRAILERMASSCENTERHEIGHT = 0.1f;
+        private const float             TRAILERSPRINGSWAYBAR = 147.0f;
+        private const float             TRAILERMASSCENTERHEIGHT = 0.05f;
         private const float             TRAILERMASSCENTERBIAS = 0.5f;
 
         private const float             TRAINENGINEPOWER = 2000f;
@@ -672,6 +672,16 @@ namespace DriveIt.Settings
         public KeyOnlyBinding XMLKeyMoveRight { get => KeyMoveRight; set => KeyMoveRight = value; }
         [XmlIgnore]
         internal static KeyOnlyBinding KeyMoveRight = new KeyOnlyBinding(KeyCode.D);
+
+        [XmlElement("KeyPitchUp")]
+        public KeyOnlyBinding XMLKeyPitchUp { get => KeyPitchUp; set => KeyPitchUp = value; }
+        [XmlIgnore]
+        internal static KeyOnlyBinding KeyPitchUp = new KeyOnlyBinding(KeyCode.PageDown);
+
+        [XmlElement("KeyPitchDown")]
+        public KeyOnlyBinding XMLKeyPitchDown { get => KeyPitchDown; set => KeyPitchDown = value; }
+        [XmlIgnore]
+        internal static KeyOnlyBinding KeyPitchDown = new KeyOnlyBinding(KeyCode.PageUp);
 
         [XmlElement("KeyHandbrake")]
         public KeyOnlyBinding XMLKeyHandbrake { get => KeyHandbrake; set => KeyHandbrake = value; }

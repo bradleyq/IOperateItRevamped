@@ -15,6 +15,8 @@ namespace DriveIt.Vehicles
         private const float ENGINE_OVER_RPS = 315.0f;
         private const float ENGINE_IDLE_RPS = 5.0f;
         private const float ENGINE_INERTIA = 0.8f;
+        private const float PITCH_RESP = 1.5f;
+        private const float PITCH_REST = 1.5f;
         private const float DRAG_FACTOR_ROT = 0.85f;
         private const float DRAG_FACTOR = 0.4f;
         private const float STEER_MAX = 37.0f;
@@ -60,6 +62,11 @@ namespace DriveIt.Vehicles
         private float m_hstabCoeff = 0.0f;
         private float m_pitch = 0.0f;
 
+        protected override void AwakeExt()
+        {
+            s_engine_inertia = (float)System.Math.Pow(ENGINE_INERTIA, Time.fixedDeltaTime);
+        }
+
         protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
         {
             if (0.0f > adjustedY)
@@ -79,7 +86,6 @@ namespace DriveIt.Vehicles
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;
             m_gearNeutral = ENGINE_GEAR_NEUTRAL;
-            s_engine_inertia = (float)System.Math.Pow(ENGINE_INERTIA, Time.fixedDeltaTime);
             m_wingLever = adjustedBounds.x * 0.5f;
             m_rudderLever = adjustedBounds.y * 0.5f;
             m_tailLever = adjustedBounds.z * 0.5f;
@@ -116,7 +122,7 @@ namespace DriveIt.Vehicles
             foreach (Wheel w in m_wheelObjects)
             {
                 // record distance travelled from previous tick
-                m_distanceTravelled += w.wheelRadps * w.wheelTorqueFract * w.wheelRadius * Time.fixedDeltaTime;
+                m_distanceTravelled += w.wheelRadps * w.wheelRadius * Time.fixedDeltaTime / wheelCount;
 
                 // apply wheel drag from previous tick
                 w.ApplyDrag();
@@ -242,7 +248,36 @@ namespace DriveIt.Vehicles
             base.HandleInputOnFixedUpdate(invert);
 
             float pitch = Input.GetAxisRaw(DriveCommon.AXIS_PITCH);
-            m_pitch = pitch;
+            bool pitching = false;
+
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyPitchDown.Key))
+            {
+                float factor = (m_pitch < 0.0f) ? PITCH_RESP + PITCH_REST : PITCH_RESP;
+                m_pitch = Mathf.Clamp(m_pitch + Time.fixedDeltaTime * factor, -1.0f, 1.0f);
+                pitching = true;
+            }
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyPitchUp.Key))
+            {
+                float factor = (m_pitch > 0.0f) ? PITCH_RESP + PITCH_REST : PITCH_RESP;
+                m_pitch = Mathf.Clamp(m_pitch - Time.fixedDeltaTime * factor, -1.0f, 1.0f);
+                pitching = true;
+            }
+            if (pitch != 0.0f)
+            {
+                pitching = true;
+                m_pitch = pitch;
+            }
+            if (!pitching)
+            {
+                if (m_pitch > 0.0f)
+                {
+                    m_pitch = Mathf.Clamp(m_pitch - Time.fixedDeltaTime * PITCH_REST, 0.0f, 1.0f);
+                }
+                if (m_pitch < 0.0f)
+                {
+                    m_pitch = Mathf.Clamp(m_pitch + Time.fixedDeltaTime * PITCH_REST, -1.0f, 0.0f);
+                }
+            }
         }
 
         private void OnGUI()
@@ -258,7 +293,7 @@ namespace DriveIt.Vehicles
                 m_style.fontSize = 20;
                 m_style.normal.textColor = Color.white;
 
-                GUI.Label(new Rect(100f, 100f, 700f, 700f), debugString.ToString(), m_style);
+                GUI.Label(new Rect(100f, 100f, 700f, 350f), debugString.ToString(), m_style);
             }
         }
     }

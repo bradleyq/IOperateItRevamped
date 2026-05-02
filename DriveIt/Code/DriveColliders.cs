@@ -28,10 +28,11 @@ namespace DriveIt
         private const int NUM_BUILDING_COLLIDERS = 36;
         private const int NUM_VEHICLE_COLLIDERS = 48;
         private const int NUM_PARKED_VEHICLE_COLLIDERS = 32;
-        private const int NUM_GROUND_COLLIDERS = 8;
+        private const int NUM_GROUND_COLLIDERS = 16;
         private const float SCAN_DISTANCE = 50f;
         private const float COLLIDER_JUMP_DISTANCE = 10f;
-        private const float GROUND_COLLIDER_RADIUS = 0.2f;
+        private const float GROUND_COLLIDER_RADIUS_S = 0.2f;
+        private const float GROUND_COLLIDER_RADIUS_L = 1.0f;
         private const float GROUND_COLLIDER_HEIGHT = 50.0f;
         private const float GROUND_HEIGHT_THRESH = 0.1f;
         private const float GROUND_DELTA_THRESH = 0.01f;
@@ -122,7 +123,7 @@ namespace DriveIt
                 gameObject.layer = MapUtils.LAYER_IGNORE;
                 var groundCollider = gameObject.AddComponent<ColliderContainer>();
                 groundCollider.CapsuleCollider = gameObject.AddComponent<CapsuleCollider>();
-                groundCollider.CapsuleCollider.radius = GROUND_COLLIDER_RADIUS;
+                groundCollider.CapsuleCollider.radius = GROUND_COLLIDER_RADIUS_L;
                 groundCollider.CapsuleCollider.height = GROUND_COLLIDER_HEIGHT;
                 groundCollider.CapsuleCollider.enabled = true;
                 groundCollider.CapsuleCollider.sharedMaterial = material;
@@ -206,23 +207,81 @@ namespace DriveIt
             m_updateId++;
         }
 
-        public void UpdateGroundCollider(BoxCollider box)
+        public void UpdateGroundCollider(BoxCollider box, BoxCollider box2 = null)
         {
             Vector3 boxSize = box.size;
 
-            for (int i = 0; i < NUM_GROUND_COLLIDERS; i += 1)
+            for (int i = 0; i < NUM_GROUND_COLLIDERS / 2; i += 1)
             {
                 float x = (i % 2) - 0.5f;
                 float y = ((i / 2) % 2) - 0.5f;
                 float z = (i / 4) - 0.5f;
                 
                 Vector3 pos = box.transform.TransformPoint(box.center + new Vector3(boxSize.x * x, boxSize.y * y, boxSize.z * z));
-                pos.y = MapUtils.CalculateHeight(pos, GROUND_HEIGHT_THRESH, out var _, true) - GROUND_COLLIDER_HEIGHT * 0.5f;
+                float vertexY = pos.y;
+                float collideY = MapUtils.CalculateHeight(pos, GROUND_HEIGHT_THRESH, out var _, true);
+                pos.y = collideY - GROUND_COLLIDER_HEIGHT * 0.5f;
                 if ((m_GroundColliders[i].Rigidbody.transform.position - pos).magnitude > GROUND_DELTA_THRESH)
                 {
                     m_GroundColliders[i].gameObject.SetActive(true);
                     m_GroundColliders[i].Rigidbody.transform.position = pos;
-                    DebugHelper.DrawDebugBox(new Vector3(GROUND_COLLIDER_RADIUS * 2.0f, GROUND_COLLIDER_HEIGHT, GROUND_COLLIDER_RADIUS * 2.0f), m_GroundColliders[i].CapsuleCollider.transform.position, Quaternion.identity, Color.magenta);
+
+                    CapsuleCollider collider = m_GroundColliders[i].CapsuleCollider;
+                    float r = collider.radius;
+                    float targetR = collideY > vertexY + DriveCommon.FLOAT_ERROR ? GROUND_COLLIDER_RADIUS_S : GROUND_COLLIDER_RADIUS_L;
+                    if (r != targetR)
+                    {
+                        r = targetR;
+                        collider.radius = targetR;
+                        collider.height = GROUND_COLLIDER_HEIGHT;
+                    }
+
+                    DebugHelper.DrawDebugBox(new Vector3(r * 2.0f, GROUND_COLLIDER_HEIGHT, r * 2.0f), m_GroundColliders[i].CapsuleCollider.transform.position, Quaternion.identity, Color.magenta);
+                }
+            }
+
+            if (box2)
+            {
+                boxSize = box2.size;
+            }
+
+            for (int i = 0; i < NUM_GROUND_COLLIDERS / 2; i += 1)
+            {
+                int j = i + NUM_GROUND_COLLIDERS / 2;
+
+                if (box2)
+                {
+                    float x = (i % 2) - 0.5f;
+                    float y = ((i / 2) % 2) - 0.5f;
+                    float z = (i / 4) - 0.5f;
+
+                    m_GroundColliders[j].gameObject.SetActive(true);
+
+                    Vector3 pos = box2.transform.TransformPoint(box2.center + new Vector3(boxSize.x * x, boxSize.y * y, boxSize.z * z));
+                    float vertexY = pos.y;
+                    float collideY = MapUtils.CalculateHeight(pos, GROUND_HEIGHT_THRESH, out var _, true);
+                    pos.y = collideY - GROUND_COLLIDER_HEIGHT * 0.5f;
+                    if ((m_GroundColliders[j].Rigidbody.transform.position - pos).magnitude > GROUND_DELTA_THRESH)
+                    {
+                        m_GroundColliders[j].gameObject.SetActive(true);
+                        m_GroundColliders[j].Rigidbody.transform.position = pos;
+
+                        CapsuleCollider collider = m_GroundColliders[j].CapsuleCollider;
+                        float r = collider.radius;
+                        float targetR = collideY > vertexY + DriveCommon.FLOAT_ERROR ? GROUND_COLLIDER_RADIUS_S : GROUND_COLLIDER_RADIUS_L;
+                        if (r != targetR)
+                        {
+                            r = targetR;
+                            collider.radius = targetR;
+                            collider.height = GROUND_COLLIDER_HEIGHT;
+                        }
+
+                        DebugHelper.DrawDebugBox(new Vector3(r * 2.0f, GROUND_COLLIDER_HEIGHT, r * 2.0f), m_GroundColliders[j].CapsuleCollider.transform.position, Quaternion.identity, Color.magenta);
+                    }
+                }
+                else
+                {
+                    m_GroundColliders[j].gameObject.SetActive(false);
                 }
             }
         }

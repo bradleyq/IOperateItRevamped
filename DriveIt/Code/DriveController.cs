@@ -74,9 +74,11 @@ namespace DriveIt
             return m_vehicleInfoAlt != null;
         }
 
-        public void StartDriving(Vector3 position, Quaternion rotation) => StartDriving(position, rotation, m_vehicleInfo, 0, m_vehicleColor, m_setColor);
+        public void StartDriving(Vector3 position, Quaternion rotation) => StartDriving(position, rotation, m_vehicleInfo, 0, 0, m_vehicleInfoAlt, 0, 0, m_vehicleColor, m_setColor);
 
-        public void StartDriving(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Vehicle.Flags flags, Color vehicleColor, bool setColor)
+        public void StartDriving(Vector3 position, Quaternion rotation, 
+            VehicleInfo vehicleInfo, Vehicle.Flags flags, int variation, 
+            VehicleInfo vehicleInfoAlt, Vehicle.Flags flagsAlt, int variationAlt, Color vehicleColor, bool setColor)
         {
             enabled = true;
             Vector3 spawnPosition = position;
@@ -104,11 +106,25 @@ namespace DriveIt
             }
 
             m_vehicle = InstanceVehicle(vehicleInfo);
-            m_vehicle.Initialize(spawnPosition + new Vector3(0.0f, -ModSettings.SpringOffset, 0.0f), spawnRotation, vehicleInfo, flags, vehicleColor, setColor, true);
+            m_vehicle.Initialize(spawnPosition + new Vector3(0.0f, -m_vehicle.springHeight, 0.0f), spawnRotation, vehicleInfo, flags, variation, vehicleColor, setColor, true);
 
-            //TODO: logic for trailers
-            //m_vehicleAlt = InstanceVehicle(vehicleInfo);
-            //m_vehicleAlt.Initialize(spawnPosition + new Vector3(0.0f, -ModSettings.SpringOffset, 0.0f) - 3.0f * Vector3.forward, spawnRotation, vehicleInfo, flags, vehicleColor, setColor);
+            if (vehicleInfoAlt)
+            {
+                m_vehicleAlt = InstanceVehicleAlt(vehicleInfoAlt);
+                float offset = (vehicleInfo.m_generatedInfo.m_size.z + vehicleInfoAlt.m_generatedInfo.m_size.z) * 0.5f - (vehicleInfo.m_attachOffsetBack + vehicleInfoAlt.m_attachOffsetFront);
+                m_vehicleAlt.Initialize(spawnPosition + spawnRotation * (offset * Vector3.back) + new Vector3(0.0f, -m_vehicleAlt.springHeight, 0.0f), spawnRotation, vehicleInfoAlt, flagsAlt, variationAlt, vehicleColor, setColor);
+
+                SpringJoint joint = m_vehicle.gameObject.AddComponent<SpringJoint>();
+                joint.axis = Vector3.up;
+                joint.anchor = Vector3.forward * (vehicleInfo.m_attachOffsetBack - 0.5f * vehicleInfo.m_generatedInfo.m_size.z) + 0.5f * Vector3.up * vehicleInfo.m_generatedInfo.m_tyres[0].w;
+                joint.autoConfigureConnectedAnchor = true;
+                joint.breakForce = Mathf.Infinity;
+                joint.breakTorque = Mathf.Infinity;
+                joint.enableCollision = false;
+                joint.spring = 500000.0f;
+                joint.damper = 100000.0f;
+                joint.connectedBody = m_vehicleAlt.GetRigidbody();
+            }
 
             if (!alreadyCreated)
             {
@@ -171,7 +187,7 @@ namespace DriveIt
             if (m_vehicle)
             {
                 m_collidersManager.UpdateColliders(m_vehicle.GetRigidbody().transform);
-                m_collidersManager.UpdateGroundCollider(m_vehicle.GetBoxCollider());
+                m_collidersManager.UpdateGroundCollider(m_vehicle.GetBoxCollider(), m_vehicleAlt?.GetBoxCollider());
             }
         }
 

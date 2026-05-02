@@ -11,17 +11,17 @@ namespace DriveIt.Vehicles
     public class VehicleGeneric : MonoBehaviour
     {
         private const float RESET_SCAN_HEIGHT = 2.0f;
-        private const float RESET_HEIGHT = 0.1f;
+        private const float RESET_HEIGHT = 0.25f;
         private const float RESET_FREQ = 2.0f;
-        private const float THROTTLE_RESP = 2.0f;
-        private const float THROTTLE_REST = 2.0f;
         private const float MASS_FACTOR = 85.0f;
         private const float RADIUS_D_WHEEL = 0.2f;
+        private const float THROTTLE_RESP = 2.0f;
+        private const float THROTTLE_REST = 2.0f;
         private const float STEER_RESP = 1.5f;
         private const float STEER_REST = 1.5f;
-        private const float DEPEN_VELOCITY = 2.0f;
         private const float STEER_MAX = 15.0f;
         private const float STEER_DECAY = 0.0075f;
+        private const float DEPEN_VELOCITY = 2.0f;
         private const float GEAR_RESP = 0.2f;
         private const float GEAR_RESP_AUTO = 1.0f;
         private const float PARK_SPEED = 0.25f;
@@ -58,6 +58,7 @@ namespace DriveIt.Vehicles
         protected VehicleInfo m_vehicleInfo;
         protected Vehicle.Flags m_vehicleFlags;
         protected Color m_vehicleColor;
+        protected uint m_variationMaskInv;
         protected Vector3 m_prevPosition;
         protected Vector3 m_prevVelocity;
         protected Vector3 m_prevPrevVelocity;
@@ -100,6 +101,7 @@ namespace DriveIt.Vehicles
         public VehicleType vehicleType { get => VehicleType.Generic; }
         public List<Wheel> wheels { get => m_wheelObjects; }
         public Vehicle.Flags vehicleFlags { get => m_vehicleFlags; }
+        public uint variationMaskInv { get => m_variationMaskInv; }
         public int wheelCount { get => m_wheelCount; }
         public int frontCount { get => m_frontWheels; }
         public int rearCount { get => m_wheelCount - m_frontWheels; }
@@ -388,6 +390,12 @@ namespace DriveIt.Vehicles
             }
         }
 
+        public static VehicleGeneric InstanceVehicleAlt(VehicleInfo info)
+        {
+            GameObject vgo = new GameObject("SecondaryVehicleObject");
+            return vgo.AddComponent<VehicleTrailer>();
+        }
+
         public Rigidbody GetRigidbody()
         {
             return m_vehicleRigidBody;
@@ -398,12 +406,13 @@ namespace DriveIt.Vehicles
             return m_vehicleCollider;
         }
 
-        public void Initialize(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Vehicle.Flags vehicleFlags, Color vehicleColor, bool setColor, bool setPrimary = false)
+        public void Initialize(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Vehicle.Flags vehicleFlags, int variation, Color vehicleColor, bool setColor, bool setPrimary = false)
         {
             if (setPrimary) s_primaryVehicle = this;
 
             m_vehicleColor = vehicleColor;
             m_vehicleColor.a = 0; // Make sure blinking is not set.
+            m_variationMaskInv = ~(1u << variation);
             m_prevPosition = position;
             m_prevVelocity = Vector3.zero;
             m_prevPrevVelocity = Vector3.zero;
@@ -507,6 +516,7 @@ namespace DriveIt.Vehicles
             m_vehicleRigidBody.angularVelocity = Vector3.zero;
 
             m_vehicleColor = default;
+            m_variationMaskInv = ~0u;
             m_vehicleInfo = null;
             m_prevPosition = Vector3.zero;
             m_prevVelocity = Vector3.zero;
@@ -648,7 +658,7 @@ namespace DriveIt.Vehicles
             foreach (Wheel w in m_wheelObjects)
             {
                 // record distance travelled from previous tick
-                m_distanceTravelled += w.wheelRadps * w.wheelTorqueFract * w.wheelRadius * Time.fixedDeltaTime;
+                m_distanceTravelled += w.wheelRadps * w.wheelRadius * Time.fixedDeltaTime / wheelCount;
 
                 // apply wheel drag from previous tick
                 w.ApplyDrag();
@@ -821,6 +831,195 @@ namespace DriveIt.Vehicles
 
         }
 
+        protected virtual void HandleInputOnFixedUpdate(int invert)
+        {
+            // Throttle and Brake
+            bool throttling = false;
+            bool braking = false;
+            float st = Input.GetAxisRaw(DriveCommon.AXIS_STEER);
+            float tb = -Input.GetAxisRaw(DriveCommon.AXIS_THROTTLEBRAKE);
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveForward.Key) || tb > 0.0f)
+            {
+                if (ModSettings.AutoTrans)
+                {
+                    if (invert < 0)
+                    {
+                        if (m_driveMode <= ENGINE_MODE_NEUTRAL)
+                        {
+                            m_throttle = 0.0f;
+                            m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
+                            if (tb > 0.0f) // override with controller value if present
+                            {
+                                m_brake = tb;
+                            }
+                            braking = true;
+                        }
+                    }
+                    else if (m_throttle == 0.0f && Time.time > m_nextGearChange && m_driveMode <= ENGINE_MODE_NEUTRAL)
+                    {
+                        m_driveMode++;
+                        m_nextGearChange = Time.time + GEAR_RESP;
+                    }
+                    if (m_driveMode > ENGINE_MODE_NEUTRAL)
+                    {
+                        m_brake = 0.0f;
+                        m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
+                        if (tb > 0.0f) // override with controller value if present
+                        {
+                            m_throttle = tb;
+                        }
+                        throttling = true;
+                    }
+                }
+                else // ManualTrans
+                {
+                    m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
+                    if (tb > 0.0f) // override with controller value if present
+                    {
+                        m_throttle = tb;
+                    }
+                    throttling = true;
+                }
+            }
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveBackward.Key) || tb < 0.0f)
+            {
+                if (ModSettings.AutoTrans)
+                {
+                    if (invert > 0)
+                    {
+                        if (m_driveMode >= ENGINE_MODE_NEUTRAL)
+                        {
+                            m_throttle = 0.0f;
+                            m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
+                            if (tb < 0.0f) // override with controller value if present
+                            {
+                                m_brake = -tb;
+                            }
+                            braking = true;
+                        }
+                    }
+                    else if (m_throttle == 0.0f && Time.time > m_nextGearChange && m_driveMode >= ENGINE_MODE_NEUTRAL)
+                    {
+                        m_driveMode--;
+                        m_nextGearChange = Time.time + GEAR_RESP;
+                    }
+                    if (m_driveMode < ENGINE_MODE_NEUTRAL)
+                    {
+                        m_brake = 0.0f;
+                        m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
+                        if (tb < 0.0f) // override with controller value if present
+                        {
+                            m_throttle = -tb;
+                        }
+                        throttling = true;
+                    }
+                }
+                else // ManualTrans
+                {
+                    m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
+                    if (tb < 0.0f) // override with controller value if present
+                    {
+                        m_brake = -tb;
+                    }
+                    braking = true;
+                }
+            }
+            if (ModSettings.AutoTrans && invert == 0 && m_throttle == 0.0f)
+            {
+                if (m_driveMode != ENGINE_MODE_NEUTRAL && Time.time > m_nextGearChange)
+                {
+                    m_driveMode = ENGINE_MODE_NEUTRAL;
+                    m_nextGearChange = Time.time + GEAR_RESP;
+                }
+                m_brake = 1.0f;
+                braking = true;
+            }
+            if (!throttling)
+            {
+                m_throttle = Mathf.Clamp01(m_throttle - Time.fixedDeltaTime * THROTTLE_REST);
+            }
+            if (!braking)
+            {
+                m_brake = Mathf.Clamp01(m_brake - Time.fixedDeltaTime * THROTTLE_REST);
+            }
+
+            // Steering
+            m_isTurning = false;
+            float steerLimit = Mathf.Clamp(1.0f - STEER_DECAY * Vector3.Magnitude(m_vehicleRigidBody.velocity), 0.01f, 1.0f);
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveRight.Key))
+            {
+                float factor = (m_steer < 0.0f) ? STEER_RESP + STEER_REST : STEER_RESP;
+                m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * factor, -steerLimit, steerLimit);
+                m_isTurning = true;
+            }
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveLeft.Key))
+            {
+                float factor = (m_steer > 0.0f) ? STEER_RESP + STEER_REST : STEER_RESP;
+                m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * factor, -steerLimit, steerLimit);
+                m_isTurning = true;
+            }
+            if (st != 0.0f)
+            {
+                m_isTurning = true;
+                m_steer = st;
+            }
+            if (!m_isTurning)
+            {
+                if (m_steer > 0.0f)
+                {
+                    m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * STEER_REST, 0.0f, steerLimit);
+                }
+                if (m_steer < 0.0f)
+                {
+                    m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * STEER_REST, -steerLimit, 0.0f);
+                }
+            }
+
+            // Handbrake
+            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyHandbrake.Key) || Input.GetKey(DriveCommon.s_handbrakeController1) || Input.GetKey(DriveCommon.s_handbrakeController2))
+            {
+                m_handbrake = Mathf.Clamp01(m_handbrake + Time.fixedDeltaTime * THROTTLE_RESP);
+            }
+            else
+            {
+                m_handbrake = Mathf.Clamp01(m_handbrake - Time.fixedDeltaTime * THROTTLE_REST);
+            }
+        }
+
+        protected virtual void AwakeExt()
+        {
+
+        }
+
+        protected virtual void HandleInputOnUpdate()
+        {
+            if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyResetVehicle.Key) && m_lastReset + RESET_FREQ < Time.time)
+            {
+                Quaternion rot = Quaternion.LookRotation(m_vehicleRigidBody.transform.TransformDirection(Vector3.forward));
+                Vector3 pos = m_vehicleRigidBody.transform.position;
+                pos.y = MapUtils.CalculateHeight(pos, RESET_SCAN_HEIGHT, out var _) - m_boundMin + RESET_HEIGHT;
+                m_vehicleRigidBody.transform.SetPositionAndRotation(pos, rot);
+                m_lastReset = Time.time;
+            }
+            if (!ModSettings.AutoTrans)
+            {
+                if ((Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyGearUp.Key) || Input.GetKeyDown(DriveCommon.s_upshiftController1) || Input.GetKeyDown(DriveCommon.s_upshiftController2))
+                    && m_nextGearChange < Time.time
+                    && m_gear < m_gearRatios.Length - 1)
+                {
+                    m_gear += 1;
+                    m_nextGearChange = Time.time + GEAR_RESP;
+                }
+                if ((Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyGearDown.Key) || Input.GetKeyDown(DriveCommon.s_downshiftController1) || Input.GetKeyDown(DriveCommon.s_downshiftController2))
+                    && m_nextGearChange < Time.time
+                    && m_gear > 0)
+                {
+                    m_gear -= 1;
+                    m_nextGearChange = Time.time + GEAR_RESP;
+                }
+            }
+        }
+
         private void Awake()
         {
             m_vehicleRigidBody = gameObject.AddComponent<Rigidbody>();
@@ -846,6 +1045,8 @@ namespace DriveIt.Vehicles
                 s_drag_wheel = (float)(1.0 - System.Math.Pow(1.0 - DRAG_WHEEL, Time.fixedDeltaTime));
                 s_primaryVehicle = this;
             }
+
+            AwakeExt();
         }
 
         private void Update()
@@ -921,7 +1122,7 @@ namespace DriveIt.Vehicles
                 m_style.fontSize = 20;
                 m_style.normal.textColor = Color.white;
 
-                GUI.Label(new Rect(100f, 100f, 700f, 700f), debugString.ToString(), m_style);
+                GUI.Label(new Rect(100f, 100f, 700f, 350f), debugString.ToString(), m_style);
             }
         }
 
@@ -1028,189 +1229,6 @@ namespace DriveIt.Vehicles
             }
         }
 
-        protected virtual void HandleInputOnFixedUpdate(int invert)
-        {
-            // Throttle and Brake
-            bool throttling = false;
-            bool braking = false;
-            float steer = Input.GetAxisRaw(DriveCommon.AXIS_STEER);
-            float tb = -Input.GetAxisRaw(DriveCommon.AXIS_THROTTLEBRAKE);
-            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveForward.Key) || tb > 0.0f)
-            {
-                if (ModSettings.AutoTrans)
-                {
-                    if (invert < 0)
-                    {
-                        if (m_driveMode <= ENGINE_MODE_NEUTRAL)
-                        {
-                            m_throttle = 0.0f;
-                            m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
-                            if (tb > 0.0f) // override with controller value if present
-                            {
-                                m_brake = tb;
-                            }
-                            braking = true;
-                        }
-                    }
-                    else if (m_throttle == 0.0f && Time.time > m_nextGearChange && m_driveMode <= ENGINE_MODE_NEUTRAL)
-                    {
-                        m_driveMode++;
-                        m_nextGearChange = Time.time + GEAR_RESP;
-                    }
-                    if (m_driveMode > ENGINE_MODE_NEUTRAL)
-                    {
-                        m_brake = 0.0f;
-                        m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
-                        if (tb > 0.0f) // override with controller value if present
-                        {
-                            m_throttle = tb;
-                        }
-                        throttling = true;
-                    }
-                }
-                else // ManualTrans
-                {
-                    m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
-                    if (tb > 0.0f) // override with controller value if present
-                    {
-                        m_throttle = tb;
-                    }
-                    throttling = true;
-                }
-            }
-            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveBackward.Key) || tb < 0.0f)
-            {
-                if (ModSettings.AutoTrans)
-                {
-                    if (invert > 0)
-                    {
-                        if (m_driveMode >= ENGINE_MODE_NEUTRAL)
-                        {
-                            m_throttle = 0.0f;
-                            m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
-                            if (tb < 0.0f) // override with controller value if present
-                            {
-                                m_brake = -tb;
-                            }
-                            braking = true;
-                        }
-                    }
-                    else if (m_throttle == 0.0f && Time.time > m_nextGearChange && m_driveMode >= ENGINE_MODE_NEUTRAL)
-                    {
-                        m_driveMode--;
-                        m_nextGearChange = Time.time + GEAR_RESP;
-                    }
-                    if (m_driveMode < ENGINE_MODE_NEUTRAL)
-                    {
-                        m_brake = 0.0f;
-                        m_throttle = Mathf.Clamp01(m_throttle + Time.fixedDeltaTime * THROTTLE_RESP);
-                        if (tb < 0.0f) // override with controller value if present
-                        {
-                            m_throttle = -tb;
-                        }
-                        throttling = true;
-                    }
-                }
-                else // ManualTrans
-                {
-                    m_brake = Mathf.Clamp01(m_brake + Time.fixedDeltaTime * THROTTLE_RESP);
-                    if (tb < 0.0f) // override with controller value if present
-                    {
-                        m_brake = -tb;
-                    }
-                    braking = true;
-                }
-            }
-            if (ModSettings.AutoTrans && (invert == 0 || m_gear == m_gearNeutral) && m_throttle == 0.0f)
-            {
-                if (Time.time > m_nextGearChange)
-                {
-                    m_driveMode = ENGINE_MODE_NEUTRAL;
-                    m_nextGearChange = Time.time + GEAR_RESP;
-                }
-                m_brake = 1.0f;
-                braking = true;
-            }
-            if (!throttling)
-            {
-                m_throttle = Mathf.Clamp01(m_throttle - Time.fixedDeltaTime * THROTTLE_REST);
-            }
-            if (!braking)
-            {
-                m_brake = Mathf.Clamp01(m_brake - Time.fixedDeltaTime * THROTTLE_REST);
-            }
-
-            // Steering
-            m_isTurning = false;
-            float steerLimit = Mathf.Clamp(1.0f - STEER_DECAY * Vector3.Magnitude(m_vehicleRigidBody.velocity), 0.01f, 1.0f);
-            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveRight.Key))
-            {
-                float factor = (m_steer < 0.0f) ? STEER_RESP + STEER_REST : STEER_RESP;
-                m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * factor, -steerLimit, steerLimit);
-                m_isTurning = true;
-            }
-            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyMoveLeft.Key))
-            {
-                float factor = (m_steer > 0.0f) ? STEER_RESP + STEER_REST : STEER_RESP;
-                m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * factor, -steerLimit, steerLimit);
-                m_isTurning = true;
-            }
-            if (steer != 0.0f)
-            {
-                m_isTurning = true;
-                m_steer = steer;
-            }
-            if (!m_isTurning)
-            {
-                if (m_steer > 0.0f)
-                {
-                    m_steer = Mathf.Clamp(m_steer - Time.fixedDeltaTime * STEER_REST, 0.0f, steerLimit);
-                }
-                if (m_steer < 0.0f)
-                {
-                    m_steer = Mathf.Clamp(m_steer + Time.fixedDeltaTime * STEER_REST, -steerLimit, 0.0f);
-                }
-            }
-
-            // Handbrake
-            if (Input.GetKey((KeyCode)Settings.ModSettings.KeyHandbrake.Key) || Input.GetKey(DriveCommon.s_handbrakeController1) || Input.GetKey(DriveCommon.s_handbrakeController2))
-            {
-                m_handbrake = Mathf.Clamp01(m_handbrake + Time.fixedDeltaTime * THROTTLE_RESP);
-            }
-            else
-            {
-                m_handbrake = Mathf.Clamp01(m_handbrake - Time.fixedDeltaTime * THROTTLE_REST);
-            }
-        }
-
-        protected virtual void HandleInputOnUpdate()
-        {
-            if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyResetVehicle.Key) && m_lastReset + RESET_FREQ < Time.time)
-            {
-                Quaternion rot = Quaternion.LookRotation(m_vehicleRigidBody.transform.TransformDirection(Vector3.forward));
-                Vector3 pos = m_vehicleRigidBody.transform.position;
-                pos.y = MapUtils.CalculateHeight(pos, RESET_SCAN_HEIGHT, out var _) - m_boundMin + RESET_HEIGHT;
-                m_vehicleRigidBody.transform.SetPositionAndRotation(pos, rot);
-                m_lastReset = Time.time;
-            }
-            if (!ModSettings.AutoTrans)
-            {
-                if ((Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyGearUp.Key) || Input.GetKeyDown(DriveCommon.s_upshiftController1) || Input.GetKeyDown(DriveCommon.s_upshiftController2)) 
-                    && m_nextGearChange < Time.time 
-                    && m_gear < m_gearRatios.Length - 1)
-                {
-                    m_gear += 1;
-                    m_nextGearChange = Time.time + GEAR_RESP;
-                }
-                if ((Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyGearDown.Key) || Input.GetKeyDown(DriveCommon.s_downshiftController1) || Input.GetKeyDown(DriveCommon.s_downshiftController2))
-                    && m_nextGearChange < Time.time 
-                    && m_gear > 0)
-                {
-                    m_gear -= 1;
-                    m_nextGearChange = Time.time + GEAR_RESP;
-                }
-            }
-        }
         private void RegisterWheel(Wheel w)
         {
             m_wheelCount++;

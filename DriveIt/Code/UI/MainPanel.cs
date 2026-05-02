@@ -174,6 +174,7 @@ namespace DriveIt.UI
                     DriveController.instance.UpdateColor(default, false);
                 }
                 DriveController.instance.UpdateVehicleInfo(selectedVehicle);
+                DriveController.instance.UpdateVehicleInfoAlt(null);
                 _spawnBtn.isEnabled = true;
             }
         }

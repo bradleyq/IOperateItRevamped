@@ -1,7 +1,6 @@
 ﻿using AlgernonCommons.Translation;
 using ColossalFramework;
 using UnityEngine;
-using static PathUnit;
 
 namespace DriveIt.Utils
 {
@@ -38,15 +37,17 @@ namespace DriveIt.Utils
 
                 if (netSegmentId != 0)
                 {
-                    var netSegment = Singleton<NetManager>.instance.m_segments.m_buffer[netSegmentId];
+                    NetSegment netSegment = Singleton<NetManager>.instance.m_segments.m_buffer[netSegmentId];
 
                     if (netSegment.m_flags.IsFlagSet(NetSegment.Flags.Created))
                     {
                         if (e.type == EventType.MouseDown && e.button == 0)
                         {
-                            netSegment.GetClosestPositionAndDirection(netSegment.m_middlePosition, out _, out var dir);
-                            var rotation = Quaternion.LookRotation(dir);
-                            DriveController.instance.StartDriving(netSegment.m_middlePosition, rotation);
+                            netSegment.GetClosestPositionAndDirection(raycastOutput.m_hitPos, out _, out var dir);
+                            netSegment.GetClosestLanePosition(raycastOutput.m_hitPos, NetInfo.LaneType.All, VehicleInfo.VehicleType.All, VehicleInfo.VehicleCategory.All, out Vector3 lanePos, out _, out _, out _);
+                            dir = Vector3.Dot(Camera.main.transform.TransformDirection(Vector3.forward), dir) > 0.0f ? dir : -dir;
+                            Quaternion rotation = Quaternion.LookRotation(dir);
+                            DriveController.instance.StartDriving(lanePos, rotation);
                             ShowToolInfo(false, null, Vector3.zero);
 
                             //unset self as tool
@@ -106,8 +107,8 @@ namespace DriveIt.Utils
 
         private Vector3 TerrainNormal(Vector3 pos)
         {
-            Vector3 pos1 = pos + Vector3.right * 0.1f;
-            Vector3 pos2 = pos + Vector3.forward * 0.1f;
+            Vector3 pos1 = pos + Vector3.right * 0.5f;
+            Vector3 pos2 = pos + Vector3.forward * 0.5f;
             pos.y = TerrainHeight(pos);
             pos1.y = TerrainHeight(pos1);
             pos2.y = TerrainHeight(pos2);

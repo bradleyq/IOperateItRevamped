@@ -97,6 +97,8 @@ namespace DriveIt.Utils
         public const string TK_SETTINGS_KEYMOVEBACKWARD     = "SETTINGS_KEYMOVEBACKWARD";
         public const string TK_SETTINGS_KEYMOVELEFT         = "SETTINGS_KEYMOVELEFT";
         public const string TK_SETTINGS_KEYMOVERIGHT        = "SETTINGS_KEYMOVERIGHT";
+        public const string TK_SETTINGS_KEYPITCHUP          = "SETTINGS_KEYPITCHUP";
+        public const string TK_SETTINGS_KEYPITCHDOWN        = "SETTINGS_KEYPITCHDOWN";
         public const string TK_SETTINGS_KEYHANDBRAKE        = "SETTINGS_KEYHANDBRAKE";
         public const string TK_SETTINGS_KEYRESETVEHICLE     = "SETTINGS_KEYRESETVEHICLE";
         public const string TK_SETTINGS_KEYGEARUP           = "SETTINGS_KEYGEARUP";

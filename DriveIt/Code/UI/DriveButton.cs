@@ -65,19 +65,29 @@ namespace DriveIt.UI
             button.tooltip = Translations.Translate(DriveCommon.TK_DRIVEBTN_TOOLTIP);
             button.eventClick += (_, p) =>
             {
-                var instanceID = WorldInfoPanel.GetCurrentInstanceID();
+                InstanceID instanceID = WorldInfoPanel.GetCurrentInstanceID();
                 if (instanceID.Type == InstanceType.Vehicle)
                 {
-                    ref var vehicle = ref Singleton<VehicleManager>.instance.m_vehicles.m_buffer[instanceID.Vehicle];
+                    ref Vehicle vehicle = ref Singleton<VehicleManager>.instance.m_vehicles.m_buffer[instanceID.Vehicle];
                     Color color = vehicle.Info.m_vehicleAI.GetColor(instanceID.Vehicle, ref vehicle, Singleton<InfoManager>.instance.CurrentMode, Singleton<InfoManager>.instance.CurrentSubMode);
-                    DriveController.instance.StartDriving(vehicle.GetLastFramePosition(), vehicle.GetLastFrameData().m_rotation, vehicle.Info, vehicle.m_flags, color, true);
+                    VehicleInfo vehicleAltInfo = null;
+                    Vehicle.Flags flagsAlt = 0;
+                    int variationAlt = 0;
+                    if (vehicle.m_trailingVehicle > 0)
+                    {
+                        ref Vehicle vehicleAlt = ref Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicle.m_trailingVehicle];
+                        vehicleAltInfo = vehicleAlt.Info;
+                        flagsAlt = vehicleAlt.m_flags;
+                        variationAlt = vehicleAlt.m_gateIndex;
+                    }
+                    DriveController.instance.StartDriving(vehicle.GetLastFramePosition(), vehicle.GetLastFrameData().m_rotation, vehicle.Info, vehicle.m_flags, vehicle.m_gateIndex, vehicleAltInfo, flagsAlt, variationAlt, color, true);
                     MainPanel.instance._vehicleList.FindItem<uint>(vehicle.m_infoIndex);
                 }
                 else if (instanceID.Type == InstanceType.ParkedVehicle)
                 {
-                    ref var vehicleParked = ref Singleton<VehicleManager>.instance.m_parkedVehicles.m_buffer[instanceID.ParkedVehicle];
+                    ref VehicleParked vehicleParked = ref Singleton<VehicleManager>.instance.m_parkedVehicles.m_buffer[instanceID.ParkedVehicle];
                     Color color = vehicleParked.Info.m_vehicleAI.GetColor(instanceID.Vehicle, ref vehicleParked, Singleton<InfoManager>.instance.CurrentMode, Singleton<InfoManager>.instance.CurrentSubMode);
-                    DriveController.instance.StartDriving(vehicleParked.m_position, vehicleParked.m_rotation, vehicleParked.Info, 0, color, true);
+                    DriveController.instance.StartDriving(vehicleParked.m_position, vehicleParked.m_rotation, vehicleParked.Info, 0, 0, null, 0, 0, color, true);
                     MainPanel.instance._vehicleList.FindItem<uint>(vehicleParked.m_infoIndex);
                 }
                 panel.component.isVisible = false;
