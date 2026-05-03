@@ -64,7 +64,7 @@ namespace DriveIt.Settings.Tabs
             var groupVehicle = UISpacers.AddTitleSpacer(panel, SettingsPanel.Margin, currentY, headerWidth, Translations.Translate(DriveCommon.TK_SETTINGS_GROUP_VEHICLE));
             currentY += groupVehicle.height + SettingsPanel.LargeMargin;
 
-            var gravity_Slider = SettingsPanel.CreateSlider(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_GRAVITY), -40.0f, 40.0f, 1.0f, 1.0f, "N0", " m/s²");
+            var gravity_Slider = SettingsPanel.CreateSlider(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_GRAVITY), 0.0f, 40.0f, 1.0f, 1.0f, "N0", " m/s²");
             gravity_Slider.eventValueChanged += (_, value) => ModSettings.Gravity = value;
             gravity_Slider.parent.eventVisibilityChanged += (_, isVisible) => { gravity_Slider.value = ModSettings.Gravity; };
             currentY += gravity_Slider.parent.height + SettingsPanel.Margin;

@@ -16,6 +16,7 @@ namespace DriveIt.Vehicles
         private const float STAB_BOOST_LO = 0.1f;
 
         private bool m_constrained = false;
+
         protected override float enginePower { get => ModSettings.CarEnginePower; }
         protected override float brakingForce { get => ModSettings.CarBrakingForce; }
         protected override float downForce { get => ModSettings.CarDownForce; }

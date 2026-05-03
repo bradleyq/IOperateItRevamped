@@ -14,6 +14,7 @@ namespace DriveIt.Vehicles
         private const float STAB_BOOST = 3.0f;
 
         private float m_tilt = 0.0f;
+
         private class TiltKalmanFilter
         {
             // Process noise covariance (how much we expect the true value to change)
@@ -108,7 +109,5 @@ namespace DriveIt.Vehicles
             Quaternion rot = Quaternion.AngleAxis(TiltKalmanFilter.CurrentEstimate, m_vehicleRigidBody.transform.forward) * Quaternion.LookRotation(m_vehicleRigidBody.transform.forward);
             m_vehicleRigidBody.transform.rotation = rot;
         }
-
-
     }
 }

@@ -117,6 +117,7 @@ namespace DriveIt.Settings
             #region Default Values
             BuildingCollision = BUILDINGCOLLISION;
             VehicleCollision = VEHICLECOLLISION;
+            Gravity = GRAVITY;
             MaxVelocity = MAXVELOCITY;
             AutoTrans = AUTOTRANS;
             BrakingABS = BRAKINGABS;

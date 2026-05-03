@@ -34,6 +34,16 @@ namespace DriveIt.Vehicles
 
         private static float s_engine_inertia;
 
+        private float m_wingLever = 0.0f;
+        private float m_tailLever = 0.0f;
+        private float m_rudderLever = 0.0f;
+        private float m_liftCoeff = 0.0f;
+        private float m_rollCoeff = 0.0f;
+        private float m_pitchCoeff = 0.0f;
+        private float m_vstabCoeff = 0.0f;
+        private float m_hstabCoeff = 0.0f;
+        private float m_pitch = 0.0f;
+
         protected override float enginePower { get => ModSettings.PlaneEnginePower; }
         protected override float brakingForce { get => ModSettings.PlaneBrakingForce; }
         protected override float downForce { get => ModSettings.PlaneDownForce; }
@@ -51,16 +61,6 @@ namespace DriveIt.Vehicles
         protected override float engineOverRPS { get => ENGINE_OVER_RPS;  }
         protected override float engineIdleRPS {  get => ENGINE_IDLE_RPS; }
         protected override float massFactor { get => MASS_FACTOR; }
-
-        private float m_wingLever = 0.0f;
-        private float m_tailLever = 0.0f;
-        private float m_rudderLever = 0.0f;
-        private float m_liftCoeff = 0.0f;
-        private float m_rollCoeff = 0.0f;
-        private float m_pitchCoeff = 0.0f;
-        private float m_vstabCoeff = 0.0f;
-        private float m_hstabCoeff = 0.0f;
-        private float m_pitch = 0.0f;
 
         protected override void AwakeExt()
         {
