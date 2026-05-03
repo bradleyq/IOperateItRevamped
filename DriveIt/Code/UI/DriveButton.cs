@@ -19,6 +19,9 @@ namespace DriveIt.UI
         private PublicTransportVehicleWorldInfoPanel publicTransportVehicleInfo_Panel;
         private UIButton publicTransportVehicleInfo_Button;
 
+        private RaceVehicleWorldInfoPanel raceVehicleWorldInfo_Panel;
+        private UIButton raceVehicleWorldInfo_Button;
+
         private void Awake()
         {
             if (instance)
@@ -31,6 +34,7 @@ namespace DriveIt.UI
             citizenVehicleInfo_Button = Initialize(ref citizenVehicleInfo_Panel);
             cityServiceVehicleInfo_Button = Initialize(ref cityServiceVehicleInfo_Panel);
             publicTransportVehicleInfo_Button = Initialize(ref publicTransportVehicleInfo_Panel);
+            raceVehicleWorldInfo_Button = Initialize(ref raceVehicleWorldInfo_Panel);
         }
 
         private void Update()
@@ -38,6 +42,7 @@ namespace DriveIt.UI
             UpdateButtonVisibility(citizenVehicleInfo_Panel, citizenVehicleInfo_Button);
             UpdateButtonVisibility(cityServiceVehicleInfo_Panel, cityServiceVehicleInfo_Button);
             UpdateButtonVisibility(publicTransportVehicleInfo_Panel, publicTransportVehicleInfo_Button);
+            UpdateButtonVisibility(raceVehicleWorldInfo_Panel, raceVehicleWorldInfo_Button);
         }
 
         private void OnDestroy()
@@ -45,19 +50,20 @@ namespace DriveIt.UI
             Destroy(citizenVehicleInfo_Button);
             Destroy(cityServiceVehicleInfo_Button);
             Destroy(publicTransportVehicleInfo_Button);
+            Destroy(raceVehicleWorldInfo_Button);
         }
 
         public void SetEnable() => enabled = true;
 
         public void SetDisable() => enabled = false;
 
-        private UIButton Initialize<T>(ref T panel) where T : WorldInfoPanel
+        private UIButton Initialize<T>(ref T panel) where T : WorldInfoPanel, new()
         {
             panel = UIView.library.Get<T>(typeof(T).Name);
             return CreateDriveButton(panel);
         }
 
-        private UIButton CreateDriveButton<T>(T panel) where T : WorldInfoPanel
+        private UIButton CreateDriveButton<T>(T panel) where T : WorldInfoPanel, new()
         {            
             UIButton button = panel.component.AddUIComponent<UIButton>();
             DriveCommon.FormatDriveButton(button);
@@ -99,7 +105,7 @@ namespace DriveIt.UI
                 button.relativePosition.y + 45f);
             return button;
         }
-        private void UpdateButtonVisibility<T>(T panel, UIButton button) where T : WorldInfoPanel
+        private void UpdateButtonVisibility<T>(T panel, UIButton button) where T : WorldInfoPanel, new()
         {
             if (panel.component.isVisible)
             {
