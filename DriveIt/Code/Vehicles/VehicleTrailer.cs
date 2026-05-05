@@ -13,6 +13,7 @@ namespace DriveIt.Vehicles
         private const float RADIUS_WHEEL = 0.2f;
         private const float RPS_INERTIA = 0.05f;
 
+        private static bool s_first_create = true;
         private static float s_engine_inertia;
 
         private bool m_constrained = false;
@@ -28,7 +29,11 @@ namespace DriveIt.Vehicles
         protected override float massCenterBias { get => ModSettings.TrailerMassCenterBias; }
         protected override void AwakeExt()
         {
-            s_engine_inertia = (float)System.Math.Pow(RPS_INERTIA, Time.fixedDeltaTime);
+            if (s_first_create)
+            {
+                s_first_create = false; 
+                s_engine_inertia = (float)System.Math.Pow(RPS_INERTIA, Time.fixedDeltaTime);
+            }
         }
 
         protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)

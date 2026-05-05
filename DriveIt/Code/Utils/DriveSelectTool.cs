@@ -11,7 +11,7 @@ namespace DriveIt.Utils
             base.RenderOverlay(cameraInfo);
             if (!m_toolController.IsInsideUI && Cursor.visible)
             {
-                if (RaycastRoad(out var raycastOutput))
+                if (MapUtils.RaycastRoad(out var raycastOutput))
                 {
                     ushort netSegmentId = raycastOutput.m_netSegment;
 
@@ -31,7 +31,7 @@ namespace DriveIt.Utils
 
         protected override void OnToolGUI(Event e)
         {
-            if (!m_toolController.IsInsideUI && Cursor.visible && RaycastRoad(out var raycastOutput))
+            if (!m_toolController.IsInsideUI && Cursor.visible && MapUtils.RaycastRoad(out var raycastOutput))
             {
                 ushort netSegmentId = raycastOutput.m_netSegment;
 
@@ -64,8 +64,8 @@ namespace DriveIt.Utils
                     if (e.type == EventType.MouseDown && e.button == 0)
                     {
                         Vector3 position = raycastOutput.m_hitPos;
-                        position.y = TerrainHeight(position);
-                        Vector3 normal = TerrainNormal(position);
+                        position.y = MapUtils.TerrainHeight(position, out _);
+                        Vector3 normal = MapUtils.TerrainNormal(position, out _);
                         Vector3 dir = Camera.main.transform.TransformDirection(Vector3.forward);
                         dir = Vector3.Cross(dir, normal);
                         dir = dir.magnitude > 0.0f ? dir : Vector3.Cross(Vector3.forward, normal);
@@ -89,34 +89,6 @@ namespace DriveIt.Utils
             {
                 ShowToolInfo(false, null, Vector3.zero);
             }
-        }
-
-        private bool RaycastRoad(out RaycastOutput raycastOutput)
-        {
-            RaycastInput raycastInput = new RaycastInput(Camera.main.ScreenPointToRay(Input.mousePosition), Camera.main.farClipPlane);
-            raycastInput.m_netService.m_service = ItemClass.Service.Road;
-            raycastInput.m_netService.m_itemLayers = ItemClass.Layer.Default | ItemClass.Layer.MetroTunnels;
-            raycastInput.m_netService2.m_service = ItemClass.Service.Beautification;
-            raycastInput.m_netService2.m_itemLayers = ItemClass.Layer.Default | ItemClass.Layer.MetroTunnels;
-            raycastInput.m_ignoreSegmentFlags = NetSegment.Flags.None;
-            raycastInput.m_ignoreNodeFlags = NetNode.Flags.None;
-            raycastInput.m_ignoreTerrain = false;
-
-            return RayCast(raycastInput, out raycastOutput);
-        }
-
-        private Vector3 TerrainNormal(Vector3 pos)
-        {
-            Vector3 pos1 = pos + Vector3.right * 0.5f;
-            Vector3 pos2 = pos + Vector3.forward * 0.5f;
-            pos.y = TerrainHeight(pos);
-            pos1.y = TerrainHeight(pos1);
-            pos2.y = TerrainHeight(pos2);
-            return Vector3.Cross(pos2 - pos, pos1 - pos).normalized;
-        }
-
-        private float TerrainHeight(Vector3 pos) {
-            return Mathf.Max(Singleton<TerrainManager>.instance.SampleDetailHeightSmooth(pos), Singleton<TerrainManager>.instance.WaterLevel(new Vector2(pos.x, pos.z)));
         }
     }
 }

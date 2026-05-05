@@ -22,16 +22,17 @@ namespace DriveIt.Vehicles
         private const float STEER_MAX = 37.0f;
         private const float GEAR_RESP = 0.1f;
         private const float MIN_POWER_VEL = 1.0f;
-        private const float COEFF_LIFT_NORM = 0.07f;
         private const float COEFF_ROT = 0.01f;
         private const float COEFF_STAB = 2.0f;
         private const float STAB_COMPV = 0.75f;
         private const float STAB_COMPH = 0.2f;
         private const float AIR_DENSITY_SEA = 1.225f;
         private const float AIR_DENSITY_DECAY = -0.00011856f;
+        private const float GRAVITY_STD = 10.0f;
         private const float MASS_FACTOR = 20.0f;
         private const float MAX_WHEEL_WIDTH = 10.0f;
 
+        private static bool s_first_create = true;
         private static float s_engine_inertia;
 
         private float m_wingLever = 0.0f;
@@ -64,7 +65,11 @@ namespace DriveIt.Vehicles
 
         protected override void AwakeExt()
         {
-            s_engine_inertia = (float)System.Math.Pow(ENGINE_INERTIA, Time.fixedDeltaTime);
+            if (s_first_create)
+            {
+                s_first_create = false;
+                s_engine_inertia = (float)System.Math.Pow(ENGINE_INERTIA, Time.fixedDeltaTime);
+            }
         }
 
         protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
@@ -89,8 +94,8 @@ namespace DriveIt.Vehicles
             m_wingLever = adjustedBounds.x * 0.5f;
             m_rudderLever = adjustedBounds.y * 0.5f;
             m_tailLever = adjustedBounds.z * 0.5f;
-            m_liftCoeff = -ModSettings.PlaneDownForce * adjustedBounds.x * adjustedBounds.z;
-            float controlScale = -ModSettings.PlaneDownForce / COEFF_LIFT_NORM;
+            m_liftCoeff = -downForce * adjustedBounds.x * adjustedBounds.z;
+            float controlScale = downForce / ModSettings.PLANEDOWNFORCE;
             m_rollCoeff = controlScale * COEFF_ROT * adjustedBounds.x * adjustedBounds.z;
             m_pitchCoeff = controlScale * COEFF_ROT * adjustedBounds.x * adjustedBounds.z;
             m_vstabCoeff = controlScale * COEFF_STAB * adjustedBounds.y * adjustedBounds.z;
@@ -189,7 +194,8 @@ namespace DriveIt.Vehicles
             }
 
             Vector3 sideVec = Vector3.Cross(upVec, forwardVec).normalized;
-            float density = AIR_DENSITY_SEA * Mathf.Exp(AIR_DENSITY_DECAY * vehiclePos.y);
+            float densitySeaLevel = AIR_DENSITY_SEA * (ModSettings.Gravity / GRAVITY_STD);
+            float density = densitySeaLevel * Mathf.Exp(AIR_DENSITY_DECAY * vehiclePos.y);
             float dir = 0.0f;
             float fc = Vector3.Dot(vehicleVel, forwardVec);
             float sc = Vector3.Dot(vehicleVel, sideVec);
@@ -201,7 +207,7 @@ namespace DriveIt.Vehicles
 
             // engine thrust
             dir = (m_gear - 1.0f) * (m_brake > 0.5f ? 0.0f : 1.0f);
-            netForce += dir * GetPower(m_radps) / Mathf.Max(dir * fc, MIN_POWER_VEL) * (density / AIR_DENSITY_SEA) * forwardVec;
+            netForce += dir * GetPower(m_radps) / Mathf.Max(dir * fc, MIN_POWER_VEL) * (density / densitySeaLevel) * forwardVec;
 
             // lift
             float scale = 1.0f;

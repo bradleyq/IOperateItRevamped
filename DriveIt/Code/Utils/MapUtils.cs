@@ -1,5 +1,7 @@
 ﻿using ColossalFramework;
 using UnityEngine;
+using static ItemClass;
+using static PathUnit;
 
 namespace DriveIt.Utils
 {
@@ -59,6 +61,45 @@ namespace DriveIt.Utils
             return input;
         }
 
+        public static bool RaycastRoad(out RaycastOutput raycastOutput)
+        {
+            RaycastInput raycastInput = new RaycastInput(Camera.main.ScreenPointToRay(Input.mousePosition), Camera.main.farClipPlane);
+            raycastInput.m_netService.m_service = ItemClass.Service.Road;
+            raycastInput.m_netService.m_itemLayers = ItemClass.Layer.Default | ItemClass.Layer.MetroTunnels;
+            raycastInput.m_netService2.m_service = ItemClass.Service.Beautification;
+            raycastInput.m_netService2.m_itemLayers = ItemClass.Layer.Default | ItemClass.Layer.MetroTunnels;
+            raycastInput.m_ignoreSegmentFlags = NetSegment.Flags.None;
+            raycastInput.m_ignoreNodeFlags = NetNode.Flags.None;
+            raycastInput.m_ignoreTerrain = false;
+
+            return RayCast(raycastInput, out raycastOutput);
+        }
+
+        public static Vector3 TerrainNormal(Vector3 pos, out COLLISION_TYPE collisionType)
+        {
+            Vector3 pos1 = pos + Vector3.right * 0.5f;
+            Vector3 pos2 = pos + Vector3.forward * 0.5f;
+            pos.y = TerrainHeight(pos, out collisionType);
+            pos1.y = TerrainHeight(pos1, out _);
+            pos2.y = TerrainHeight(pos2, out _);
+            return Vector3.Cross(pos2 - pos, pos1 - pos).normalized;
+        }
+
+        public static float TerrainHeight(Vector3 pos, out COLLISION_TYPE collisionType)
+        {
+            collisionType = COLLISION_TYPE.GROUND;
+
+            float height = Singleton<TerrainManager>.instance.SampleDetailHeightSmooth(pos);
+            float tmpHeight = Singleton<TerrainManager>.instance.WaterLevel(new Vector2(pos.x, pos.z));
+
+            if (tmpHeight > height)
+            {
+                collisionType = COLLISION_TYPE.WATER;
+                height = tmpHeight;
+            }
+
+            return height;
+        }
 
         public static float CalculateHeight(Vector3 position, float objectHeight, out COLLISION_TYPE collisionType, bool ignoreColliders = false)
         {
@@ -69,14 +110,7 @@ namespace DriveIt.Utils
 
             collisionType = COLLISION_TYPE.GROUND;
 
-            float height = Singleton<TerrainManager>.instance.SampleDetailHeightSmooth(position);
-            float tmpHeight = Singleton<TerrainManager>.instance.WaterLevel(new Vector2(position.x, position.z));
-
-            if (tmpHeight > height)
-            {
-                collisionType = COLLISION_TYPE.WATER;
-                height = tmpHeight;
-            }
+            float height = TerrainHeight(position, out collisionType);
 
             if (!ignoreColliders 
                 && Physics.Raycast(position + Vector3.up * objectHeight, Vector3.down, out RaycastHit hitInfo, objectHeight - ROAD_RAYCAST_LOWER, LayerMask.GetMask(MapUtils.LAYER_VEHICLES_NAME, MapUtils.LAYER_BUILDINGS_NAME)) 

@@ -14,6 +14,7 @@ namespace DriveIt.Vehicles
         private const float RESET_HEIGHT = 0.25f;
         private const float RESET_FREQ = 2.0f;
         private const float MASS_FACTOR = 85.0f;
+        private const float MASS_BIAS = 0.0f;
         private const float RADIUS_D_WHEEL = 0.2f;
         private const float THROTTLE_RESP = 2.0f;
         private const float THROTTLE_REST = 2.0f;
@@ -40,6 +41,7 @@ namespace DriveIt.Vehicles
         private const float ENGINE_INERTIA = 0.01f;
         private const float ENGINE_AUTO_SHIFT_THRESH = 0.1f;
 
+        private static bool s_first_create = true;
         private static float s_engine_inertia;
         private static float s_drag_wheel_powered;
         private static float s_drag_wheel;
@@ -482,7 +484,7 @@ namespace DriveIt.Vehicles
             float halfSA = (adjustedBounds.x * adjustedBounds.y + adjustedBounds.x * adjustedBounds.z + adjustedBounds.y * adjustedBounds.z);
             m_vehicleRigidBody.drag = linearDrag * adjustedBounds.x * adjustedBounds.y / halfSA;
             m_vehicleRigidBody.angularDrag = angularDrag * adjustedBounds.y * adjustedBounds.z / halfSA;
-            m_vehicleRigidBody.mass = halfSA * massFactor;
+            m_vehicleRigidBody.mass = halfSA * massFactor + massBias;
             m_vehicleRigidBody.transform.position = position + (adjustedY < 0.0f ? Vector3.down * adjustedY : Vector3.zero);
             m_vehicleRigidBody.transform.rotation = rotation;
             m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, adjustedY + adjustedBounds.y * massCenterHeight, adjustedZ + massCenterBias * adjustedBounds.z);
@@ -556,6 +558,7 @@ namespace DriveIt.Vehicles
         protected virtual float engineOverRPS { get => ENGINE_OVER_RPS; }
         protected virtual float engineIdleRPS { get => ENGINE_IDLE_RPS; }
         protected virtual float massFactor { get => MASS_FACTOR; }
+        protected virtual float massBias { get => MASS_BIAS; }
 
         // Initialize the vehicle wheel configuration, calculate hitbox parameters, and configure constriants
         protected virtual void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
@@ -995,7 +998,15 @@ namespace DriveIt.Vehicles
         {
             if (Input.GetKeyDown((KeyCode)Settings.ModSettings.KeyResetVehicle.Key) && m_lastReset + RESET_FREQ < Time.time)
             {
-                Quaternion rot = Quaternion.LookRotation(m_vehicleRigidBody.transform.TransformDirection(Vector3.forward));
+                Vector3 dir = m_vehicleRigidBody.transform.TransformDirection(Vector3.forward);
+                Vector3 terrainNorm = MapUtils.TerrainNormal(m_vehicleRigidBody.transform.position, out _);
+                if (Mathf.Abs(Vector3.Dot(dir, terrainNorm)) > 1.0f - DriveCommon.FLOAT_ERROR)
+                {
+                    dir += Vector3.forward;
+                }
+                dir = dir - Vector3.Dot(dir, terrainNorm) * terrainNorm;
+                dir = dir.normalized;
+                Quaternion rot = Quaternion.LookRotation(dir, terrainNorm);
                 Vector3 pos = m_vehicleRigidBody.transform.position;
                 pos.y = MapUtils.CalculateHeight(pos, RESET_SCAN_HEIGHT, out var _) - m_boundMin + RESET_HEIGHT;
                 m_vehicleRigidBody.transform.SetPositionAndRotation(pos, rot);
@@ -1038,8 +1049,9 @@ namespace DriveIt.Vehicles
             m_effects = gameObject.AddComponent<DriveEffects>();
             m_effects.Initialize(this);
 
-            if (s_primaryVehicle == null)
+            if (s_first_create)
             {
+                s_first_create = false;
                 s_engine_inertia = (float)System.Math.Pow(ENGINE_INERTIA, Time.fixedDeltaTime);
                 s_drag_wheel_powered = (float)(1.0 - System.Math.Pow(1.0 - DRAG_WHEEL_POWERED, Time.fixedDeltaTime));
                 s_drag_wheel = (float)(1.0 - System.Math.Pow(1.0 - DRAG_WHEEL, Time.fixedDeltaTime));
