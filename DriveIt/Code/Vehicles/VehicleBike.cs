@@ -55,7 +55,7 @@ namespace DriveIt.Vehicles
         protected override float massCenterBias { get => ModSettings.BikeMassCenterBias; }
         protected override float steerMax { get => STEER_MAX; }
 
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
             float height = Mathf.Max(m_vehicleInfo.m_generatedInfo.m_tyres[0].y, 0.0f);
             if (height > adjustedY)

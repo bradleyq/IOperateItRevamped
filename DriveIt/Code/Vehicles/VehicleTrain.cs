@@ -23,45 +23,43 @@ namespace DriveIt.Vehicles
         protected override float massCenterHeight { get => ModSettings.TrainMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.TrainMassCenterBias; }
 
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
-            bool validWheels = true;
-            float groundHeight = 1000.0f;
+            bool validWheel = false;
+            float contactHeight = 0.0f;
+            float prevY = adjustedY;
+            float rideHeight = Mathf.Max(adjustedY, 0.0f);
+
             if (m_vehicleInfo.m_generatedInfo.m_tyres?.Length > 0)
             {
                 foreach (Vector4 tirepos in m_vehicleInfo.m_generatedInfo.m_tyres)
                 {
-                    if (tirepos.y <= 0.0f)
+                    if (tirepos.y > 0.0f && tirepos.w <= 2.0f)
                     {
-                        validWheels = false;
+                        validWheel = true;
+                        contactHeight = Mathf.Min(contactHeight, tirepos.y - tirepos.w);
+                        rideHeight = Mathf.Max(rideHeight, tirepos.y);
                     }
-                    groundHeight = Mathf.Min(groundHeight, tirepos.y - tirepos.w);
                 }
             }
 
-            if (validWheels)
+            if (validWheel)
             {
-                adjustedY = groundHeight - springOffset;
-                base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
-
-                float height = Mathf.Max(m_vehicleInfo.m_generatedInfo.m_tyres[0].y, 0.0f);
-                if (height > adjustedY)
-                {
-                    adjustedBounds.y -= height - adjustedY;
-                }
-                adjustedY = height;
+                adjustedY = Mathf.Min(contactHeight, adjustedY);
+                groundY = adjustedY;
             }
             else
             {
-                if (0.0f > adjustedY)
-                {
-                    adjustedBounds.y += adjustedY;
-                }
-                adjustedY = 0.0f;
-
-                base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
+                adjustedY -= springOffset;
             }
 
+            base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
+
+            if (rideHeight > adjustedY)
+            {
+                adjustedY = rideHeight;
+            }
+            adjustedBounds.y += prevY - adjustedY;
 
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;

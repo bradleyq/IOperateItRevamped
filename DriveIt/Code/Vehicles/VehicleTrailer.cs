@@ -36,7 +36,7 @@ namespace DriveIt.Vehicles
             }
         }
 
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
             bool validWheels = true;
             if (m_vehicleInfo.m_generatedInfo.m_tyres?.Length > 0)

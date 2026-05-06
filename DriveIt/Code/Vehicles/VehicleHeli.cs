@@ -44,7 +44,7 @@ namespace DriveIt.Vehicles
         private float m_vstabCoeff = 0.0f;
         private float m_hstabCoeff = 0.0f;
         private float m_pitch = 0.0f;
-        private bool m_flying = false;
+        private float m_flying = 0.0f;
 
         protected override float enginePower { get => ModSettings.HeliEnginePower; }
         protected override float brakingForce { get => 500.0f; }
@@ -74,7 +74,7 @@ namespace DriveIt.Vehicles
             }
         }
 
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
             if (m_vehicleInfo.m_generatedInfo.m_tyres?.Length > 0)
             {
@@ -87,7 +87,7 @@ namespace DriveIt.Vehicles
                 }
             }
 
-            base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
+            base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
 
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;
@@ -124,13 +124,14 @@ namespace DriveIt.Vehicles
         protected override void PhysicsFeedbackWheelAndEngine(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
         {
             float radpsTrans = 0.0f;
+            m_flying = 0.0f;
 
-            m_flying = true;
             foreach (Wheel w in m_wheelObjects)
             {
-                if (w.isOnGround)
+                // add to flying fract per wheel
+                if (!w.isOnGround)
                 {
-                    m_flying = false;
+                    m_flying += 1.0f / wheelCount;
                 }
 
                 // record distance travelled from previous tick
@@ -142,11 +143,8 @@ namespace DriveIt.Vehicles
                 radpsTrans += w.wheelRadps;
             }
 
-            if (m_flying)
-            {
-                // distance travelled is engine rps instead
-                m_distanceTravelled += m_radps * 0.1f * Time.fixedDeltaTime;
-            }
+            // distance travelled is engine rps instead
+            m_distanceTravelled += m_flying * m_radps * Time.fixedDeltaTime;
 
             m_radpsTrans = radpsTrans / wheelCount;
 
@@ -250,7 +248,7 @@ namespace DriveIt.Vehicles
 
         protected override void HandleInputOnFixedUpdate(int invert)
         {
-            invert = m_flying ? 1 : Mathf.Abs(invert); 
+            invert = m_flying >= 1.0f - DriveCommon.FLOAT_ERROR ? 1 : Mathf.Abs(invert); 
             base.HandleInputOnFixedUpdate(invert);
 
             float pitch = Input.GetAxisRaw(DriveCommon.AXIS_PITCH);

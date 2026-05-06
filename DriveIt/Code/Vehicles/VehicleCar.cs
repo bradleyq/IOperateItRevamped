@@ -29,7 +29,7 @@ namespace DriveIt.Vehicles
         protected override float massCenterBias { get => ModSettings.CarMassCenterBias; }
         protected override float steerMax { get => STEER_MAX; }
 
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
             int gearCount = ENGINE_GEAR_RATIOS_L.Length;
             float avgRadius = 0.0f;

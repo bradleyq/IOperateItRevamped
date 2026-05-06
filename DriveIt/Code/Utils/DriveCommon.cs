@@ -146,6 +146,8 @@ namespace DriveIt.Utils
         //public const float UNIT_TO_MPH = UNIT_TO_M * 2.23694f;  // unity unit to mph
         public const float KN_TO_N = 1000f;                     // KN to N
         public const float KW_TO_W = 1000f;                     // KW to W
+        public const float LINKAGE_K = 750000.0f;               // vehicle linkage spring tension
+        public const float LINKAGE_D = 250000.0f;               // vehicle linkage damping
 
         public enum TRACTIONCTL_LEVEL
         {

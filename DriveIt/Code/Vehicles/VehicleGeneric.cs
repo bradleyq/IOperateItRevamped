@@ -431,8 +431,9 @@ namespace DriveIt.Vehicles
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
             RigidbodyConstraints constraints = RigidbodyConstraints.None;
             Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;
-            float adjustedY = m_vehicleInfo.m_lodMesh.bounds.min.y;
+            float adjustedY = m_vehicleInfo.m_mesh.bounds.min.y;
             float adjustedZ = m_vehicleInfo.m_lodMesh.bounds.min.z;
+            float groundY = Mathf.Min(adjustedY, 0.0f);
             float frontTorque = 0.0f;
             float rearTorque = 0.0f;
             float frontBraking = 0.0f;
@@ -440,7 +441,9 @@ namespace DriveIt.Vehicles
             float frontEBraking = 0.0f;
             float rearEBraking = 0.0f;
 
-            InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
+            adjustedBounds.y += m_vehicleInfo.m_lodMesh.bounds.min.y - adjustedY;
+
+            InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
             
             if (rearCount == 0 && frontCount > 0)
             {
@@ -485,7 +488,7 @@ namespace DriveIt.Vehicles
             m_vehicleRigidBody.drag = linearDrag * adjustedBounds.x * adjustedBounds.y / halfSA;
             m_vehicleRigidBody.angularDrag = angularDrag * adjustedBounds.y * adjustedBounds.z / halfSA;
             m_vehicleRigidBody.mass = halfSA * massFactor + massBias;
-            m_vehicleRigidBody.transform.position = position + (adjustedY < 0.0f ? Vector3.down * adjustedY : Vector3.zero);
+            m_vehicleRigidBody.transform.position = position + Vector3.down * groundY;
             m_vehicleRigidBody.transform.rotation = rotation;
             m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, adjustedY + adjustedBounds.y * massCenterHeight, adjustedZ + massCenterBias * adjustedBounds.z);
             m_vehicleRigidBody.velocity = Vector3.zero;
@@ -561,15 +564,15 @@ namespace DriveIt.Vehicles
         protected virtual float massBias { get => MASS_BIAS; }
 
         // Initialize the vehicle wheel configuration, calculate hitbox parameters, and configure constriants
-        protected virtual void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected virtual void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
             float width = adjustedBounds.x;
             float length = adjustedBounds.z;
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, true));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, true));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(0.0f, adjustedY + springOffset + RADIUS_D_WHEEL, 0.0f), momentWheel, RADIUS_D_WHEEL, true, false));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, -length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, true, true));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, -length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, adjustedZ + length), momentWheel, RADIUS_D_WHEEL, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, adjustedZ + length), momentWheel, RADIUS_D_WHEEL, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(0.0f, adjustedY + springOffset + RADIUS_D_WHEEL, adjustedZ + length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, false));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, adjustedZ), momentWheel, RADIUS_D_WHEEL, true, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, adjustedZ), momentWheel, RADIUS_D_WHEEL, true, true, true));
         }
         
         protected virtual void InitializeAdjust(ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)

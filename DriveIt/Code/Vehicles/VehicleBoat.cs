@@ -24,7 +24,7 @@ namespace DriveIt.Vehicles
         protected override float linearDrag { get => DRAG_FACTOR; }
         protected override float angularDrag { get => DRAG_FACTOR; }
 
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
             if (0.0f > adjustedY)
             {
@@ -32,7 +32,7 @@ namespace DriveIt.Vehicles
                 adjustedY = 0.0f;
             }
 
-            base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref constraints);
+            base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
 
             adjustedBounds.y += springOffset;
             adjustedY -= springOffset;

@@ -1,5 +1,6 @@
 ﻿using DriveIt.Settings;
 using DriveIt.UI;
+using DriveIt.Utils;
 using DriveIt.Vehicles;
 using UnifiedUI.Helpers;
 using UnityEngine;
@@ -121,8 +122,8 @@ namespace DriveIt
                 joint.breakForce = Mathf.Infinity;
                 joint.breakTorque = Mathf.Infinity;
                 joint.enableCollision = false;
-                joint.spring = 500000.0f;
-                joint.damper = 100000.0f;
+                joint.spring = DriveCommon.LINKAGE_K;
+                joint.damper = DriveCommon.LINKAGE_D;
                 joint.connectedBody = m_vehicleAlt.GetRigidbody();
             }
 

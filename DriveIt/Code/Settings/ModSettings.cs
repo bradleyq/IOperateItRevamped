@@ -68,9 +68,9 @@ namespace DriveIt.Settings
         public const float             HELIMASSCENTERHEIGHT = 0.1f;
         public const float             HELIMASSCENTERBIAS = 0.5f;
 
-        public const float             PLANEENGINEPOWER = 35000f;
-        public const float             PLANEBRAKINGFORCE = 300f;
-        public const float             PLANEDOWNFORCE = -0.07f;
+        public const float             PLANEENGINEPOWER = 30000f;
+        public const float             PLANEBRAKINGFORCE = 200f;
+        public const float             PLANEDOWNFORCE = -0.08f;
         public const float             PLANEBRAKEBIAS = 0.4f;
         public const float             PLANESPRINGDAMP = 4.0f;
         public const float             PLANESPRINGOFFSET = -1.5f;
@@ -90,8 +90,8 @@ namespace DriveIt.Settings
         public const float             TRAINDOWNFORCE = 5.0f;
         public const float             TRAINDRIVEBIAS = 0.5f;
         public const float             TRAINBRAKEBIAS = 0.5f;
-        public const float             TRAINSPRINGDAMP = 4.0f;
-        public const float             TRAINSPRINGOFFSET = -0.2f;
+        public const float             TRAINSPRINGDAMP = 3.2f;
+        public const float             TRAINSPRINGOFFSET = -0.1f;
         public const float             TRAINSPRINGSWAYBAR = 125.0f;
         public const float             TRAINMASSCENTERHEIGHT = 0.1f;
         public const float             TRAINMASSCENTERBIAS = 0.5f;

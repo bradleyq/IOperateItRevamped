@@ -17,19 +17,20 @@ namespace DriveIt.Vehicles
         private const float ENGINE_INERTIA = 0.8f;
         private const float PITCH_RESP = 1.5f;
         private const float PITCH_REST = 1.5f;
-        private const float DRAG_FACTOR_ROT = 0.85f;
+        private const float DRAG_FACTOR_ROT = 2.5f;
         private const float DRAG_FACTOR = 0.4f;
         private const float STEER_MAX = 37.0f;
         private const float GEAR_RESP = 0.1f;
         private const float MIN_POWER_VEL = 1.0f;
-        private const float COEFF_ROT = 0.01f;
+        private const float COEFF_ROT = 0.015f;
         private const float COEFF_STAB = 2.0f;
         private const float STAB_COMPV = 0.75f;
         private const float STAB_COMPH = 0.2f;
         private const float AIR_DENSITY_SEA = 1.225f;
         private const float AIR_DENSITY_DECAY = -0.00011856f;
         private const float GRAVITY_STD = 10.0f;
-        private const float MASS_FACTOR = 20.0f;
+        private const float MASS_FACTOR = 19.5f;
+        private const float MASS_BIAS = 800.0f;
         private const float MAX_WHEEL_WIDTH = 10.0f;
 
         private static bool s_first_create = true;
@@ -44,6 +45,7 @@ namespace DriveIt.Vehicles
         private float m_vstabCoeff = 0.0f;
         private float m_hstabCoeff = 0.0f;
         private float m_pitch = 0.0f;
+        private float m_flying = 0.0f;
 
         protected override float enginePower { get => ModSettings.PlaneEnginePower; }
         protected override float brakingForce { get => ModSettings.PlaneBrakingForce; }
@@ -62,6 +64,7 @@ namespace DriveIt.Vehicles
         protected override float engineOverRPS { get => ENGINE_OVER_RPS;  }
         protected override float engineIdleRPS {  get => ENGINE_IDLE_RPS; }
         protected override float massFactor { get => MASS_FACTOR; }
+        protected override float massBias { get => MASS_BIAS; }
 
         protected override void AwakeExt()
         {
@@ -72,22 +75,31 @@ namespace DriveIt.Vehicles
             }
         }
 
-        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref RigidbodyConstraints constraints)
+        protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
-            if (0.0f > adjustedY)
-            {
-                adjustedBounds.y += adjustedY;
-                adjustedY = 0.0f;
+            float contactHeight = 0.0f;
+            float prevY = adjustedY;
 
+            if (m_vehicleInfo.m_generatedInfo.m_tyres?.Length > 0)
+            {
+                foreach (Vector4 tirepos in m_vehicleInfo.m_generatedInfo.m_tyres)
+                {
+                    if (tirepos.y > 0.0f && tirepos.w <= 2.0f)
+                    {
+                        contactHeight = Mathf.Min(contactHeight, tirepos.y - tirepos.w);
+                    }
+                }
             }
+            adjustedY = Mathf.Min(contactHeight, adjustedY);
 
             Vector3 tmpBounds = adjustedBounds;
             tmpBounds.x = Mathf.Min(tmpBounds.x, MAX_WHEEL_WIDTH);
 
-            base.InitializeInternal(ref tmpBounds, ref adjustedY, ref adjustedZ, ref constraints);
+            base.InitializeInternal(ref tmpBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
 
-            adjustedBounds.y += ModSettings.PlaneSpringOffset;
             adjustedY -= ModSettings.PlaneSpringOffset;
+            adjustedBounds.y += prevY - adjustedY;
+
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;
             m_gearNeutral = ENGINE_GEAR_NEUTRAL;
@@ -123,9 +135,16 @@ namespace DriveIt.Vehicles
         protected override void PhysicsFeedbackWheelAndEngine(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
         {
             float radpsTrans = 0.0f;
+            m_flying = 0.0f;
 
             foreach (Wheel w in m_wheelObjects)
             {
+                // add to flying fract per wheel
+                if (!w.isOnGround)
+                {
+                    m_flying += 1.0f / wheelCount;
+                }
+
                 // record distance travelled from previous tick
                 m_distanceTravelled += w.wheelRadps * w.wheelRadius * Time.fixedDeltaTime / wheelCount;
 
@@ -134,6 +153,9 @@ namespace DriveIt.Vehicles
 
                 radpsTrans += w.wheelRadps;
             }
+
+            // distance travelled is engine rps instead
+            m_distanceTravelled += m_flying * m_radps * Time.fixedDeltaTime;
 
             m_radpsTrans = radpsTrans / wheelCount;
 
@@ -211,7 +233,7 @@ namespace DriveIt.Vehicles
 
             // lift
             float scale = 1.0f;
-            if (vehicleVel.sqrMagnitude > 0.0f && Vector3.Dot(vehicleVel.normalized, Vector3.up) < 1.0f - DriveCommon.FLOAT_ERROR)
+            if (m_flying >= 1.0f - DriveCommon.FLOAT_ERROR && vehicleVel.sqrMagnitude > 0.0f && Vector3.Dot(vehicleVel.normalized, Vector3.up) < 1.0f - DriveCommon.FLOAT_ERROR)
             {
                 scale = Mathf.Max(Mathf.Abs(Vector3.Dot(Vector3.Cross(Vector3.up, vehicleVel).normalized, sideVec) * m_liftCoeff * fc * fc * density), DriveCommon.FLOAT_ERROR);
                 scale = Mathf.Min(scale, m_vehicleRigidBody.mass * ModSettings.Gravity) / scale;
@@ -251,6 +273,8 @@ namespace DriveIt.Vehicles
 
         protected override void HandleInputOnFixedUpdate(int invert)
         {
+            invert = m_flying >= 1.0f - DriveCommon.FLOAT_ERROR ? 1 : invert;
+
             base.HandleInputOnFixedUpdate(invert);
 
             float pitch = Input.GetAxisRaw(DriveCommon.AXIS_PITCH);
