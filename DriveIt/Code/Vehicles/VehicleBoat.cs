@@ -10,6 +10,7 @@ namespace DriveIt.Vehicles
         private const int ENGINE_GEAR_NEUTRAL = 2;
         private const float DRAG_FACTOR = 0.5f;
         private const float STAB_BOOST = 1.25f;
+        private const float RIDE_HEIGHT = 1.0f;
 
         protected override float enginePower { get => ModSettings.BoatEnginePower; }
         protected override float brakingForce { get => ModSettings.BoatBrakingForce; }
@@ -23,19 +24,25 @@ namespace DriveIt.Vehicles
         protected override float massCenterBias { get => ModSettings.BoatMassCenterBias; }
         protected override float linearDrag { get => DRAG_FACTOR; }
         protected override float angularDrag { get => DRAG_FACTOR; }
+        protected override float rideHeight { get=> RIDE_HEIGHT; }
 
         protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
-            if (0.0f > adjustedY)
+            /* bound assumptions:
+             * - water line at local 0
+             * - ride height based off springOffset and fixed rideHeight
+             * - water at springOffset from local 0
+             */
+            float height = springOffset + rideHeight;
+            if (adjustedY < height)
             {
-                adjustedBounds.y += adjustedY;
-                adjustedY = 0.0f;
+                adjustedBounds.y += adjustedY - height;
+                adjustedY = height;
             }
+            groundY = springOffset;
 
             base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
 
-            adjustedBounds.y += springOffset;
-            adjustedY -= springOffset;
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;
             m_gearNeutral = ENGINE_GEAR_NEUTRAL;

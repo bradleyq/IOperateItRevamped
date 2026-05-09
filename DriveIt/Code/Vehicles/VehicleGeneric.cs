@@ -16,6 +16,7 @@ namespace DriveIt.Vehicles
         private const float MASS_FACTOR = 85.0f;
         private const float MASS_BIAS = 0.0f;
         private const float RADIUS_D_WHEEL = 0.2f;
+        private const float RIDE_HEIGHT = 0.2f;
         private const float THROTTLE_RESP = 2.0f;
         private const float THROTTLE_REST = 2.0f;
         private const float STEER_RESP = 1.5f;
@@ -65,6 +66,7 @@ namespace DriveIt.Vehicles
         protected Vector3 m_prevVelocity;
         protected Vector3 m_prevPrevVelocity;
         protected bool m_isTurning = false;
+        protected bool m_isTrailer = false;
         protected int m_gear = 0;
         protected int m_gearNeutral = 2;
         protected float[] m_gearRatios = { -5.0f, -10.0f, 0.0f, 10.0f, 5.0f };
@@ -83,7 +85,7 @@ namespace DriveIt.Vehicles
         protected float m_radps = 0.0f;
         protected float m_prevRadps = 0.0f;
         protected float m_radpsTrans = 0.0f;
-        protected float m_boundMin = 0.0f;
+        protected float m_groundY = 0.0f;
         protected List<Wheel> m_wheelObjects = new List<Wheel>();
 
         public float odometer { get => m_distanceTravelled; }
@@ -431,9 +433,9 @@ namespace DriveIt.Vehicles
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
             RigidbodyConstraints constraints = RigidbodyConstraints.None;
             Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;
-            float adjustedY = m_vehicleInfo.m_mesh.bounds.min.y;
+            float adjustedY = Mathf.Min(m_vehicleInfo.m_mesh.bounds.min.y, m_vehicleInfo.m_lodMesh.bounds.min.y);
             float adjustedZ = m_vehicleInfo.m_lodMesh.bounds.min.z;
-            float groundY = Mathf.Min(adjustedY, 0.0f);
+            float groundY = adjustedY + springHeight;
             float frontTorque = 0.0f;
             float rearTorque = 0.0f;
             float frontBraking = 0.0f;
@@ -441,7 +443,7 @@ namespace DriveIt.Vehicles
             float frontEBraking = 0.0f;
             float rearEBraking = 0.0f;
 
-            adjustedBounds.y += m_vehicleInfo.m_lodMesh.bounds.min.y - adjustedY;
+            adjustedBounds.y = m_vehicleInfo.m_lodMesh.bounds.max.y - adjustedY;
 
             InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
             
@@ -469,7 +471,7 @@ namespace DriveIt.Vehicles
 
             InitializeAdjust(ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
 
-            m_boundMin = Mathf.Min(0.0f, adjustedY);
+            m_groundY = Mathf.Min(groundY, adjustedY);
             m_gear = m_gearNeutral;
 
             foreach (Wheel w in m_wheelObjects)
@@ -488,7 +490,7 @@ namespace DriveIt.Vehicles
             m_vehicleRigidBody.drag = linearDrag * adjustedBounds.x * adjustedBounds.y / halfSA;
             m_vehicleRigidBody.angularDrag = angularDrag * adjustedBounds.y * adjustedBounds.z / halfSA;
             m_vehicleRigidBody.mass = halfSA * massFactor + massBias;
-            m_vehicleRigidBody.transform.position = position + Vector3.down * groundY;
+            m_vehicleRigidBody.transform.position = position + Vector3.down * m_groundY;
             m_vehicleRigidBody.transform.rotation = rotation;
             m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, adjustedY + adjustedBounds.y * massCenterHeight, adjustedZ + massCenterBias * adjustedBounds.z);
             m_vehicleRigidBody.velocity = Vector3.zero;
@@ -527,6 +529,7 @@ namespace DriveIt.Vehicles
             m_prevVelocity = Vector3.zero;
             m_prevPrevVelocity = Vector3.zero;
             m_isTurning = false;
+            m_isTrailer = false;
             m_gear = m_gearNeutral;
             m_driveMode = ENGINE_MODE_NEUTRAL;
             m_lastReset = 0.0f;
@@ -539,7 +542,7 @@ namespace DriveIt.Vehicles
             m_radps = 0.0f;
             m_prevRadps = 0.0f;
             m_radpsTrans = 0.0f;
-            m_boundMin = 0.0f;
+            m_groundY = 0.0f;
         }
 
         protected virtual float enginePower { get => ModSettings.EnginePower; }
@@ -562,17 +565,18 @@ namespace DriveIt.Vehicles
         protected virtual float engineIdleRPS { get => ENGINE_IDLE_RPS; }
         protected virtual float massFactor { get => MASS_FACTOR; }
         protected virtual float massBias { get => MASS_BIAS; }
+        protected virtual float rideHeight { get => RIDE_HEIGHT; }
 
         // Initialize the vehicle wheel configuration, calculate hitbox parameters, and configure constriants
         protected virtual void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
             float width = adjustedBounds.x;
             float length = adjustedBounds.z;
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, adjustedZ + length), momentWheel, RADIUS_D_WHEEL, true, true));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, adjustedZ + length), momentWheel, RADIUS_D_WHEEL, true, true));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(0.0f, adjustedY + springOffset + RADIUS_D_WHEEL, adjustedZ + length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, false));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, adjustedZ), momentWheel, RADIUS_D_WHEEL, true, true, true));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, adjustedY + springOffset + RADIUS_D_WHEEL, adjustedZ), momentWheel, RADIUS_D_WHEEL, true, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, groundY + RADIUS_D_WHEEL, adjustedZ + length), momentWheel, RADIUS_D_WHEEL, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, groundY + RADIUS_D_WHEEL, adjustedZ + length), momentWheel, RADIUS_D_WHEEL, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(0.0f, groundY + RADIUS_D_WHEEL, adjustedZ + length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, false));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, groundY + RADIUS_D_WHEEL, adjustedZ), momentWheel, RADIUS_D_WHEEL, true, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, groundY + RADIUS_D_WHEEL, adjustedZ), momentWheel, RADIUS_D_WHEEL, true, true, true));
         }
         
         protected virtual void InitializeAdjust(ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
@@ -1011,7 +1015,7 @@ namespace DriveIt.Vehicles
                 dir = dir.normalized;
                 Quaternion rot = Quaternion.LookRotation(dir, terrainNorm);
                 Vector3 pos = m_vehicleRigidBody.transform.position;
-                pos.y = MapUtils.CalculateHeight(pos, RESET_SCAN_HEIGHT, out var _) - m_boundMin + RESET_HEIGHT;
+                pos.y = MapUtils.CalculateHeight(pos, RESET_SCAN_HEIGHT, out var _) - m_groundY + RESET_HEIGHT;
                 m_vehicleRigidBody.transform.SetPositionAndRotation(pos, rot);
                 m_lastReset = Time.time;
             }

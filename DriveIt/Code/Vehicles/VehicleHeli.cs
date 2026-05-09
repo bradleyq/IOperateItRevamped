@@ -76,16 +76,30 @@ namespace DriveIt.Vehicles
 
         protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
+            /* bound assumptions:
+             * - contact height at min of lowest wheel and springOffset height
+             * - ride height fixed rideHeight from contact height
+             * - ground at springOffset from contact height
+             */
+            float contactHeight = -springOffset;
             if (m_vehicleInfo.m_generatedInfo.m_tyres?.Length > 0)
             {
                 foreach (Vector4 tirepos in m_vehicleInfo.m_generatedInfo.m_tyres)
                 {
-                    if (tirepos.y >= 0.0f)
+                    if (tirepos.y > 0.0f && tirepos.w <= 2.0f)
                     {
-                        adjustedY = Mathf.Min(adjustedY, tirepos.y - tirepos.w);
+                        contactHeight = Mathf.Min(contactHeight, tirepos.y - tirepos.w);
                     }
                 }
             }
+
+            float height = contactHeight + rideHeight;
+            if (adjustedY < height)
+            {
+                adjustedBounds.y += adjustedY - height;
+                adjustedY = height;
+            }
+            groundY = contactHeight + springOffset;
 
             base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
 

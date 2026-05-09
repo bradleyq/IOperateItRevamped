@@ -33,12 +33,19 @@ namespace DriveIt.Vehicles
         {
             int gearCount = ENGINE_GEAR_RATIOS_L.Length;
             float avgRadius = 0.0f;
+
+            /* bound assumptions:
+             * - contact points of all wheels at local 0
+             * - ride height based off m_tyres[0]
+             * - ground at springOffset from local 0
+             */
             float height = Mathf.Max(m_vehicleInfo.m_generatedInfo.m_tyres[0].y, 0.0f);
-            if (height > adjustedY)
+            if (adjustedY < height)
             {
-                adjustedBounds.y -= height - adjustedY;
+                adjustedBounds.y += adjustedY - height;
+                adjustedY = height;
             }
-            adjustedY = height;
+            groundY = springOffset;
 
             foreach (Vector4 tirepos in m_vehicleInfo.m_generatedInfo.m_tyres)
             {

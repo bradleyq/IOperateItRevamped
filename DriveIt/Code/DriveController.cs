@@ -107,13 +107,13 @@ namespace DriveIt
             }
 
             m_vehicle = InstanceVehicle(vehicleInfo);
-            m_vehicle.Initialize(spawnPosition + new Vector3(0.0f, -m_vehicle.springHeight, 0.0f), spawnRotation, vehicleInfo, flags, variation, vehicleColor, setColor, true);
+            m_vehicle.Initialize(spawnPosition, spawnRotation, vehicleInfo, flags, variation, vehicleColor, setColor, true);
 
             if (vehicleInfoAlt)
             {
                 m_vehicleAlt = InstanceVehicleAlt(vehicleInfoAlt);
                 float offset = (vehicleInfo.m_generatedInfo.m_size.z + vehicleInfoAlt.m_generatedInfo.m_size.z) * 0.5f - (vehicleInfo.m_attachOffsetBack + vehicleInfoAlt.m_attachOffsetFront);
-                m_vehicleAlt.Initialize(spawnPosition + spawnRotation * (offset * Vector3.back) + new Vector3(0.0f, -m_vehicleAlt.springHeight, 0.0f), spawnRotation, vehicleInfoAlt, flagsAlt, variationAlt, vehicleColor, setColor);
+                m_vehicleAlt.Initialize(spawnPosition + spawnRotation * (offset * Vector3.back), spawnRotation, vehicleInfoAlt, flagsAlt, variationAlt, vehicleColor, setColor);
 
                 SpringJoint joint = m_vehicle.gameObject.AddComponent<SpringJoint>();
                 joint.axis = Vector3.up;

@@ -25,41 +25,34 @@ namespace DriveIt.Vehicles
 
         protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
-            bool validWheel = false;
-            float contactHeight = 0.0f;
-            float prevY = adjustedY;
-            float rideHeight = Mathf.Max(adjustedY, 0.0f);
-
+            /* bound assumptions:
+             * - contact height at min of lowest wheel and springOffset height
+             * - ride height max of m_tyres and fixed rideHeight from contact height
+             * - ground at springOffset from contact height
+             */
+            float contactHeight = -springOffset;
+            float wheelRideHeight = -1000.0f;
             if (m_vehicleInfo.m_generatedInfo.m_tyres?.Length > 0)
             {
                 foreach (Vector4 tirepos in m_vehicleInfo.m_generatedInfo.m_tyres)
                 {
                     if (tirepos.y > 0.0f && tirepos.w <= 2.0f)
                     {
-                        validWheel = true;
                         contactHeight = Mathf.Min(contactHeight, tirepos.y - tirepos.w);
-                        rideHeight = Mathf.Max(rideHeight, tirepos.y);
+                        wheelRideHeight = Mathf.Max(wheelRideHeight, tirepos.y);
                     }
                 }
             }
 
-            if (validWheel)
+            float height = Mathf.Max(contactHeight + rideHeight, wheelRideHeight);
+            if (adjustedY < height)
             {
-                adjustedY = Mathf.Min(contactHeight, adjustedY);
-                groundY = adjustedY;
+                adjustedBounds.y += adjustedY - height;
+                adjustedY = height;
             }
-            else
-            {
-                adjustedY -= springOffset;
-            }
+            groundY = contactHeight + springOffset;
 
             base.InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
-
-            if (rideHeight > adjustedY)
-            {
-                adjustedY = rideHeight;
-            }
-            adjustedBounds.y += prevY - adjustedY;
 
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;

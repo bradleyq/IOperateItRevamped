@@ -47,7 +47,7 @@ namespace DriveIt.Settings
         public const float             BOATDOWNFORCE = 5.0f;
         public const float             BOATDRIVEBIAS = 0.25f;
         public const float             BOATBRAKEBIAS = 0.25f;
-        public const float             BOATSPRINGOFFSET = -0.6f;
+        public const float             BOATSPRINGOFFSET = -0.25f;
         public const float             BOATMASSCENTERHEIGHT = 0.1f;
         public const float             BOATMASSCENTERBIAS = 0.5f;
 

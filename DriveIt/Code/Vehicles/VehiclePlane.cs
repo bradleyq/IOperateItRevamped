@@ -65,6 +65,7 @@ namespace DriveIt.Vehicles
         protected override float engineIdleRPS {  get => ENGINE_IDLE_RPS; }
         protected override float massFactor { get => MASS_FACTOR; }
         protected override float massBias { get => MASS_BIAS; }
+        protected override float rideHeight { get => -ModSettings.PlaneSpringOffset; }
 
         protected override void AwakeExt()
         {
@@ -77,9 +78,12 @@ namespace DriveIt.Vehicles
 
         protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {
+            /* bound assumptions:
+             * - contact height at min of lowest wheel and local 0
+             * - ride height based off rideHeight
+             * - ground at fixed springOffset from contact height
+             */
             float contactHeight = 0.0f;
-            float prevY = adjustedY;
-
             if (m_vehicleInfo.m_generatedInfo.m_tyres?.Length > 0)
             {
                 foreach (Vector4 tirepos in m_vehicleInfo.m_generatedInfo.m_tyres)
@@ -90,15 +94,19 @@ namespace DriveIt.Vehicles
                     }
                 }
             }
-            adjustedY = Mathf.Min(contactHeight, adjustedY);
+
+            float height = Mathf.Max(contactHeight + rideHeight, 0.0f);
+            if (adjustedY < height)
+            {
+                adjustedBounds.y += adjustedY - height;
+                adjustedY = height;
+            }
+            groundY = contactHeight + springOffset;
 
             Vector3 tmpBounds = adjustedBounds;
             tmpBounds.x = Mathf.Min(tmpBounds.x, MAX_WHEEL_WIDTH);
 
             base.InitializeInternal(ref tmpBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
-
-            adjustedY -= ModSettings.PlaneSpringOffset;
-            adjustedBounds.y += prevY - adjustedY;
 
             m_gearRatios = ENGINE_GEAR_RATIOS;
             m_gearNames = ENGINE_GEAR_NAMES;
