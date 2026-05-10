@@ -120,9 +120,9 @@ namespace DriveIt
             m_isExtrasEnabled = false;
             m_isLightEnabled = false;
             m_isDusty = false;
-            m_isTireVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrailer;
-            m_isHeadlightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrain;
-            m_isTaillightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrailer;
+            m_isTireVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike;
+            m_isHeadlightVehicle = (m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrain) && m_vehicleInstance.IsPrimary();
+            m_isTaillightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike;
             m_spCompression = 0.0f;
             m_spTangent = Vector3.forward;
             m_spBinormal = Vector3.right;

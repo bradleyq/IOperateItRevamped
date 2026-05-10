@@ -10,10 +10,17 @@ namespace DriveIt.Vehicles
 {
     public class VehicleGeneric : MonoBehaviour
     {
+        private static readonly float[] ENGINE_GEAR_RATIOS_T = { 0.0f };
+        private static readonly string[] ENGINE_GEAR_NAMES_T = { "" };
+        private const int ENGINE_GEAR_NEUTRAL_T = 0;
+        private static float[] ENGINE_GEAR_RATIOS = { -5.0f, -10.0f, 0.0f, 10.0f, 5.0f };
+        private static string[] ENGINE_GEAR_NAMES = { "R2", "R1", "N", "D1", "D2" };
+        private const int ENGINE_GEAR_NEUTRAL = 2;
         private const float RESET_SCAN_HEIGHT = 2.0f;
         private const float RESET_HEIGHT = 0.25f;
         private const float RESET_FREQ = 2.0f;
         private const float MASS_FACTOR = 85.0f;
+        private const float MASS_FACTOR_TRAILER = 40.0f;
         private const float MASS_BIAS = 0.0f;
         private const float RADIUS_D_WHEEL = 0.2f;
         private const float RIDE_HEIGHT = 0.2f;
@@ -68,9 +75,9 @@ namespace DriveIt.Vehicles
         protected bool m_isTurning = false;
         protected bool m_isTrailer = false;
         protected int m_gear = 0;
-        protected int m_gearNeutral = 2;
-        protected float[] m_gearRatios = { -5.0f, -10.0f, 0.0f, 10.0f, 5.0f };
-        protected string[] m_gearNames = { "R2", "R1", "N", "D1", "D2" };
+        protected int m_gearNeutral = ENGINE_GEAR_NEUTRAL;
+        protected float[] m_gearRatios = ENGINE_GEAR_RATIOS;
+        protected string[] m_gearNames = ENGINE_GEAR_NAMES;
         protected int m_driveMode = ENGINE_MODE_NEUTRAL;
         protected int m_wheelCount = 0;
         protected int m_frontWheels = 0;
@@ -331,7 +338,7 @@ namespace DriveIt.Vehicles
 
         public static VehicleGeneric InstanceVehicle(VehicleInfo info)
         {
-            GameObject vgo = new GameObject("PrimaryVehicleObject");
+            GameObject vgo = new GameObject("VehicleObject");
 
             if (
                 info.m_vehicleType == VehicleInfo.VehicleType.Plane)
@@ -394,12 +401,6 @@ namespace DriveIt.Vehicles
             }
         }
 
-        public static VehicleGeneric InstanceVehicleAlt(VehicleInfo info)
-        {
-            GameObject vgo = new GameObject("SecondaryVehicleObject");
-            return vgo.AddComponent<VehicleTrailer>();
-        }
-
         public Rigidbody GetRigidbody()
         {
             return m_vehicleRigidBody;
@@ -414,6 +415,7 @@ namespace DriveIt.Vehicles
         {
             if (setPrimary) s_primaryVehicle = this;
 
+            m_isTrailer = !setPrimary;
             m_vehicleColor = vehicleColor;
             m_vehicleColor.a = 0; // Make sure blinking is not set.
             m_variationMaskInv = ~(1u << variation);
@@ -469,6 +471,19 @@ namespace DriveIt.Vehicles
                 rearEBraking = brakingForce * DriveCommon.KN_TO_N / rearCount;
             }
 
+            if (m_isTrailer)
+            {
+                m_gearRatios = ENGINE_GEAR_RATIOS_T;
+                m_gearNames = ENGINE_GEAR_NAMES_T;
+                m_gearNeutral = ENGINE_GEAR_NEUTRAL_T;
+                frontTorque = 0.0f;
+                rearTorque = 0.0f;
+                frontBraking = 0.0f;
+                rearBraking = 1.0f;
+                frontEBraking = 0.0f;
+                rearEBraking = 1.0f;
+            }
+
             InitializeAdjust(ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
 
             m_groundY = Mathf.Min(groundY, adjustedY);
@@ -487,12 +502,24 @@ namespace DriveIt.Vehicles
             }
 
             float halfSA = (adjustedBounds.x * adjustedBounds.y + adjustedBounds.x * adjustedBounds.z + adjustedBounds.y * adjustedBounds.z);
+            float massFactorLocal = massFactor;
+            float massBiasLocal = massBias;
+            float massCenterHeightLocal = massCenterHeight;
+            float massCenterBiasLocal = massCenterBias;
+            if (m_isTrailer)
+            {
+                massFactorLocal = massFactorTrailer;
+                massBiasLocal = massBiasTrailer;
+                massCenterHeightLocal = massCenterHeightTrailer;
+                massCenterBiasLocal = massCenterBiasTrailer;
+            }
+
             m_vehicleRigidBody.drag = linearDrag * adjustedBounds.x * adjustedBounds.y / halfSA;
             m_vehicleRigidBody.angularDrag = angularDrag * adjustedBounds.y * adjustedBounds.z / halfSA;
-            m_vehicleRigidBody.mass = halfSA * massFactor + massBias;
+            m_vehicleRigidBody.mass = halfSA * massFactorLocal + massBiasLocal;
             m_vehicleRigidBody.transform.position = position + Vector3.down * m_groundY;
             m_vehicleRigidBody.transform.rotation = rotation;
-            m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, adjustedY + adjustedBounds.y * massCenterHeight, adjustedZ + massCenterBias * adjustedBounds.z);
+            m_vehicleRigidBody.centerOfMass = new Vector3(0.0f, adjustedY + adjustedBounds.y * massCenterHeightLocal, adjustedZ + massCenterBiasLocal * adjustedBounds.z);
             m_vehicleRigidBody.velocity = Vector3.zero;
             m_vehicleRigidBody.maxDepenetrationVelocity = DEPEN_VELOCITY;
             m_vehicleRigidBody.constraints = constraints;
@@ -566,6 +593,10 @@ namespace DriveIt.Vehicles
         protected virtual float massFactor { get => MASS_FACTOR; }
         protected virtual float massBias { get => MASS_BIAS; }
         protected virtual float rideHeight { get => RIDE_HEIGHT; }
+        protected virtual float massCenterHeightTrailer { get => ModSettings.TrailerMassCenterHeight; }
+        protected virtual float massCenterBiasTrailer { get => ModSettings.TrailerMassCenterBias; }
+        protected virtual float massFactorTrailer { get => MASS_FACTOR_TRAILER; }
+        protected virtual float massBiasTrailer { get => MASS_BIAS; }
 
         // Initialize the vehicle wheel configuration, calculate hitbox parameters, and configure constriants
         protected virtual void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
@@ -690,6 +721,29 @@ namespace DriveIt.Vehicles
             m_prevRadps = m_radps;
             engineRps = Mathf.Clamp(engineRps, engineIdleRPS, engineOverRPS);
             m_radps = Mathf.Lerp(engineRps, m_radps, s_engine_inertia);
+        }
+
+        // Function runs immediately after PhysicsFrictionCalculation if the vehicle is a trailer. Feeds updated wheel velocity back to the engine.
+        protected virtual void PhysicsFeedbackWheelAndEngineTrailer(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
+        {
+            float radpsTrans = 0.0f;
+
+            foreach (Wheel w in m_wheelObjects)
+            {
+                // record distance travelled from previous tick
+                m_distanceTravelled += w.wheelRadps * w.wheelRadius * Time.fixedDeltaTime / wheelCount;
+
+                // apply wheel drag from previous tick
+                w.ApplyDrag();
+
+                radpsTrans += w.wheelRadps;
+            }
+
+            m_radpsTrans = radpsTrans / wheelCount;
+
+            m_prevRadps = m_radps;
+            radpsTrans = Mathf.Clamp(radpsTrans, 0.0f, engineOverRPS);
+            m_radps = Mathf.Lerp(radpsTrans, m_radps, s_engine_inertia);
         }
 
         // Torque curve.
@@ -1082,7 +1136,15 @@ namespace DriveIt.Vehicles
             float speed = Vector3.Dot(Vector3.forward, m_vehicleRigidBody.transform.InverseTransformDirection(vehicleVel));
             int invert = Mathf.Abs(speed) < parkSpeed ? 0 : (speed > 0.0f ? 1 : -1);
 
-            HandleInputOnFixedUpdate(invert);
+            if (m_isTrailer)
+            {
+                m_brake = s_primaryVehicle.m_brake;
+                m_handbrake = s_primaryVehicle.m_handbrake;
+            }
+            else
+            {
+                HandleInputOnFixedUpdate(invert);
+            }
 
             WheelPhysics(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel);
 
@@ -1141,7 +1203,7 @@ namespace DriveIt.Vehicles
                 m_style.fontSize = 20;
                 m_style.normal.textColor = Color.white;
 
-                GUI.Label(new Rect(100f, 100f, 700f, 350f), debugString.ToString(), m_style);
+                GUI.Label(new Rect(100f, 100f + (m_isTrailer ? 350f : 0f), 700f, 350f), debugString.ToString(), m_style);
             }
         }
 
@@ -1183,11 +1245,20 @@ namespace DriveIt.Vehicles
             PhysicsFrictionCalculation(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel, upVec, forwardVec);
 
             // calculate new engine and wheel angular velocity
-            PhysicsFeedbackWheelAndEngine(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel, upVec, forwardVec);
-            if (ModSettings.AutoTrans)
+            if (!m_isTrailer)
+            {
+                PhysicsFeedbackWheelAndEngine(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel, upVec, forwardVec);
+            }
+            else
+            {
+                PhysicsFeedbackWheelAndEngineTrailer(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel, upVec, forwardVec);
+            }
+
+            if (ModSettings.AutoTrans && !m_isTrailer)
             {
                 PhysicsSelectGear(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel, upVec, forwardVec);
             }
+
             PhysicsFeedForwardWheelAndEngine(ref vehiclePos, ref vehicleVel, ref vehicleAngularVel, upVec, forwardVec);
 
             foreach (Wheel w in m_wheelObjects)

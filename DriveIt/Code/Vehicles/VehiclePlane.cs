@@ -331,7 +331,7 @@ namespace DriveIt.Vehicles
                 m_style.fontSize = 20;
                 m_style.normal.textColor = Color.white;
 
-                GUI.Label(new Rect(100f, 100f, 700f, 350f), debugString.ToString(), m_style);
+                GUI.Label(new Rect(100f, 100f + (m_isTrailer ? 350f : 0f), 700f, 350f), debugString.ToString(), m_style);
             }
         }
     }
