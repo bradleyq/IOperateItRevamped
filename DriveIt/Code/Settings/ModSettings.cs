@@ -77,11 +77,6 @@ namespace DriveIt.Settings
         public const float             PLANEMASSCENTERHEIGHT = 0.3f;
         public const float             PLANEMASSCENTERBIAS = 0.5f;
 
-        public const float             TRAILERBRAKINGFORCE = 75f;
-        public const float             TRAILERDOWNFORCE = 0.0f;
-        public const float             TRAILERSPRINGDAMP = 2.0f;
-        public const float             TRAILERSPRINGOFFSET = -0.1f;
-        public const float             TRAILERSPRINGSWAYBAR = 147.0f;
         public const float             TRAILERMASSCENTERHEIGHT = 0.05f;
         public const float             TRAILERMASSCENTERBIAS = 0.5f;
 
@@ -181,11 +176,6 @@ namespace DriveIt.Settings
             PlaneMassCenterHeight = PLANEMASSCENTERHEIGHT;
             PlaneMassCenterBias = PLANEMASSCENTERBIAS;
 
-            TrailerBrakingForce = TRAILERBRAKINGFORCE;
-            TrailerDownForce = TRAILERDOWNFORCE;
-            TrailerSpringDamp = TRAILERSPRINGDAMP;
-            TrailerSpringOffset = TRAILERSPRINGOFFSET;
-            TrailerSpringSwayBar = TRAILERSPRINGSWAYBAR;
             TrailerMassCenterHeight = TRAILERMASSCENTERHEIGHT;
             TrailerMassCenterBias = TRAILERMASSCENTERBIAS;
 
@@ -520,31 +510,6 @@ namespace DriveIt.Settings
         #endregion
 
         #region Trailer Vehicle Settings
-        [XmlElement("TrailerBrakingForce")]
-        public float XMLTrailerBrakingForce { get => TrailerBrakingForce; set => TrailerBrakingForce = value; }
-        [XmlIgnore]
-        internal static float TrailerBrakingForce = TRAILERBRAKINGFORCE;
-
-        [XmlElement("TrailerDownForce")]
-        public float XMLTrailerDownForce { get => TrailerDownForce; set => TrailerDownForce = value; }
-        [XmlIgnore]
-        internal static float TrailerDownForce = TRAILERDOWNFORCE;
-
-        [XmlElement("TrailerSpringDamp")]
-        public float XMLTrailerSpringDamp { get => TrailerSpringDamp; set => TrailerSpringDamp = value; }
-        [XmlIgnore]
-        internal static float TrailerSpringDamp = TRAILERSPRINGDAMP;
-
-        [XmlElement("TrailerSpringOffset")]
-        public float XMLTrailerSpringOffset { get => TrailerSpringOffset; set => TrailerSpringOffset = value; }
-        [XmlIgnore]
-        internal static float TrailerSpringOffset = TRAILERSPRINGOFFSET;
-
-        [XmlElement("TrailerSpringSwayBar")]
-        public float XMLTrailerSpringSwayBar { get => TrailerSpringSwayBar; set => TrailerSpringSwayBar = value; }
-        [XmlIgnore]
-        internal static float TrailerSpringSwayBar = TRAILERSPRINGSWAYBAR;
-
         [XmlElement("TrailerMassCenterHeight")]
         public float XMLTrailerMassCenterHeight { get => TrailerMassCenterHeight; set => TrailerMassCenterHeight = value; }
         [XmlIgnore]

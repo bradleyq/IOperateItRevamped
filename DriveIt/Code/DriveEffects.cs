@@ -62,7 +62,6 @@ namespace DriveIt
         private bool m_isDusty = false;
         private bool m_vehicleColorSet = false;
         private bool m_isTireVehicle = false;
-        private bool m_isTireSoundVehicle = false;
         private bool m_isHeadlightVehicle = false;
         private bool m_isTaillightVehicle = false;
         private bool m_isVelocityAsAccelSound = false;
@@ -122,9 +121,9 @@ namespace DriveIt
             m_isExtrasEnabled = false;
             m_isLightEnabled = false;
             m_isDusty = false;
-            m_isTireVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrailer;
-            m_isHeadlightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrain;
-            m_isTaillightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrailer;
+            m_isTireVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike;
+            m_isHeadlightVehicle = (m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrain) && m_vehicleInstance.IsPrimary();
+            m_isTaillightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike;
             m_isVelocityAsAccelSound = m_vehicleInstance is VehicleHeli;
             m_spCompression = 0.0f;
             m_spTangent = Vector3.forward;

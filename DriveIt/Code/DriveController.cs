@@ -111,9 +111,9 @@ namespace DriveIt
 
             if (vehicleInfoAlt)
             {
-                m_vehicleAlt = InstanceVehicleAlt(vehicleInfoAlt);
+                m_vehicleAlt = InstanceVehicle(vehicleInfoAlt);
                 float offset = (vehicleInfo.m_generatedInfo.m_size.z + vehicleInfoAlt.m_generatedInfo.m_size.z) * 0.5f - (vehicleInfo.m_attachOffsetBack + vehicleInfoAlt.m_attachOffsetFront);
-                m_vehicleAlt.Initialize(spawnPosition + spawnRotation * (offset * Vector3.back), spawnRotation, vehicleInfoAlt, flagsAlt, variationAlt, vehicleColor, setColor);
+                m_vehicleAlt.Initialize(spawnPosition + spawnRotation * (offset * Vector3.back + DriveCommon.LINKAGE_H * Vector3.up), spawnRotation, vehicleInfoAlt, flagsAlt, variationAlt, vehicleColor, setColor);
 
                 SpringJoint joint = m_vehicle.gameObject.AddComponent<SpringJoint>();
                 joint.axis = Vector3.up;
