@@ -109,7 +109,6 @@ namespace DriveIt.Vehicles
         public float rpm { get => m_radps * DriveCommon.RPS_TO_RPM; }
         public float radps { get => m_radps; }
         public float angularAcceleration { get => (m_radps - m_prevRadps) / Time.fixedDeltaTime; }
-        public VehicleType vehicleType { get => VehicleType.Generic; }
         public List<Wheel> wheels { get => m_wheelObjects; }
         public Vehicle.Flags vehicleFlags { get => m_vehicleFlags; }
         public uint variationMaskInv { get => m_variationMaskInv; }
@@ -336,6 +335,8 @@ namespace DriveIt.Vehicles
 
         public bool IsPrimary() { return this == s_primaryVehicle; }
 
+        public bool IsTrailer() { return m_isTrailer; }
+
         public static VehicleGeneric InstanceVehicle(VehicleInfo info)
         {
             GameObject vgo = new GameObject("VehicleObject");
@@ -423,7 +424,7 @@ namespace DriveIt.Vehicles
             m_prevVelocity = Vector3.zero;
             m_prevPrevVelocity = Vector3.zero;
             m_vehicleInfo = vehicleInfo;
-            m_vehicleFlags = vehicleFlags;
+            m_vehicleFlags = vehicleFlags | Vehicle.Flags.Created;
             m_driveMode = ENGINE_MODE_NEUTRAL;
             m_distanceTravelled = 0.0f;
             m_steer = 0.0f;

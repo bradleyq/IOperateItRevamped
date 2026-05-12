@@ -12,7 +12,8 @@ namespace DriveIt
         private const int MAX_CONCURRENT_SOUNDS = 18;
         private const float MAX_VISUAL_COMPRESSION = 0.25f;
         private const float VALUE_SMOOTHING = 0.85f;
-        private const float ENGINE_PITCH = 0.15f;
+        private const float ENGINE_PITCH = 135.0f;
+        private const float ENGINE_VAA_PITCH = 15.0f;
         private const float LIGHT_HEADLIGHT_INTENSITY = 3.0f;
         private const float LIGHT_HEADLIGHT_RANGE = 125.0f;
         private const float LIGHT_HEADLIGHT_ANGLE = 60.0f;
@@ -122,7 +123,7 @@ namespace DriveIt
             m_isLightEnabled = false;
             m_isDusty = false;
             m_isTireVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike;
-            m_isHeadlightVehicle = (m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrain) && m_vehicleInstance.IsPrimary();
+            m_isHeadlightVehicle = (m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrain) && !m_vehicleInstance.IsTrailer();
             m_isTaillightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike;
             m_isVelocityAsAccelSound = m_vehicleInstance is VehicleHeli;
             m_spCompression = 0.0f;
@@ -935,10 +936,17 @@ namespace DriveIt
             }
             foreach (var engineEffect in m_engineSoundEffects)
             {
+                float vel = ENGINE_PITCH * m_vehicleInstance.tachometer;
+                float accel = 0.0f;
+                if (m_isVelocityAsAccelSound)
+                {
+                    accel = ENGINE_VAA_PITCH * m_vehicleInstance.tachometer;
+                }
+
                 engineEffect.PlayEffect(default, 
                                         area, 
-                                        ENGINE_PITCH * m_vehicleInstance.radps * Vector3.up,
-                                        ENGINE_PITCH * (m_isVelocityAsAccelSound ? m_vehicleInstance.radps : m_vehicleInstance.angularAcceleration), 
+                                        vel * Vector3.up,
+                                        accel, 
                                         2.0f * (0.75f + 0.125f * m_vehicleInstance.tachometer + 0.125f * Mathf.Max(m_vehicleInstance.throttle, Mathf.Clamp01(m_vehicleInstance.angularAcceleration))), 
                                         listenerInfo,
                                         s_audioGroup);

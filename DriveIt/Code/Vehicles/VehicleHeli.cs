@@ -23,9 +23,10 @@ namespace DriveIt.Vehicles
         private const float STEER_MAX = 0.0f;
         private const float GEAR_RESP = 0.1f;
         private const float MIN_POWER_VEL = 1.0f;
-        private const float COEFF_ROT = 85.0f;
+        private const float COEFF_ROT = 75.0f;
         private const float COEFF_STABV = 0.5f;
         private const float COEFF_STABH = 0.2f;
+        private const float COEFF_DECAY = 0.8f;
         private const float STAB_COMPV = 0.75f;
         private const float STAB_COMPH = 0.1f;
         private const float AIR_DENSITY_SEA = 1.225f;
@@ -113,7 +114,7 @@ namespace DriveIt.Vehicles
             m_wingLever = adjustedBounds.x * 0.5f;
             m_rudderLever = adjustedBounds.y * 0.5f;
             m_tailLever = adjustedBounds.z * 0.5f;
-            float controlScale = enginePower / ModSettings.HELIENGINEPOWER;
+            float controlScale = COEFF_DECAY * enginePower / ModSettings.HELIENGINEPOWER + (1.0f - COEFF_DECAY);
             m_rollCoeff = controlScale * COEFF_ROT * adjustedBounds.x * adjustedBounds.z;
             m_pitchCoeff = controlScale * COEFF_ROT * adjustedBounds.x * adjustedBounds.z;
             m_yawCoeff = controlScale * COEFF_ROT * adjustedBounds.y * adjustedBounds.z;
@@ -150,14 +151,14 @@ namespace DriveIt.Vehicles
                 slipping |= w.wheelHighSlip > 0.0f;
             }
 
-            if (vehicleVel.magnitude < 3.0f && m_throttle == 0.0f && m_brake > 0.0f && !slipping)
+            if (vehicleVel.magnitude < 1.0f && m_throttle == 0.0f && m_brake > 0.0f && !slipping)
             {
                 Vector3 sideVec = Vector3.Cross(forwardVec, upVec).normalized;
                 m_vehicleRigidBody.velocity = m_vehicleRigidBody.velocity - Vector3.Dot(m_vehicleRigidBody.velocity, sideVec) * sideVec;
 
                 if (vehicleVel.magnitude < parkSpeed)
                 {
-                    m_vehicleRigidBody.constraints = RigidbodyConstraints.FreezeRotationZ;
+                    m_vehicleRigidBody.constraints = RigidbodyConstraints.FreezeRotationZ | RigidbodyConstraints.FreezeRotationX;
                     m_constrained = true;
                 }
             }
