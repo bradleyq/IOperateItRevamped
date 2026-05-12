@@ -8,12 +8,13 @@ namespace DriveIt.Vehicles
 {
     public class VehiclePlane : VehicleGeneric
     {
-        private static readonly float[] ENGINE_GEAR_RATIOS = { 0.05f, 0.0f, 1.0f };
+        private static readonly float[] ENGINE_GEAR_RATIOS = { 0.03f, 0.0f, 1.0f };
         private static readonly string[] ENGINE_GEAR_NAMES = { "R", "N", "F" };
         private const int ENGINE_GEAR_NEUTRAL = 1;
         private const float ENGINE_PEAK_RPS = 300.0f;
         private const float ENGINE_OVER_RPS = 315.0f;
-        private const float ENGINE_IDLE_RPS = 5.0f;
+        private const float ENGINE_IDLE_RPS = 25.0f;
+        private const float ENGINE_RPS_BIAS = 23.0f;
         private const float ENGINE_INERTIA = 0.8f;
         private const float PITCH_RESP = 1.5f;
         private const float PITCH_REST = 1.5f;
@@ -46,6 +47,7 @@ namespace DriveIt.Vehicles
         private float m_hstabCoeff = 0.0f;
         private float m_pitch = 0.0f;
         private float m_flying = 0.0f;
+        private bool m_constrained = false;
 
         protected override float enginePower { get => ModSettings.PlaneEnginePower; }
         protected override float brakingForce { get => ModSettings.PlaneBrakingForce; }
@@ -66,6 +68,7 @@ namespace DriveIt.Vehicles
         protected override float massFactor { get => MASS_FACTOR; }
         protected override float massBias { get => MASS_BIAS; }
         protected override float rideHeight { get => -ModSettings.PlaneSpringOffset; }
+        protected virtual float engineRPSBias { get => ENGINE_RPS_BIAS; }
 
         protected override void AwakeExt()
         {
@@ -138,6 +141,30 @@ namespace DriveIt.Vehicles
             {
                 m_vehicleFlags &= ~Vehicle.Flags.Flying;
             }
+
+            bool slipping = false;
+
+            if (m_constrained)
+            {
+                m_vehicleRigidBody.constraints = RigidbodyConstraints.None;
+            }
+
+            foreach (Wheel w in m_wheelObjects)
+            {
+                slipping |= w.wheelHighSlip > 0.0f;
+            }
+
+            if (vehicleVel.magnitude < 3.0f && m_throttle == 0.0f && m_brake > 0.0f && !slipping)
+            {
+                Vector3 sideVec = Vector3.Cross(forwardVec, upVec).normalized;
+                m_vehicleRigidBody.velocity = m_vehicleRigidBody.velocity - Vector3.Dot(m_vehicleRigidBody.velocity, sideVec) * sideVec;
+
+                if (vehicleVel.magnitude < parkSpeed)
+                {
+                    m_vehicleRigidBody.constraints = RigidbodyConstraints.FreezeRotationZ;
+                    m_constrained = true;
+                }
+            }
         }
 
         protected override void PhysicsFeedbackWheelAndEngine(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
@@ -167,7 +194,7 @@ namespace DriveIt.Vehicles
 
             m_radpsTrans = radpsTrans / wheelCount;
 
-            float engineRps = m_throttle * m_gearRatios[m_gear] * enginePeakRPS;
+            float engineRps = m_throttle * m_gearRatios[m_gear] * (enginePeakRPS - engineRPSBias) + engineIdleRPS;
 
             m_prevRadps = m_radps;
             engineRps = Mathf.Clamp(engineRps, engineIdleRPS, engineOverRPS);
@@ -176,7 +203,7 @@ namespace DriveIt.Vehicles
 
         protected override float GetTorque(float radps)
         {
-            return  enginePower * DriveCommon.KW_TO_W / enginePeakRPS;
+            return  enginePower * DriveCommon.KW_TO_W / (enginePeakRPS - engineRPSBias);
         }
 
         // Function runs immediately after PhysicsFeedbackWheelAndEngine with auto transmissions. Selects a new gear based on engine state.
@@ -237,7 +264,7 @@ namespace DriveIt.Vehicles
 
             // engine thrust
             dir = (m_gear - 1.0f) * (m_brake > 0.5f ? 0.0f : 1.0f);
-            netForce += dir * GetPower(m_radps) / Mathf.Max(dir * fc, MIN_POWER_VEL) * (density / densitySeaLevel) * forwardVec;
+            netForce += dir * GetPower(Mathf.Max(m_radps - engineRPSBias, 0.0f)) / Mathf.Max(dir * fc, MIN_POWER_VEL) * (density / densitySeaLevel) * forwardVec;
 
             // lift
             float scale = 1.0f;

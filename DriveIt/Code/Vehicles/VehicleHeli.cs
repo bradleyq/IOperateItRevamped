@@ -13,24 +13,26 @@ namespace DriveIt.Vehicles
         private const int ENGINE_GEAR_NEUTRAL = 0;
         private const float ENGINE_PEAK_RPS = 300.0f;
         private const float ENGINE_OVER_RPS = 315.0f;
-        private const float ENGINE_IDLE_RPS = 3.0f;
+        private const float ENGINE_IDLE_RPS = 30.0f;
+        private const float ENGINE_RPS_BIAS = 30.0f;
         private const float ENGINE_INERTIA = 0.9f;
         private const float PITCH_RESP = 1.5f;
         private const float PITCH_REST = 1.5f;
-        private const float DRAG_FACTOR_ROT = 4.0f;
+        private const float DRAG_FACTOR_ROT = 1.5f;
         private const float DRAG_FACTOR = 0.5f;
         private const float STEER_MAX = 0.0f;
         private const float GEAR_RESP = 0.1f;
         private const float MIN_POWER_VEL = 1.0f;
-        private const float COEFF_ROT = 52.0f;
-        private const float COEFF_STAB = 1.0f;
+        private const float COEFF_ROT = 85.0f;
+        private const float COEFF_STABV = 0.5f;
+        private const float COEFF_STABH = 0.2f;
         private const float STAB_COMPV = 0.75f;
         private const float STAB_COMPH = 0.1f;
         private const float AIR_DENSITY_SEA = 1.225f;
         private const float AIR_DENSITY_DECAY = -0.00011856f;
         private const float GRAVITY_STD = 10.0f;
         private const float MASS_FACTOR = 5.0f;
-        private const float MASS_BIAS = 1500.0f;
+        private const float MASS_BIAS = 1750.0f;
 
         private static bool s_first_create = true;
         private static float s_engine_inertia;
@@ -45,6 +47,7 @@ namespace DriveIt.Vehicles
         private float m_hstabCoeff = 0.0f;
         private float m_pitch = 0.0f;
         private float m_flying = 0.0f;
+        private bool m_constrained = false;
 
         protected override float enginePower { get => ModSettings.HeliEnginePower; }
         protected override float brakingForce { get => 500.0f; }
@@ -64,6 +67,7 @@ namespace DriveIt.Vehicles
         protected override float engineIdleRPS { get => ENGINE_IDLE_RPS; }
         protected override float massFactor { get => MASS_FACTOR; }
         protected override float massBias { get => MASS_BIAS; }
+        protected virtual float engineRPSBias { get => ENGINE_RPS_BIAS; }
 
         protected override void AwakeExt()
         {
@@ -113,8 +117,8 @@ namespace DriveIt.Vehicles
             m_rollCoeff = controlScale * COEFF_ROT * adjustedBounds.x * adjustedBounds.z;
             m_pitchCoeff = controlScale * COEFF_ROT * adjustedBounds.x * adjustedBounds.z;
             m_yawCoeff = controlScale * COEFF_ROT * adjustedBounds.y * adjustedBounds.z;
-            m_vstabCoeff = controlScale * COEFF_STAB * adjustedBounds.y * adjustedBounds.z;
-            m_hstabCoeff = controlScale * COEFF_STAB * adjustedBounds.x * adjustedBounds.z;
+            m_vstabCoeff = COEFF_STABV * adjustedBounds.y * adjustedBounds.z;
+            m_hstabCoeff = COEFF_STABH * adjustedBounds.x * adjustedBounds.z;
             m_vehicleFlags &= ~(Vehicle.Flags.Flying | Vehicle.Flags.Landing | Vehicle.Flags.TakingOff);
         }
         protected override void InitializeAdjust(ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
@@ -132,6 +136,30 @@ namespace DriveIt.Vehicles
             else
             {
                 m_vehicleFlags &= ~Vehicle.Flags.Flying;
+            }
+
+            bool slipping = false;
+
+            if (m_constrained)
+            {
+                m_vehicleRigidBody.constraints = RigidbodyConstraints.None;
+            }
+
+            foreach (Wheel w in m_wheelObjects)
+            {
+                slipping |= w.wheelHighSlip > 0.0f;
+            }
+
+            if (vehicleVel.magnitude < 3.0f && m_throttle == 0.0f && m_brake > 0.0f && !slipping)
+            {
+                Vector3 sideVec = Vector3.Cross(forwardVec, upVec).normalized;
+                m_vehicleRigidBody.velocity = m_vehicleRigidBody.velocity - Vector3.Dot(m_vehicleRigidBody.velocity, sideVec) * sideVec;
+
+                if (vehicleVel.magnitude < parkSpeed)
+                {
+                    m_vehicleRigidBody.constraints = RigidbodyConstraints.FreezeRotationZ;
+                    m_constrained = true;
+                }
             }
         }
 
@@ -158,11 +186,11 @@ namespace DriveIt.Vehicles
             }
 
             // distance travelled is engine rps instead
-            m_distanceTravelled += m_flying * m_radps * Time.fixedDeltaTime;
+            m_distanceTravelled += m_radps * m_gearRatios[m_gear] * Time.fixedDeltaTime;
 
             m_radpsTrans = radpsTrans / wheelCount;
 
-            float engineRps = (m_throttle - m_brake) * m_gearRatios[m_gear] * enginePeakRPS;
+            float engineRps = (m_throttle - m_brake) * m_gearRatios[m_gear] * (enginePeakRPS - engineIdleRPS) + engineIdleRPS;
 
             m_prevRadps = m_radps;
             m_radps = Mathf.Lerp(engineRps, m_radps, s_engine_inertia);
@@ -171,7 +199,7 @@ namespace DriveIt.Vehicles
 
         protected override float GetTorque(float radps)
         {
-            return enginePower * DriveCommon.KW_TO_W / enginePeakRPS;
+            return enginePower * DriveCommon.KW_TO_W / (enginePeakRPS - engineRPSBias);
         }
 
         // Function runs immediately after PhysicsFeedbackWheelAndEngine with auto transmissions. Selects a new gear based on engine state.
@@ -232,7 +260,7 @@ namespace DriveIt.Vehicles
             netStab += STAB_COMPH * tmp;
 
             // engine thrust
-            float thrust = GetPower(m_radps) * ENGINE_GEAR_RATIOS[m_gear] / Mathf.Max(uc, MIN_POWER_VEL) * (density / densitySeaLevel);
+            float thrust = GetPower(Mathf.Max(m_radps - engineRPSBias, 0.0f)) * ENGINE_GEAR_RATIOS[m_gear] / Mathf.Max(uc, MIN_POWER_VEL) * (density / densitySeaLevel);
             float hoverScale = Vector3.Dot(upVec, Vector3.up);
             float hoverThrust = Mathf.Min(thrust, m_vehicleRigidBody.mass * ModSettings.Gravity / Vector3.Dot(upVec, Vector3.up) - netForce.y - netStab.y);
             netForce += Mathf.Lerp(thrust, hoverThrust, m_handbrake) * upVec;
@@ -245,7 +273,7 @@ namespace DriveIt.Vehicles
 
 
             // ailerons
-            netTorque += -m_steer * m_rollCoeff * density * m_wingLever * forwardVec;
+            netTorque += -m_steer * (1.0f - 0.5f * m_handbrake) * m_rollCoeff * density * m_wingLever * forwardVec;
 
             // elevators
             netTorque += m_pitch * m_pitchCoeff * density * m_tailLever * sideVec;

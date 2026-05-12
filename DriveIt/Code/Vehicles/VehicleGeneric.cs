@@ -705,7 +705,7 @@ namespace DriveIt.Vehicles
         // Power curve. Should not be modified. Derived from torque curve.
         protected float GetPower(float radps) // Power curve 27x^2(k-x)/(4k^3)
         {
-            return GetTorque(radps) * Mathf.Max(radps, engineIdleRPS);
+            return GetTorque(radps) * radps;
         }
 
         // Function runs immediately after PhysicsFeedbackWheelAndEngine with auto transmissions. Selects a new gear based on engine state.

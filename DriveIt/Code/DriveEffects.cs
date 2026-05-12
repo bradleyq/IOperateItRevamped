@@ -62,8 +62,10 @@ namespace DriveIt
         private bool m_isDusty = false;
         private bool m_vehicleColorSet = false;
         private bool m_isTireVehicle = false;
+        private bool m_isTireSoundVehicle = false;
         private bool m_isHeadlightVehicle = false;
         private bool m_isTaillightVehicle = false;
+        private bool m_isVelocityAsAccelSound = false;
         private float m_spCompression;
         private Vector3 m_spTangent;
         private Vector3 m_spBinormal;
@@ -123,6 +125,7 @@ namespace DriveIt
             m_isTireVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrailer;
             m_isHeadlightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrain;
             m_isTaillightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrailer;
+            m_isVelocityAsAccelSound = m_vehicleInstance is VehicleHeli;
             m_spCompression = 0.0f;
             m_spTangent = Vector3.forward;
             m_spBinormal = Vector3.right;
@@ -935,12 +938,12 @@ namespace DriveIt
             {
                 engineEffect.PlayEffect(default, 
                                         area, 
-                                        ENGINE_PITCH * m_vehicleInstance.radps * Vector3.up, 
-                                        0.0f, 
-                                        2.0f * (0.75f + 0.125f * m_vehicleInstance.tachometer + 0.125f * Mathf.Max(m_vehicleInstance.throttle, 
-                                        Mathf.Clamp01(m_vehicleInstance.angularAcceleration))), 
+                                        ENGINE_PITCH * m_vehicleInstance.radps * Vector3.up,
+                                        ENGINE_PITCH * (m_isVelocityAsAccelSound ? m_vehicleInstance.radps : m_vehicleInstance.angularAcceleration), 
+                                        2.0f * (0.75f + 0.125f * m_vehicleInstance.tachometer + 0.125f * Mathf.Max(m_vehicleInstance.throttle, Mathf.Clamp01(m_vehicleInstance.angularAcceleration))), 
                                         listenerInfo,
                                         s_audioGroup);
+                Logging.Message("Playing " + engineEffect);
             }
             for (int iter = 0; iter < m_vehicleInstance.wheels.Count; iter++)
             {

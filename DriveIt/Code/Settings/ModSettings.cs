@@ -63,9 +63,9 @@ namespace DriveIt.Settings
         public const float             CARMASSCENTERBIAS = 0.55f;
 
         public const float             HELIENGINEPOWER = 800f;
-        public const float             HELISPRINGDAMP = 2.0f;
+        public const float             HELISPRINGDAMP = 4.7f;
         public const float             HELISPRINGOFFSET = -0.25f;
-        public const float             HELIMASSCENTERHEIGHT = 0.1f;
+        public const float             HELIMASSCENTERHEIGHT = 0.5f;
         public const float             HELIMASSCENTERBIAS = 0.5f;
 
         public const float             PLANEENGINEPOWER = 30000f;
@@ -74,7 +74,7 @@ namespace DriveIt.Settings
         public const float             PLANEBRAKEBIAS = 0.4f;
         public const float             PLANESPRINGDAMP = 4.0f;
         public const float             PLANESPRINGOFFSET = -1.5f;
-        public const float             PLANEMASSCENTERHEIGHT = 0.1f;
+        public const float             PLANEMASSCENTERHEIGHT = 0.3f;
         public const float             PLANEMASSCENTERBIAS = 0.5f;
 
         public const float             TRAILERBRAKINGFORCE = 75f;
