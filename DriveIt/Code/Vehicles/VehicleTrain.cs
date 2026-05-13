@@ -9,6 +9,7 @@ namespace DriveIt.Vehicles
         private static readonly string[] ENGINE_GEAR_NAMES = { "R8", "R7", "R6", "R5", "R4", "R3", "R2", "R1", "N", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8" };
         private const int ENGINE_GEAR_NEUTRAL = 8;
         private const float STAB_BOOST = 2.0f;
+        private const float STEER_MAX = 10.0f;
 
         private bool m_constrained = false;
 
@@ -22,6 +23,7 @@ namespace DriveIt.Vehicles
         protected override float springSwayBar { get => ModSettings.TrainSpringSwayBar; }
         protected override float massCenterHeight { get => ModSettings.TrainMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.TrainMassCenterBias; }
+        protected virtual float steerMax { get => STEER_MAX; }
 
         protected override void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
         {

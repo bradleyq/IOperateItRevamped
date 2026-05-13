@@ -13,7 +13,7 @@ namespace DriveIt
         private const float MAX_VISUAL_COMPRESSION = 0.25f;
         private const float VALUE_SMOOTHING = 0.85f;
         private const float ENGINE_PITCH = 135.0f;
-        private const float ENGINE_VAA_PITCH = 15.0f;
+        private const float ENGINE_VAA_PITCH = 20.0f;
         private const float LIGHT_HEADLIGHT_INTENSITY = 3.0f;
         private const float LIGHT_HEADLIGHT_RANGE = 125.0f;
         private const float LIGHT_HEADLIGHT_ANGLE = 60.0f;
@@ -66,6 +66,7 @@ namespace DriveIt
         private bool m_isHeadlightVehicle = false;
         private bool m_isTaillightVehicle = false;
         private bool m_isVelocityAsAccelSound = false;
+        private bool m_isIdleSilent = false;
         private float m_spCompression;
         private Vector3 m_spTangent;
         private Vector3 m_spBinormal;
@@ -126,6 +127,7 @@ namespace DriveIt
             m_isHeadlightVehicle = (m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike || m_vehicleInstance is VehicleTrain) && !m_vehicleInstance.IsTrailer();
             m_isTaillightVehicle = m_vehicleInstance is VehicleCar || m_vehicleInstance is VehicleBike;
             m_isVelocityAsAccelSound = m_vehicleInstance is VehicleHeli;
+            m_isIdleSilent = m_vehicleInstance is VehicleTrain || m_vehicleInstance is VehicleHeli || m_vehicleInstance is VehiclePlane;
             m_spCompression = 0.0f;
             m_spTangent = Vector3.forward;
             m_spBinormal = Vector3.right;
@@ -462,7 +464,7 @@ namespace DriveIt
             
             for (int i = 0; i < m_vehicleInstance.wheelCount; i++)
             {
-                VehicleGeneric.Wheel w = m_vehicleInstance.wheels[i];
+                Wheel w = m_vehicleInstance.wheels[i];
                 WheelExtraValues we = m_extraValues[i];
 
                 if (m_isTireVehicle)
@@ -934,27 +936,29 @@ namespace DriveIt
                 regularEffect.RenderEffect(default, area2, velocity, acceleration, 1f, -1f, Singleton<SimulationManager>.instance.m_simulationTimeDelta, Singleton<RenderManager>.instance.CurrentCameraInfo);
                 regularEffect.PlayEffect(default, area, velocity, acceleration, 1f, listenerInfo, s_audioGroup);
             }
-            foreach (var engineEffect in m_engineSoundEffects)
+            if (!m_isIdleSilent || !m_vehicleInstance.IsNeutral() || m_vehicleInstance.speed > 1.0f)
             {
-                float vel = ENGINE_PITCH * m_vehicleInstance.tachometer;
-                float accel = 0.0f;
-                if (m_isVelocityAsAccelSound)
+                foreach (var engineEffect in m_engineSoundEffects)
                 {
-                    accel = ENGINE_VAA_PITCH * m_vehicleInstance.tachometer;
-                }
+                    float vel = ENGINE_PITCH * m_vehicleInstance.tachometer;
+                    float accel = 0.0f;
+                    if (m_isVelocityAsAccelSound)
+                    {
+                        accel = ENGINE_VAA_PITCH * m_vehicleInstance.tachometer;
+                    }
 
-                engineEffect.PlayEffect(default, 
-                                        area, 
-                                        vel * Vector3.up,
-                                        accel, 
-                                        2.0f * (0.75f + 0.125f * m_vehicleInstance.tachometer + 0.125f * Mathf.Max(m_vehicleInstance.throttle, Mathf.Clamp01(m_vehicleInstance.angularAcceleration))), 
-                                        listenerInfo,
-                                        s_audioGroup);
-                Logging.Message("Playing " + engineEffect);
+                    engineEffect.PlayEffect(default, 
+                                            area, 
+                                            vel * Vector3.up,
+                                            accel, 
+                                            2.0f * (0.75f + 0.125f * m_vehicleInstance.tachometer + 0.125f * Mathf.Max(m_vehicleInstance.throttle, Mathf.Clamp01(m_vehicleInstance.angularAcceleration))), 
+                                            listenerInfo,
+                                            s_audioGroup);
+                }
             }
             for (int iter = 0; iter < m_vehicleInstance.wheels.Count; iter++)
             {
-                VehicleGeneric.Wheel w = m_vehicleInstance.wheels[iter];
+                Wheel w = m_vehicleInstance.wheels[iter];
                 WheelExtraValues we = m_extraValues[iter];
 
                 if (w.isOnGround && w.wheelGroundType == MapUtils.COLLISION_TYPE.ROAD && m_isTireVehicle)

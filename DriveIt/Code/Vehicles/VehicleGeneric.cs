@@ -13,8 +13,8 @@ namespace DriveIt.Vehicles
         private static readonly float[] ENGINE_GEAR_RATIOS_T = { 0.0f };
         private static readonly string[] ENGINE_GEAR_NAMES_T = { "" };
         private const int ENGINE_GEAR_NEUTRAL_T = 0;
-        private static float[] ENGINE_GEAR_RATIOS = { -5.0f, -10.0f, 0.0f, 10.0f, 5.0f };
-        private static string[] ENGINE_GEAR_NAMES = { "R2", "R1", "N", "D1", "D2" };
+        private static readonly float[] ENGINE_GEAR_RATIOS = { -5.0f, -10.0f, 0.0f, 10.0f, 5.0f };
+        private static readonly string[] ENGINE_GEAR_NAMES = { "R2", "R1", "N", "D1", "D2" };
         private const int ENGINE_GEAR_NEUTRAL = 2;
         private const float RESET_SCAN_HEIGHT = 2.0f;
         private const float RESET_HEIGHT = 0.25f;
@@ -22,7 +22,6 @@ namespace DriveIt.Vehicles
         private const float MASS_FACTOR = 85.0f;
         private const float MASS_FACTOR_TRAILER = 40.0f;
         private const float MASS_BIAS = 0.0f;
-        private const float RADIUS_D_WHEEL = 0.2f;
         private const float RIDE_HEIGHT = 0.2f;
         private const float THROTTLE_RESP = 2.0f;
         private const float THROTTLE_REST = 2.0f;
@@ -36,11 +35,10 @@ namespace DriveIt.Vehicles
         private const float PARK_SPEED = 0.25f;
         private const float DRAG_FACTOR = 0.25f;
         private const float DRAG_DRIVETRAIN = 0.15f;
+        private const float RADIUS_WHEEL = 0.2f;
         private const float DRAG_WHEEL_POWERED = 0.25f;
         private const float DRAG_WHEEL = 0.15f;
         private const float MOMENT_WHEEL = 1.5f;
-        private const float GRIP_SLIP_SPEED_LOW = 8.0f;
-        private const float GRIP_SLIP_SPEED_HIGH = 40.0f;
         private const float DIFF_LSD_FACTOR_LOW = 0.05f;
         private const float DIFF_LSD_FACTOR_HIGH = 0.25f;
         private const float ENGINE_PEAK_RPS = 900.0f;
@@ -55,9 +53,6 @@ namespace DriveIt.Vehicles
         private static float s_drag_wheel;
         private static VehicleGeneric s_primaryVehicle = null;
 
-        protected const float VALID_INCLINE = 0.5f;
-        protected const float GRIP_HIGH_SLIP = 0.5f;
-        protected const float GRIP_OPTIM_SLIP = 0.2f;
         protected const int ENGINE_MODE_REVERSE = -1;
         protected const int ENGINE_MODE_NEUTRAL = 0;
         protected const int ENGINE_MODE_FORWARD = 1;
@@ -119,7 +114,8 @@ namespace DriveIt.Vehicles
         public int leftCount { get => m_wheelCount - m_rightWheels; }
         public bool inlineWheels { get => rightCount == 0 || leftCount == 0; }
         public bool parallelWheels { get => rearCount == 0 || frontCount == 0; }
-        public float springHeight { get => springOffset;  }
+        public float springHeight { get => springOffset; }
+        public float springStiffness { get => springDamp; }
         
         public enum VehicleType
         {
@@ -133,241 +129,17 @@ namespace DriveIt.Vehicles
             Train = 7,
         }
 
-        public class Wheel : MonoBehaviour
-        {
-            public bool isOnGround { get => onGround; }
-            public MapUtils.COLLISION_TYPE wheelGroundType { get => groundType; }
-            public Vector3 wheelGroundNormal { get => normal; }
-            public Vector3 wheelGroundTangent { get => tangent; }
-            public Vector3 wheelGroundBinormal { get => binormal; }
-            public Vector3 wheelContactPoint { get => contactPoint; }
-            public Vector3 wheelContactVelocity { get => contactVelocity; }
-            public float wheelNormalImpulse {  get => impulse.y; }
-            public float wheelTangentImpulse {  get => impulse.z; }
-            public float wheelBinormalImpulse {  get => impulse.x; }
-            public float wheelTorqueFract { get => torqueFract; }
-            public float wheelBrakeForce { get => brakeForce; }
-            public float wheelHandbrakeForce { get => handbrakeForce; }
-            public float wheelRadps {  get => radps; }
-            public float wheelSlip { get => slip; }
-            public float wheelOptimSlip { get => slip - GRIP_OPTIM_SLIP; }
-            public float wheelHighSlip { get => slip - GRIP_HIGH_SLIP; }
-            public float wheelFrictionCoeffX { get => frictionCoeffX; }
-            public float wheelFrictionCoeffZ { get => frictionCoeffZ; }
-            public float wheelCompression { get => compression; }
-            public Vector3 wheelOrigin { get => origin; }
-            public float wheelRadius { get => radius; }
-            public float wheelMoment { get => moment; }
-            public bool isPowered { get => powered && (torqueFract > 0.0f); }
-            public bool isSteerable { get => steerable; }
-            public bool isInvertedSteer { get => inverted; }
-            public bool isFront { get => front; }
-            public bool isRight { get => right; }
-
-            private VehicleGeneric vehicle;
-            private MapUtils.COLLISION_TYPE groundType;
-            private Vector3 origin;
-            private Vector3 tangent;
-            private Vector3 binormal;
-            private Vector3 normal;
-            private Vector3 heightSample;
-            private Vector3 contactPoint;
-            private Vector3 contactVelocity;
-            private Vector3 impulse;
-            private float radius;
-            private float moment;
-            private float radps;
-            private float drag;
-            private float torqueFract;
-            private float brakeForce;
-            private float handbrakeForce;
-            private float compression;
-            private float frictionCoeffX;
-            private float frictionCoeffZ;
-            private float slip;
-            private bool onGround;
-            private bool powered;
-            private bool steerable;
-            private bool inverted;
-            private bool front;
-            private bool right;
-
-            public static Wheel InstanceWheel(VehicleGeneric parent, Vector3 localpos, float moment, float radius, bool isPowered = true, bool isSteerable = false, bool isInvertedSteer = false)
-            {
-                GameObject wheelObject = new GameObject("Wheel");
-                Wheel w = wheelObject.AddComponent<Wheel>();
-                wheelObject.transform.SetParent(parent.transform);
-                wheelObject.transform.localPosition = localpos;
-                w.vehicle = parent;
-                w.tangent = Vector3.zero;
-                w.binormal = Vector3.zero;
-                w.normal = Vector3.zero;
-                w.heightSample = Vector3.zero;
-                w.contactPoint = Vector3.zero;
-                w.contactVelocity = Vector3.zero;
-                w.impulse = Vector3.zero;
-                w.origin = localpos;
-                w.moment = moment;
-                w.radius = radius;
-                w.radps = 0.0f;
-                w.drag = 0.0f;
-                w.torqueFract = 0.0f;
-                w.brakeForce = 0.0f;
-                w.handbrakeForce = 0.0f;
-                w.compression = 0.0f;
-                w.frictionCoeffX = ModSettings.GripCoeffK;
-                w.frictionCoeffZ = ModSettings.GripCoeffK;
-                w.slip = 0.0f;
-                w.onGround = false;
-                w.powered = isPowered;
-                w.steerable = isSteerable;
-                w.inverted = isInvertedSteer;
-                w.front = localpos.z > 0.0f;
-                w.right = localpos.x > 0.0f;
-
-                parent.RegisterWheel(w);
-
-                return w;
-            }
-
-            public void AdjustWheel(float torqueFract = 0.0f, float brakeForce = 0.0f, float handbrakeForce = 0.0f, float drag = 0.0f)
-            {
-                this.torqueFract = torqueFract;
-                this.brakeForce = brakeForce;
-                this.handbrakeForce = handbrakeForce;
-                this.drag = drag;
-            }
-
-            public void ApplyDrag()
-            {
-                this.radps *= 1.0f - this.drag;
-            }
-
-            public void AddVelocity(float radps)
-            {
-                this.radps += radps;
-            }
-
-            public void SetVelocity(float radps)
-            {
-                this.radps = radps;
-            }
-
-            public void OnDestroy()
-            {
-                this.vehicle.DeRegisterWheel(this);
-            }
-
-            // Calculate the road tbn and height at the wheel position.
-            public void CalcRoadState()
-            {
-                Vector3 pos = this.gameObject.transform.position;
-                Vector3 xdisp = pos;
-                Vector3 zdisp = pos;
-
-                xdisp.x += 0.1f;
-                zdisp.z += 0.1f;
-                pos.y = MapUtils.CalculateHeight(pos, 0.0f, out this.groundType);
-                xdisp.y = MapUtils.CalculateHeight(xdisp, 0.0f, out var _);
-                zdisp.y = MapUtils.CalculateHeight(zdisp, 0.0f, out var _);
-
-                this.heightSample = pos;
-                this.normal = Vector3.Normalize(Vector3.Cross(zdisp - pos, xdisp - pos));
-                this.binormal = Vector3.Normalize(Vector3.Cross(this.gameObject.transform.TransformDirection(Vector3.forward), this.normal));
-                this.tangent = Vector3.Normalize(Vector3.Cross(this.normal, this.binormal));
-            }
-
-            // Adjust current wheel speed with previous tick sim and calculate new suspension position and state.
-            public void CalcWheelState(Vector3 upVec)
-            {
-                if (this.onGround)
-                {
-                    Vector3 prelimContactVel = vehicle.m_vehicleRigidBody.GetPointVelocity(this.contactPoint);
-                    float radDelta = Vector3.Dot(prelimContactVel, this.tangent) / this.radius - this.radps;
-                    this.radps += Mathf.Sign(radDelta) * Mathf.Min(Mathf.Abs(radDelta), this.impulse.y * this.radius * this.frictionCoeffZ / this.moment);
-                }
-
-                // calculate fist pass normal impulses. Update wheel suspension position.
-                this.onGround = false;
-                this.impulse = Vector3.zero;
-                this.slip = 1.0f;
-                float normDotUp = Vector3.Dot(this.normal, upVec);
-                if (normDotUp > VALID_INCLINE)
-                {
-                    Vector3 originWheelBottom = vehicle.m_vehicleRigidBody.transform.TransformPoint(this.origin + Vector3.down * this.radius);
-                    float compression = Mathf.Max(Vector3.Dot(this.heightSample - originWheelBottom, this.normal) / normDotUp, 0.0f);
-                    float springVel = (compression - this.compression) / Time.fixedDeltaTime;
-                    float deltaVel = -vehicle.springDamp * Mathf.Exp(-vehicle.springDamp * Time.fixedDeltaTime) * (compression + springVel * Time.fixedDeltaTime) + springVel * Mathf.Exp(-vehicle.springDamp * Time.fixedDeltaTime) - springVel;
-
-                    this.gameObject.transform.localPosition = new Vector3(this.origin.x, this.origin.y + compression, this.origin.z);
-                    this.compression = compression;
-
-                    if (deltaVel < 0.0f)
-                    {
-                        this.onGround = true;
-                        this.impulse.y = (-deltaVel) * vehicle.m_vehicleRigidBody.mass / vehicle.wheelCount;
-                        this.contactPoint = this.gameObject.transform.TransformPoint(new Vector3(0.0f, -this.radius, 0.0f));
-                        this.contactVelocity = vehicle.m_vehicleRigidBody.GetPointVelocity(this.contactPoint);
-                        Vector3 flatVel = this.contactVelocity - Vector3.Dot(this.contactVelocity, this.normal) * this.normal;
-                        this.slip = Mathf.Clamp01(Vector3.Magnitude(flatVel - (this.radps * this.radius * this.tangent)) / Mathf.Clamp(flatVel.magnitude, GRIP_SLIP_SPEED_LOW, GRIP_SLIP_SPEED_HIGH));
-                    }
-                }
-                else
-                {
-                    this.compression = 0.0f;
-                    this.gameObject.transform.localPosition = this.origin;
-                }
-            }
-
-            public void SetFriction(float coeffX, float coeffZ)
-            {
-                this.frictionCoeffX = coeffX;
-                this.frictionCoeffZ = coeffZ;
-            }
-
-            public void AddImpulses(float impulseX = 0.0f, float impulseY = 0.0f, float impulseZ = 0.0f)
-            {
-                this.impulse.x += impulseX;
-                this.impulse.y = Mathf.Max(this.impulse.y + impulseY, 0.0f);
-                this.impulse.z += impulseZ;
-            }
-        }
-
         public bool IsPrimary() { return this == s_primaryVehicle; }
 
         public bool IsTrailer() { return m_isTrailer; }
 
+        public bool IsNeutral() { return m_gear == m_gearNeutral; }
+
         public static VehicleGeneric InstanceVehicle(VehicleInfo info)
         {
             GameObject vgo = new GameObject("VehicleObject");
+            VehicleGeneric vehicle;
 
-            if (
-                info.m_vehicleType == VehicleInfo.VehicleType.Plane)
-            {
-                return vgo.AddComponent<VehiclePlane>();
-            }
-            if (
-                info.m_vehicleType == VehicleInfo.VehicleType.Ferry ||
-                info.m_vehicleType == VehicleInfo.VehicleType.Ship)
-            {
-                return vgo.AddComponent<VehicleBoat>();
-            }
-            if (
-                info.m_vehicleType == VehicleInfo.VehicleType.Balloon ||
-                info.m_vehicleType == VehicleInfo.VehicleType.Helicopter ||
-                info.m_vehicleType == VehicleInfo.VehicleType.Blimp ||
-                info.m_vehicleType == VehicleInfo.VehicleType.Rocket)
-            {
-                return vgo.AddComponent<VehicleHeli>();
-            }
-            if (
-                info.m_vehicleType == VehicleInfo.VehicleType.Train ||
-                info.m_vehicleType == VehicleInfo.VehicleType.Monorail ||
-                info.m_vehicleType == VehicleInfo.VehicleType.Metro ||
-                info.m_vehicleType == VehicleInfo.VehicleType.Tram)
-            {
-                return vgo.AddComponent<VehicleTrain>();
-            }
             int fronts = 0;
             int rears = 0;
             if (info.m_generatedInfo.m_tyres?.Length > 0)
@@ -384,22 +156,54 @@ namespace DriveIt.Vehicles
                     }
                 }
             }
+            
             if (
+                info.m_vehicleType == VehicleInfo.VehicleType.Plane)
+            {
+                vehicle = vgo.AddComponent<VehiclePlane>();
+            }
+            else if (
+                info.m_vehicleType == VehicleInfo.VehicleType.Ferry ||
+                info.m_vehicleType == VehicleInfo.VehicleType.Ship)
+            {
+                vehicle = vgo.AddComponent<VehicleBoat>();
+            }
+            else if (
+                info.m_vehicleType == VehicleInfo.VehicleType.Balloon ||
+                info.m_vehicleType == VehicleInfo.VehicleType.Helicopter ||
+                info.m_vehicleType == VehicleInfo.VehicleType.Blimp ||
+                info.m_vehicleType == VehicleInfo.VehicleType.Rocket)
+            {
+                vehicle = vgo.AddComponent<VehicleHeli>();
+            }
+            else if (
+                info.m_vehicleType == VehicleInfo.VehicleType.Train ||
+                info.m_vehicleType == VehicleInfo.VehicleType.Monorail ||
+                info.m_vehicleType == VehicleInfo.VehicleType.Metro ||
+                info.m_vehicleType == VehicleInfo.VehicleType.Tram)
+            {
+                vehicle = vgo.AddComponent<VehicleTrain>();
+            }
+            else if (
                 info.m_vehicleType == VehicleInfo.VehicleType.Bicycle ||
                 (info.m_vehicleType == VehicleInfo.VehicleType.Car && fronts == 1 && rears == 1))
             {
-                return vgo.AddComponent<VehicleBike>();
+                vehicle = vgo.AddComponent<VehicleBike>();
             }
-            if (fronts + rears > 2 &&
+            else if (fronts + rears > 2 &&
                 (info.m_vehicleType == VehicleInfo.VehicleType.Car ||
                 info.m_vehicleType == VehicleInfo.VehicleType.Trolleybus))
             {
-                return vgo.AddComponent<VehicleCar>();
+                vehicle = vgo.AddComponent<VehicleCar>();
             }
             else
             {
-                return vgo.AddComponent<VehicleGeneric>();
+                vehicle = vgo.AddComponent<VehicleGeneric>();
             }
+
+            vehicle.m_vehicleInfo = info;
+
+            return vehicle;
         }
 
         public Rigidbody GetRigidbody()
@@ -449,6 +253,11 @@ namespace DriveIt.Vehicles
             adjustedBounds.y = m_vehicleInfo.m_lodMesh.bounds.max.y - adjustedY;
 
             InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
+
+            foreach (Wheel w in m_wheelObjects)
+            {
+                RegisterWheel(w);
+            }
             
             if (rearCount == 0 && frontCount > 0)
             {
@@ -543,6 +352,7 @@ namespace DriveIt.Vehicles
 
             foreach (Wheel w in m_wheelObjects)
             {
+                DeRegisterWheel(w);
                 Object.DestroyImmediate(w.gameObject);
             }
             m_wheelObjects.Clear();
@@ -604,11 +414,11 @@ namespace DriveIt.Vehicles
         {
             float width = adjustedBounds.x;
             float length = adjustedBounds.z;
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, groundY + RADIUS_D_WHEEL, adjustedZ + length), momentWheel, RADIUS_D_WHEEL, true, true));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, groundY + RADIUS_D_WHEEL, adjustedZ + length), momentWheel, RADIUS_D_WHEEL, true, true));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(0.0f, groundY + RADIUS_D_WHEEL, adjustedZ + length * 0.5f), momentWheel, RADIUS_D_WHEEL, true, false));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, groundY + RADIUS_D_WHEEL, adjustedZ), momentWheel, RADIUS_D_WHEEL, true, true, true));
-            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, groundY + RADIUS_D_WHEEL, adjustedZ), momentWheel, RADIUS_D_WHEEL, true, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, groundY + RADIUS_WHEEL, adjustedZ + length), momentWheel, RADIUS_WHEEL, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, groundY + RADIUS_WHEEL, adjustedZ + length), momentWheel, RADIUS_WHEEL, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(0.0f, groundY + RADIUS_WHEEL, adjustedZ + length * 0.5f), momentWheel, RADIUS_WHEEL, true, false));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(width * 0.5f, groundY + RADIUS_WHEEL, adjustedZ), momentWheel, RADIUS_WHEEL, true, true, true));
+            m_wheelObjects.Add(Wheel.InstanceWheel(this, new Vector3(-width * 0.5f, groundY + RADIUS_WHEEL, adjustedZ), momentWheel, RADIUS_WHEEL, true, true, true));
         }
         
         protected virtual void InitializeAdjust(ref float frontTorque, ref float rearTorque, ref float frontBraking, ref float rearBraking, ref float frontEBraking, ref float rearEBraking)
@@ -675,10 +485,10 @@ namespace DriveIt.Vehicles
 
                 if (wheel.isOnGround && wheel.wheelGroundType == MapUtils.COLLISION_TYPE.ROAD)
                 {
-                    coeffZ = Mathf.Lerp(ModSettings.GripCoeffS, ModSettings.GripCoeffK, Mathf.Max((wheel.wheelSlip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP), 0.0f));
+                    coeffZ = Mathf.Lerp(ModSettings.GripCoeffS, ModSettings.GripCoeffK, Mathf.Max((wheel.wheelOptimSlip) / (1.0f - Wheel.GRIP_OPTIM_SLIP), 0.0f));
 
                     coeffX = wheel.isSteerable ? ModSettings.GripCoeffS : ModSettings.GripCoeffK;
-                    coeffX = Mathf.Lerp(ModSettings.GripCoeffS, coeffX, Mathf.Max((wheel.wheelSlip - GRIP_OPTIM_SLIP) / (1.0f - GRIP_OPTIM_SLIP), 0.0f));
+                    coeffX = Mathf.Lerp(ModSettings.GripCoeffS, coeffX, Mathf.Max((wheel.wheelOptimSlip) / (1.0f - Wheel.GRIP_OPTIM_SLIP), 0.0f));
                 }
                 else
                 {
@@ -851,7 +661,7 @@ namespace DriveIt.Vehicles
                         {
                             if (w.wheelRadps * wheelTorque > 0.0f)
                             {
-                                wheelTorque *= 1.0f - Mathf.Min(w.wheelSlip / GRIP_OPTIM_SLIP, 1.0f);
+                                wheelTorque *= 1.0f - Mathf.Min(w.wheelSlip / Wheel.GRIP_OPTIM_SLIP, 1.0f);
                             }
                         }
                         break;
@@ -877,7 +687,7 @@ namespace DriveIt.Vehicles
                 }
 
                 // braking ABS
-                float totalBrake = (w.wheelSlip < GRIP_OPTIM_SLIP * 0.75f || !ModSettings.BrakingABS || !w.isOnGround) ? m_brake : 0.0f;
+                float totalBrake = (w.wheelSlip < Wheel.GRIP_OPTIM_SLIP * 0.75f || !ModSettings.BrakingABS || !w.isOnGround) ? m_brake : 0.0f;
 
                 wheelTorque -= Mathf.Sign(w.wheelRadps) * Mathf.Min(totalBrake * w.wheelBrakeForce * w.wheelRadius, Mathf.Abs(wheelTorque + w.wheelRadps * w.wheelMoment / Time.fixedDeltaTime));
 
