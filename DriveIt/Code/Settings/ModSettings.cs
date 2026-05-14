@@ -13,10 +13,11 @@ namespace DriveIt.Settings
     {
         public const bool              BUILDINGCOLLISION = true;
         public const bool              VEHICLECOLLISION = false;
+        public const int               SPEEDUNIT = (int) DriveCommon.SPEEDUNIT_SELECTION.METRIC;
         public const float             MAXVELOCITY = 250f;
         public const bool              AUTOTRANS = true;
         public const bool              BRAKINGABS = true;
-        public const int               TCSLEVEL = 0;
+        public const int               TCSLEVEL = (int) DriveCommon.TRACTIONCTL_LEVEL.FULL;
         public const float             GRIPCOEFFS = 1.15f;
         public const float             GRIPCOEFFK = 0.8f;
         public const float             GRAVITY = 10.0f;
@@ -112,6 +113,7 @@ namespace DriveIt.Settings
             #region Default Values
             BuildingCollision = BUILDINGCOLLISION;
             VehicleCollision = VEHICLECOLLISION;
+            SpeedUnit = SPEEDUNIT;
             Gravity = GRAVITY;
             MaxVelocity = MAXVELOCITY;
             AutoTrans = AUTOTRANS;
@@ -210,6 +212,11 @@ namespace DriveIt.Settings
         public bool XMLVehicleCollision { get => VehicleCollision; set => VehicleCollision = value; }
         [XmlIgnore]
         internal static bool VehicleCollision = VEHICLECOLLISION;
+
+        [XmlElement("SpeedUnit")]
+        public int XMLSpeedUnit { get => SpeedUnit; set => SpeedUnit = value; }
+        [XmlIgnore]
+        internal static int SpeedUnit = SPEEDUNIT;
 
         [XmlElement("MaxVelocity")]
         public float XMLMaxVelocity { get => MaxVelocity; set => MaxVelocity = value; }

@@ -103,6 +103,8 @@ namespace DriveIt.Vehicles
             w.front = localpos.z > 0.0f;
             w.right = localpos.x > 0.0f;
 
+            w.vehicle.RegisterWheel(w);
+
             return w;
         }
 
@@ -127,6 +129,11 @@ namespace DriveIt.Vehicles
         public void SetVelocity(float radps)
         {
             this.radps = radps;
+        }
+
+        public void OnDestroy()
+        {
+            this.vehicle.DeRegisterWheel(this);
         }
 
         // Calculate the road tbn and height at the wheel position.

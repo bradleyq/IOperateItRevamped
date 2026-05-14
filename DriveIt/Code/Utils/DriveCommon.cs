@@ -59,6 +59,12 @@ namespace DriveIt.Utils
         public const string TK_SETTINGS_GROUP_GAME          = "SETTINGS_GROUP_GAME";
         public const string TK_SETTINGS_GROUP_KEYS          = "SETTINGS_GROUP_KEYS";
         public const string TK_SETTINGS_RESTOREDEFAULT      = "SETTINGS_RESTOREDEFAULT";
+        public const string TK_SETTINGS_BUILDINGCOLLISION   = "SETTINGS_BUILDINGCOLLISION";
+        public const string TK_SETTINGS_VEHICLECOLLISION    = "SETTINGS_VEHICLECOLLISION";
+        public const string TK_SETTINGS_SPEEDUNIT           = "SETTINGS_SPEEDUNIT";
+        public const string TK_SETTINGS_SPEEDUNIT_METRIC    = "SETTINGS_SPEEDUNIT_METRIC";
+        public const string TK_SETTINGS_SPEEDUNIT_IMPERIAL  = "SETTINGS_SPEEDUNIT_IMPERIAL";
+        public const string TK_SETTINGS_SPEEDUNIT_CITIES    = "SETTINGS_SPEEDUNIT_CITIES";
         public const string TK_SETTINGS_GRAVITY             = "SETTINGS_GRAVITY";
         public const string TK_SETTINGS_MAXVELOCITY         = "SETTINGS_MAXVELOCITY";
         public const string TK_SETTINGS_ENGINEPOWER         = "SETTINGS_ENGINEPOWER";
@@ -70,8 +76,6 @@ namespace DriveIt.Utils
         public const string TK_SETTINGS_TRACTIONCTL_SPORT   = "SETTINGS_TRACTIONCTL_SPORT";
         public const string TK_SETTINGS_TRACTIONCTL_TRACK   = "SETTINGS_TRACTIONCTL_TRACK";
         public const string TK_SETTINGS_TRACTIONCTL_OFF     = "SETTINGS_TRACTIONCTL_OFF";
-        public const string TK_SETTINGS_BUILDINGCOLLISION   = "SETTINGS_BUILDINGCOLLISION";
-        public const string TK_SETTINGS_VEHICLECOLLISION    = "SETTINGS_VEHICLECOLLISION";
         public const string TK_SETTINGS_OFFSET_X            = "SETTINGS_OFFSET_X";
         public const string TK_SETTINGS_OFFSET_Y            = "SETTINGS_OFFSET_Y";
         public const string TK_SETTINGS_OFFSET_Z            = "SETTINGS_OFFSET_Z";
@@ -139,11 +143,10 @@ namespace DriveIt.Utils
         public const float ROAD_WALL_HEIGHT = 0.75f;            // per tick height delta before the slope is considered a wall
         public const float ROAD_THICKNESS = 1.5f;               // height delta below road surface to be considered still part of the road
         public const float FLOAT_ERROR = 0.01f;                 // a small float value
-        public const float MS_TO_KMPH = 3.6f;                   // m/s to km/h
+        public const float MS_TO_KMPH = 3.6f;                   // m/s to kmph
+        public const float MS_TO_CSUS = 25.0f / 16.0f;          // m/s to uph
+        public const float MS_TO_MPH =  2.23694f;               // m/s to mph
         public const float RPS_TO_RPM = 9.549f;                 // radians per second to rpm
-        //public const float UNIT_TO_M = 25.0f / 54.0f;           // unity unit to m
-        //public const float M_TO_UNIT = 54.0f / 25.0f;           // m to unity unit
-        //public const float UNIT_TO_MPH = UNIT_TO_M * 2.23694f;  // unity unit to mph
         public const float KN_TO_N = 1000f;                     // KN to N
         public const float KW_TO_W = 1000f;                     // KW to W
         public const float LINKAGE_K = 1000000.0f;              // vehicle linkage spring tension
@@ -158,6 +161,15 @@ namespace DriveIt.Utils
             OFF = 3,
         }
 
+        public enum SPEEDUNIT_SELECTION
+        {
+            METRIC = 0,
+            IMPERIAL = 1,
+            CITIES = 2,
+        }
+
+        public static readonly float[] SPEEDUNIT_RATIOS = { MS_TO_KMPH, MS_TO_MPH, MS_TO_CSUS };
+        public static readonly string[] SPEEDUNIT_STRINGS = { "km/h", "MPH", "UPH" };
         #endregion
 
 

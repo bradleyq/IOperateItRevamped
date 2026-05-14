@@ -58,6 +58,16 @@ namespace DriveIt.Settings.Tabs
             vehicleCollision_CheckBox.eventCheckChanged += (_, isChecked) => ModSettings.VehicleCollision = isChecked;
             vehicleCollision_CheckBox.eventVisibilityChanged += (_, isVisible) => vehicleCollision_CheckBox.isChecked = ModSettings.VehicleCollision;
             currentY += vehicleCollision_CheckBox.height + SettingsPanel.MediumMargin;
+
+            string[] displayUnits = {
+                Translations.Translate(DriveCommon.TK_SETTINGS_SPEEDUNIT_METRIC),
+                Translations.Translate(DriveCommon.TK_SETTINGS_SPEEDUNIT_IMPERIAL),
+                Translations.Translate(DriveCommon.TK_SETTINGS_SPEEDUNIT_CITIES),
+            };
+            var SpeedUnit_Dropdown = UIDropDowns.AddPlainDropDown(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_SPEEDUNIT), displayUnits, width: 300);
+            SpeedUnit_Dropdown.eventSelectedIndexChanged += (_, index) => ModSettings.SpeedUnit = index;
+            SpeedUnit_Dropdown.parent.eventVisibilityChanged += (_, isVisible) => SpeedUnit_Dropdown.selectedIndex = ModSettings.SpeedUnit;
+            currentY += SpeedUnit_Dropdown.parent.height + SettingsPanel.Margin;
             #endregion
 
             #region Vehicle Group
@@ -98,7 +108,7 @@ namespace DriveIt.Settings.Tabs
                 Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_FULL),
                 Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_SPORT),
                 Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_TRACK),
-                Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_OFF)
+                Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL_OFF),
             };
             var TCS_Dropdown = UIDropDowns.AddPlainDropDown(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_TRACTIONCTL), tractionLevels, width:300);
             TCS_Dropdown.eventSelectedIndexChanged += (_, index) => ModSettings.TCSLevel = index;

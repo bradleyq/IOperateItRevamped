@@ -1,5 +1,6 @@
 ﻿using AlgernonCommons;
 using ColossalFramework;
+using DriveIt.Settings;
 using DriveIt.Utils;
 using DriveIt.Vehicles;
 using System.Collections.Generic;
@@ -83,6 +84,7 @@ namespace DriveIt
 
         private static GUIStyle s_speedoStyle;
         private static GUIStyle s_gearStyle;
+        private static GUIStyle s_unitStyle;
         private static Material s_backupUndergroundMaterial = null;
         private static Material s_uiMaterial = null;
         private static Material s_renderMaterial = null;
@@ -329,6 +331,13 @@ namespace DriveIt
                 s_gearStyle.fontStyle = FontStyle.Italic;
                 s_gearStyle.padding.right = s_gearStyle.fontSize / 8;
 
+                s_unitStyle = new GUIStyle();
+                s_unitStyle.fontSize = (int)(Screen.height * UI_SIZE * 0.1f);
+                s_unitStyle.normal.textColor = Color.white;
+                s_unitStyle.alignment = TextAnchor.LowerRight;
+                s_unitStyle.fontStyle = FontStyle.Italic;
+                s_unitStyle.padding.right = s_unitStyle.fontSize / 8;
+
                 s_audioGroup = new AudioGroup(MAX_CONCURRENT_SOUNDS, new SavedFloat(global::Settings.effectAudioVolume, global::Settings.gameSettingsFile, DefaultSettings.effectAudioVolume, true));
 
                 GameObject tireTrailRefObject = new GameObject();
@@ -442,8 +451,9 @@ namespace DriveIt
                 GUI.color = UI_FG_COLOR;
 
                 // text
+                GUI.Label(area, DriveCommon.SPEEDUNIT_STRINGS[ModSettings.SpeedUnit], s_unitStyle);
                 GUI.Label(area, m_vehicleInstance.gear, s_gearStyle);
-                GUI.Label(area, Mathf.RoundToInt(m_vehicleInstance.speed * DriveCommon.MS_TO_KMPH).ToString(), s_speedoStyle);
+                GUI.Label(area, Mathf.RoundToInt(m_vehicleInstance.speed * DriveCommon.SPEEDUNIT_RATIOS[ModSettings.SpeedUnit]).ToString(), s_speedoStyle);
 
                 // Draw tach arc
                 DriveCommon.DrawRingSegment(new Vector2(x + sizePx * 0.5f, y + sizePx * 0.5f),

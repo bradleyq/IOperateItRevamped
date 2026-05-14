@@ -253,11 +253,6 @@ namespace DriveIt.Vehicles
             adjustedBounds.y = m_vehicleInfo.m_lodMesh.bounds.max.y - adjustedY;
 
             InitializeInternal(ref adjustedBounds, ref adjustedY, ref adjustedZ, ref groundY, ref constraints);
-
-            foreach (Wheel w in m_wheelObjects)
-            {
-                RegisterWheel(w);
-            }
             
             if (rearCount == 0 && frontCount > 0)
             {
@@ -352,7 +347,6 @@ namespace DriveIt.Vehicles
 
             foreach (Wheel w in m_wheelObjects)
             {
-                DeRegisterWheel(w);
                 Object.DestroyImmediate(w.gameObject);
             }
             m_wheelObjects.Clear();
@@ -381,6 +375,34 @@ namespace DriveIt.Vehicles
             m_prevRadps = 0.0f;
             m_radpsTrans = 0.0f;
             m_groundY = 0.0f;
+        }
+
+        public void RegisterWheel(Wheel w)
+        {
+            m_wheelCount++;
+
+            if (w.isFront)
+            {
+                m_frontWheels++;
+            }
+            if (w.isRight)
+            {
+                m_rightWheels++;
+            }
+        }
+
+        public void DeRegisterWheel(Wheel w)
+        {
+            m_wheelCount--;
+
+            if (w.isFront)
+            {
+                m_frontWheels--;
+            }
+            if (w.isRight)
+            {
+                m_rightWheels--;
+            }
         }
 
         protected virtual float enginePower { get => ModSettings.EnginePower; }
@@ -1127,34 +1149,6 @@ namespace DriveIt.Vehicles
             if (m_vehicleRigidBody.velocity.magnitude > Settings.ModSettings.MaxVelocity / DriveCommon.MS_TO_KMPH)
             {
                 m_vehicleRigidBody.AddForce(m_vehicleRigidBody.velocity.normalized * Settings.ModSettings.MaxVelocity / DriveCommon.MS_TO_KMPH - m_vehicleRigidBody.velocity, ForceMode.VelocityChange);
-            }
-        }
-
-        private void RegisterWheel(Wheel w)
-        {
-            m_wheelCount++;
-
-            if (w.isFront)
-            {
-                m_frontWheels++;
-            }
-            if (w.isRight)
-            {
-                m_rightWheels++;
-            }
-        }
-
-        private void DeRegisterWheel(Wheel w)
-        {
-            m_wheelCount--;
-
-            if (w.isFront)
-            {
-                m_frontWheels--;
-            }
-            if (w.isRight)
-            {
-                m_rightWheels--;
             }
         }
     }
