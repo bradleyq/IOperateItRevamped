@@ -34,6 +34,7 @@ namespace DriveIt.Vehicles
         private const float GRAVITY_STD = 10.0f;
         private const float MASS_FACTOR = 5.0f;
         private const float MASS_BIAS = 1750.0f;
+        private const float CUSTOM_LOOK_RESET = 10.0f;
 
         private static bool s_first_create = true;
         private static float s_engine_inertia;
@@ -49,6 +50,7 @@ namespace DriveIt.Vehicles
         private float m_pitch = 0.0f;
         private float m_flying = 0.0f;
         private bool m_constrained = false;
+        private bool m_camSet = false;
 
         protected override float enginePower { get => ModSettings.HeliEnginePower; }
         protected override float brakingForce { get => 500.0f; }
@@ -161,6 +163,13 @@ namespace DriveIt.Vehicles
                     m_vehicleRigidBody.constraints = RigidbodyConstraints.FreezeRotationZ | RigidbodyConstraints.FreezeRotationX;
                     m_constrained = true;
                 }
+            }
+
+            if (IsPrimary() && !m_camSet)
+            {
+                m_camSet = true;
+                DriveCam.instance.SetLookResetTime(CUSTOM_LOOK_RESET);
+                DriveCam.instance.SetCamAxes(DriveCam.CamAxes.Y);
             }
         }
 

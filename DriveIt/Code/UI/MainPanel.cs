@@ -22,6 +22,8 @@ namespace DriveIt.UI
         private UIButton _mainBtn;
         private DriveSelectTool _positionSelect;
         private UIButton _spawnBtn;
+        private UIButton _respawnBtn;
+        private UICheckBox _trailerBox;
         internal UIList _vehicleList;
         private PreviewPanel _previewPanel;
 
@@ -38,7 +40,7 @@ namespace DriveIt.UI
             Panel.width = 800f;
 
             var currentY = Margin;
-            _vehicleList = UIList.AddUIList<MainPanelRow>(Panel, Margin, currentY, 400f, 320f, VehicleRowHeight);
+            _vehicleList = UIList.AddUIList<MainPanelRow>(Panel, Margin, currentY, 400f, 350f, VehicleRowHeight);
             var vehicleInfos = new FastList<object>();
 
             for (uint i = 0; i < PrefabCollection<VehicleInfo>.PrefabCount(); i++)
@@ -72,10 +74,21 @@ namespace DriveIt.UI
 
             currentY += _vehicleList.height + Margin;
 
-            _spawnBtn = UIButtons.AddButton(Panel, (_vehicleList.width - 200f) / 2f, currentY, Translations.Translate(DriveCommon.TK_SPAWNBTN_TEXT), 200f, 40f);
+            _spawnBtn = UIButtons.AddButton(Panel, 50f, currentY, Translations.Translate(DriveCommon.TK_SPAWNBTN_TEXT), 200f, 40f);
             _spawnBtn.isEnabled = false;
             _spawnBtn.playAudioEvents = true;
             _spawnBtn.eventClick += SpawnBtnClickEvent;
+
+            _respawnBtn = UIButtons.AddButton(Panel, 300f, currentY, Translations.Translate(DriveCommon.TK_RESPAWNBTN_TEXT), 200f, 40f);
+            _respawnBtn.isEnabled = false;
+            _respawnBtn.playAudioEvents = true;
+            _respawnBtn.eventClick += RespawnBtnClickEvent;
+
+            _trailerBox = UICheckBoxes.AddLabelledCheckBox(Panel, 550f, currentY + 10f, Translations.Translate(DriveCommon.TK_TRAILERBOX_TEXT), 20f, 1.0f);
+            _trailerBox.isEnabled = false;
+            _trailerBox.playAudioEvents = true;
+            _trailerBox.eventCheckChanged += TrailerBoxToggleEvent;
+
             Panel.height = currentY + _spawnBtn.height + Margin;
             Panel.Hide();
 
@@ -125,6 +138,8 @@ namespace DriveIt.UI
         private void OnDestory()
         {
             _spawnBtn.eventClick -= SpawnBtnClickEvent;
+            _respawnBtn.eventClick -= RespawnBtnClickEvent;
+            _trailerBox.eventCheckChanged -= TrailerBoxToggleEvent;
             Destroy(Panel);
             Destroy(GetMainButton());
             Destroy(_positionSelect);
@@ -203,6 +218,17 @@ namespace DriveIt.UI
             }
             else _spawnBtn.isEnabled = false;
         }
+
+        private void RespawnBtnClickEvent( UIComponent component, UIMouseEventParameter eventParam)
+        {
+
+        }
+
+        private void TrailerBoxToggleEvent(UIComponent component, bool value)
+        {
+
+        }
+
         public void LocaleChanged()
         {
             OnDestory();

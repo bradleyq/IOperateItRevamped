@@ -10,6 +10,8 @@ namespace DriveIt
 {
     public class DriveController : MonoBehaviour
     {
+        private const float DEFAULT_CAM_DISTANCE = 1.5f;
+
         public static DriveController instance { get; private set; }
 
         private DriveColliders m_collidersManager = new DriveColliders();
@@ -129,12 +131,12 @@ namespace DriveIt
 
             if (!alreadyCreated)
             {
-                DriveCam.instance.EnableCam(m_vehicle.GetRigidbody(), m_vehicle.GetBoxCollider().size.z * 2.0f);
+                DriveCam.instance.EnableCam(m_vehicle.GetRigidbody(), m_vehicle.GetBoxCollider().size.z * DEFAULT_CAM_DISTANCE);
                 DriveButton.instance.SetDisable();
             }
             else
             {
-                DriveCam.instance.RetargetCam(m_vehicle.GetRigidbody(), m_vehicle.GetBoxCollider().size.z * 2.0f);
+                DriveCam.instance.RetargetCam(m_vehicle.GetRigidbody(), m_vehicle.GetBoxCollider().size.z * DEFAULT_CAM_DISTANCE);
             }
         }
 

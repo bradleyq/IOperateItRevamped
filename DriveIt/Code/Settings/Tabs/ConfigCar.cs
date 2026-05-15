@@ -16,7 +16,7 @@ namespace DriveIt.Settings.Tabs
             var groupGeneral = UISpacers.AddTitleSpacer(panel, SettingsPanel.Margin, currentY, headerWidth, Translations.Translate(DriveCommon.TK_SETTINGS_GROUP_CAR));
             currentY += groupGeneral.height + SettingsPanel.LargeMargin;
 
-            var enginePower_Slider = SettingsPanel.CreateSlider(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_ENGINEPOWER), 5.0f, 1000.0f, 5.0f, 1.0f, "N0", " kW");
+            var enginePower_Slider = SettingsPanel.CreateSlider(panel, SettingsPanel.MediumMargin, currentY, Translations.Translate(DriveCommon.TK_SETTINGS_ENGINEPOWER), 5.0f, 1500.0f, 5.0f, 1.0f, "N0", " kW");
             enginePower_Slider.eventValueChanged += (_, value) => ModSettings.CarEnginePower = value;
             enginePower_Slider.parent.eventVisibilityChanged += (_, isVisible) => enginePower_Slider.value = ModSettings.CarEnginePower;
             currentY += enginePower_Slider.parent.height + SettingsPanel.Margin;

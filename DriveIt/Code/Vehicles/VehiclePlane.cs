@@ -48,6 +48,7 @@ namespace DriveIt.Vehicles
         private float m_pitch = 0.0f;
         private float m_flying = 0.0f;
         private bool m_constrained = false;
+        private bool m_camSet = false;
 
         protected override float enginePower { get => ModSettings.PlaneEnginePower; }
         protected override float brakingForce { get => ModSettings.PlaneBrakingForce; }
@@ -164,6 +165,12 @@ namespace DriveIt.Vehicles
                     m_vehicleRigidBody.constraints = RigidbodyConstraints.FreezeRotationZ;
                     m_constrained = true;
                 }
+            }
+
+            if (IsPrimary() && !m_camSet)
+            {
+                m_camSet = true;
+                DriveCam.instance.SetCamAxes(DriveCam.CamAxes.XYZ);
             }
         }
 

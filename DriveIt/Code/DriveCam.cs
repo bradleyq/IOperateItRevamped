@@ -18,8 +18,16 @@ namespace DriveIt
         private const float LOOK_MAX_DIST = 100.0f;
         private const float LOOK_RESET_TIME = 5.0f;
         private const float NEAR_CLIP = 1.5f;
+        private const float FOLLOW_MIN_VEL = 1.0f;
 
         public static DriveCam instance { get; private set; }
+
+        public enum CamAxes
+        {
+            Y = 0,
+            XY = 1,
+            XYZ = 2,
+        }
 
         private Rigidbody m_targetRigidBody;
         private Vector3 m_lastValidDir;
@@ -27,6 +35,8 @@ namespace DriveIt
         private Quaternion m_rotationOffset;
         private float m_lastMovedTime;
         private float m_followDistance;
+        private float m_lookResetTime;
+        private CamAxes m_camAxes;
 
         private Camera m_mainCamera;
         private Camera m_uiCamera;
@@ -78,6 +88,18 @@ namespace DriveIt
         {
             m_targetRigidBody = rigidBody;
             m_followDistance = Mathf.Clamp(distance, 0.0f, LOOK_MAX_DIST);
+            m_lookResetTime = LOOK_RESET_TIME;
+            m_camAxes = CamAxes.XY;
+        }
+
+        public void SetLookResetTime(float time)
+        {
+            m_lookResetTime = time;
+        }
+
+        public void SetCamAxes(CamAxes axes)
+        {
+            m_camAxes = axes;
         }
 
         public bool OnPause()
@@ -88,6 +110,7 @@ namespace DriveIt
             }
             return true;
         }
+
         private void SetUIVisibility(bool visibility)
         {
             Singleton<NotificationManager>.instance.NotificationsVisible = visibility;
@@ -181,21 +204,29 @@ namespace DriveIt
         {
             Vector3 vehiclePosition = m_targetRigidBody.transform.TransformPoint(Settings.ModSettings.Offset);
 
-            if (Time.time > m_lastMovedTime + LOOK_RESET_TIME)
+            if (Time.time > m_lastMovedTime + m_lookResetTime)
             {
                 Vector3 vehicleVelocity = m_targetRigidBody.velocity;
                 Vector3 vehicleDir = Vector3.Normalize(vehicleVelocity);
+                Vector3 vehicleUp = m_targetRigidBody.transform.up;
 
                 m_rotation = m_mainCamera.transform.rotation;
 
-                if (Vector3.Magnitude(vehicleVelocity) < 1.0 || vehicleDir.y > 0.99f || vehicleDir.y < -0.99f)
+                if (Vector3.Magnitude(vehicleVelocity) < FOLLOW_MIN_VEL || vehicleDir.y > 0.99f || vehicleDir.y < -0.99f)
                 {
                     vehicleDir = m_lastValidDir;
                 }
+
+                if (m_camAxes == CamAxes.Y)
+                {
+                    vehicleDir.y = 0.0f;
+                    vehicleDir = vehicleDir.normalized;
+                }
+
                 m_lastValidDir = vehicleDir;
 
                 Quaternion targetRotation = Quaternion.identity;
-                targetRotation.SetLookRotation(vehicleDir);
+                targetRotation.SetLookRotation(vehicleDir, m_camAxes == CamAxes.XYZ ? vehicleUp : Vector3.up);
 
                 var eulerTmp = m_rotationOffset.eulerAngles;
                 eulerTmp.y = 0f;
@@ -287,7 +318,7 @@ namespace DriveIt
 
             if (yawDegree != 0f || pitchDegree != 0f)
             {
-                if (Time.time > m_lastMovedTime + LOOK_RESET_TIME)
+                if (Time.time > m_lastMovedTime + m_lookResetTime)
                 {
                     m_rotationOffset = m_rotation;
                 }

@@ -14,6 +14,9 @@ namespace DriveIt.Vehicles
         private const float STAB_BOOST_HI = 0.5f;
         private const float STAB_BOOST_MID = 0.3f;
         private const float STAB_BOOST_LO = 0.1f;
+        private const float GEAR_AVG_R_MAX = 0.7f;
+        private const float GEAR_AVG_R_BIAS = 0.2f;
+        private const float GEAR_AVG_R_HEAVY_BOOST = 0.2f;
 
         private bool m_constrained = false;
 
@@ -54,13 +57,17 @@ namespace DriveIt.Vehicles
             }
 
             avgRadius /= wheelCount;
+            if (m_vehicleInfo.m_trailers?.Length > 0)
+            {
+                avgRadius += GEAR_AVG_R_HEAVY_BOOST;
+            }
             m_gearRatios = new float[gearCount];
             m_gearNames = ENGINE_GEAR_NAMES;
             m_gearNeutral = ENGINE_GEAR_NEUTRAL;
 
             for (int gear = 0; gear < gearCount; gear++)
             {
-                m_gearRatios[gear] = Mathf.Lerp(ENGINE_GEAR_RATIOS_L[gear], ENGINE_GEAR_RATIOS_S[gear], Mathf.Clamp01((avgRadius - 0.2f) / 0.7f));
+                m_gearRatios[gear] = Mathf.Lerp(ENGINE_GEAR_RATIOS_L[gear], ENGINE_GEAR_RATIOS_S[gear], Mathf.Clamp01((avgRadius - GEAR_AVG_R_BIAS) / GEAR_AVG_R_MAX));
             }
         }
 
@@ -96,6 +103,15 @@ namespace DriveIt.Vehicles
 
         protected override void PhysicsPreProcess(ref Vector3 vehiclePos, ref Vector3 vehicleVel, ref Vector3 vehicleAngularVel, Vector3 upVec, Vector3 forwardVec)
         {
+            if (m_effects.IsExtrasEnabled())
+            {
+                m_vehicleFlags |= Vehicle.Flags.GoingBack;
+            }
+            else
+            {
+                m_vehicleFlags &= ~Vehicle.Flags.GoingBack;
+            }
+
             bool slipping = false;
 
             if (m_constrained)

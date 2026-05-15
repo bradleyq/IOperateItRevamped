@@ -109,7 +109,7 @@ namespace DriveIt
 
         public bool IsExtrasEnabled()
         {
-            return m_isExtrasEnabled;
+            return m_isExtrasEnabled && m_specialEffects.Count == 0;
         }
 
         public void Initialize(VehicleGeneric vehicle)
@@ -141,7 +141,7 @@ namespace DriveIt
             }
             else
             {
-                m_vehicleInfo.m_material.SetVectorArray(Singleton<VehicleManager>.instance.ID_TyreLocation, new Vector4[1] { Vector4.one });
+                m_vehicleInfo.m_material.SetVectorArray(Singleton<VehicleManager>.instance.ID_TyreLocation, VehicleInfo.s_EmptyTyreArray);
             }
 
             Mesh vehicleMesh = m_vehicleInfo.m_mesh;
@@ -169,7 +169,7 @@ namespace DriveIt
                     }
                     else
                     {
-                        subInfo.m_material.SetVectorArray(Singleton<VehicleManager>.instance.ID_TyreLocation, new Vector4[1] { Vector4.one });
+                        subInfo.m_material.SetVectorArray(Singleton<VehicleManager>.instance.ID_TyreLocation, VehicleInfo.s_EmptyTyreArray);
                     }
 
                     MeshFilter meshFilter = subMeshObject.AddComponent<MeshFilter>();
