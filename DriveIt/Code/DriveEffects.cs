@@ -396,7 +396,7 @@ namespace DriveIt
             }
 
             materialBlock.SetMatrix(Singleton<VehicleManager>.instance.ID_TyreMatrix, 
-                Matrix4x4.TRS(Mathf.Clamp(m_spCompression + m_vehicleInstance.springHeight, Mathf.Min(m_vehicleInstance.springHeight, MAX_VISUAL_COMPRESSION), MAX_VISUAL_COMPRESSION) * Vector3.up, 
+                Matrix4x4.TRS(Mathf.Clamp(m_spCompression + m_vehicleInstance.springOffset, Mathf.Min(m_vehicleInstance.springOffset, MAX_VISUAL_COMPRESSION), MAX_VISUAL_COMPRESSION) * Vector3.up, 
                               Quaternion.LookRotation(m_spTangent, m_spNormal), 
                               Vector3.one));
 

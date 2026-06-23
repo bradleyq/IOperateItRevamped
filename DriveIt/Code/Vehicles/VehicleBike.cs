@@ -43,14 +43,15 @@ namespace DriveIt.Vehicles
             public static float CurrentEstimate => x;
         }
 
+        public override float springDamp { get => ModSettings.BikeSpringDamp; }
+        public override float springOffset { get => ModSettings.BikeSpringOffset; }
+
         protected override float enginePower { get => ModSettings.BikeEnginePower; }
         protected override float brakingForce { get => ModSettings.BikeBrakingForce; }
         protected override float downForce { get => ModSettings.BikeDownForce; }
         protected override float driveBias { get => ModSettings.BikeDriveBias; }
         protected override float brakeBias { get => ModSettings.BikeBrakeBias; }
-        protected override float springDamp { get => ModSettings.BikeSpringDamp; }
-        protected override float springOffset { get => ModSettings.BikeSpringOffset; }
-        protected override float springSwayBar { get => 0.0f; }
+        protected override float springSwayBar { get => DriveCommon.FLOAT_ZERO; }
         protected override float massCenterHeight { get => ModSettings.BikeMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.BikeMassCenterBias; }
         protected override float steerMax { get => STEER_MAX; }

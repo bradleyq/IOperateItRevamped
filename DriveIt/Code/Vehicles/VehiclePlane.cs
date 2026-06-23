@@ -33,6 +33,7 @@ namespace DriveIt.Vehicles
         private const float MASS_FACTOR = 19.5f;
         private const float MASS_BIAS = 800.0f;
         private const float MAX_WHEEL_WIDTH = 10.0f;
+        private const float SPRING_OFFSET = -0.05f;
 
         private static bool s_first_create = true;
         private static float s_engine_inertia;
@@ -50,14 +51,15 @@ namespace DriveIt.Vehicles
         private bool m_constrained = false;
         private bool m_camSet = false;
 
+        public override float springDamp { get => ModSettings.PlaneSpringDamp; }
+        public override float springOffset { get => SPRING_OFFSET; }
+
         protected override float enginePower { get => ModSettings.PlaneEnginePower; }
         protected override float brakingForce { get => ModSettings.PlaneBrakingForce; }
         protected override float downForce { get => ModSettings.PlaneDownForce; }
-        protected override float driveBias { get => 0.5f; }
+        protected override float driveBias { get => DriveCommon.FLOAT_CENTER; }
         protected override float brakeBias { get => ModSettings.PlaneBrakeBias; }
-        protected override float springDamp { get => ModSettings.PlaneSpringDamp; }
-        protected override float springOffset { get => -0.05f; }
-        protected override float springSwayBar { get => 0.0f; }
+        protected override float springSwayBar { get => DriveCommon.FLOAT_ZERO; }
         protected override float massCenterHeight { get => ModSettings.PlaneMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.PlaneMassCenterBias; }
         protected override float steerMax { get => STEER_MAX; }

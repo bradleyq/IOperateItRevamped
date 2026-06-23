@@ -35,6 +35,7 @@ namespace DriveIt.Vehicles
         private const float MASS_FACTOR = 5.0f;
         private const float MASS_BIAS = 1750.0f;
         private const float CUSTOM_LOOK_RESET = 10.0f;
+        private const float BRAKING_FORCE = 500.0f;
 
         private static bool s_first_create = true;
         private static float s_engine_inertia;
@@ -52,14 +53,17 @@ namespace DriveIt.Vehicles
         private bool m_constrained = false;
         private bool m_camSet = false;
 
+        public override float springDamp { get => ModSettings.HeliSpringDamp; }
+        public override float springOffset { get => ModSettings.HeliSpringOffset; }
+        public override Vector3 frontLink { get => Vector3.up * (m_vehicleInfo.m_generatedInfo.m_size.y - m_vehicleInfo.m_attachOffsetFront) + Vector3.forward * (massCenterBias - 0.5f) * m_vehicleInfo.m_generatedInfo.m_size.z; }
+        public override Vector3 backLink { get => Vector3.up * m_vehicleInfo.m_attachOffsetBack + Vector3.forward * (massCenterBias - 0.5f) * m_vehicleInfo.m_generatedInfo.m_size.z; }
+
         protected override float enginePower { get => ModSettings.HeliEnginePower; }
-        protected override float brakingForce { get => 500.0f; }
-        protected override float downForce { get => 0.0f; }
-        protected override float driveBias { get => 0.5f; }
-        protected override float brakeBias { get => 0.5f; }
-        protected override float springDamp { get => ModSettings.HeliSpringDamp; }
-        protected override float springOffset { get => ModSettings.HeliSpringOffset; }
-        protected override float springSwayBar { get => 0.0f; }
+        protected override float brakingForce { get => BRAKING_FORCE; }
+        protected override float downForce { get => DriveCommon.FLOAT_ZERO; }
+        protected override float driveBias { get => DriveCommon.FLOAT_CENTER; }
+        protected override float brakeBias { get => DriveCommon.FLOAT_CENTER; }
+        protected override float springSwayBar { get => DriveCommon.FLOAT_ZERO; }
         protected override float massCenterHeight { get => ModSettings.HeliMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.HeliMassCenterBias; }
         protected override float steerMax { get => STEER_MAX; }
@@ -71,6 +75,22 @@ namespace DriveIt.Vehicles
         protected override float massFactor { get => MASS_FACTOR; }
         protected override float massBias { get => MASS_BIAS; }
         protected virtual float engineRPSBias { get => ENGINE_RPS_BIAS; }
+        protected override ConfigurableJoint ConfigureJointInternal()
+        {
+            ConfigurableJoint joint = gameObject.AddComponent<ConfigurableJoint>();
+            joint.anchor = backLink;
+            joint.autoConfigureConnectedAnchor = true;
+            joint.breakForce = Mathf.Infinity;
+            joint.breakTorque = Mathf.Infinity;
+            joint.xMotion = ConfigurableJointMotion.Locked;
+            joint.yMotion = ConfigurableJointMotion.Locked;
+            joint.zMotion = ConfigurableJointMotion.Locked;
+            joint.angularXMotion = ConfigurableJointMotion.Free;
+            joint.angularYMotion = ConfigurableJointMotion.Free;
+            joint.angularZMotion = ConfigurableJointMotion.Free;
+            joint.enableCollision = false;
+            return joint;
+        }
 
         protected override void AwakeExt()
         {

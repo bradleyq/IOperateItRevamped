@@ -1,4 +1,5 @@
 ﻿using DriveIt.Settings;
+using DriveIt.Utils;
 using UnityEngine;
 
 namespace DriveIt.Vehicles
@@ -11,15 +12,17 @@ namespace DriveIt.Vehicles
         private const float DRAG_FACTOR = 0.5f;
         private const float STAB_BOOST = 1.25f;
         private const float RIDE_HEIGHT = 1.0f;
+        private const float WATER_DAMP = 1.0f;
+
+        public override float springDamp { get => WATER_DAMP; }
+        public override float springOffset { get => ModSettings.BoatSpringOffset; }
 
         protected override float enginePower { get => ModSettings.BoatEnginePower; }
         protected override float brakingForce { get => ModSettings.BoatBrakingForce; }
         protected override float downForce { get => ModSettings.BoatDownForce; }
         protected override float driveBias { get => ModSettings.BoatDriveBias; }
         protected override float brakeBias { get => ModSettings.BoatBrakeBias; }
-        protected override float springDamp { get => 1.0f; }
-        protected override float springOffset { get => ModSettings.BoatSpringOffset; }
-        protected override float springSwayBar { get => 0.0f; }
+        protected override float springSwayBar { get => DriveCommon.FLOAT_ZERO; }
         protected override float massCenterHeight { get => ModSettings.BoatMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.BoatMassCenterBias; }
         protected override float linearDrag { get => DRAG_FACTOR; }

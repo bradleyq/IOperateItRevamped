@@ -145,15 +145,17 @@ namespace DriveIt.Utils
         public const float ROAD_WALL_HEIGHT = 0.75f;            // per tick height delta before the slope is considered a wall
         public const float ROAD_THICKNESS = 1.5f;               // height delta below road surface to be considered still part of the road
         public const float FLOAT_ERROR = 0.01f;                 // a small float value
+        public const float FLOAT_CENTER = 0.5f;                 // normalized center value 0.5
+        public const float FLOAT_ZERO = 0.0f;                   // float zero
         public const float MS_TO_KMPH = 3.6f;                   // m/s to kmph
         public const float MS_TO_CSUS = 25.0f / 16.0f;          // m/s to uph
         public const float MS_TO_MPH =  2.23694f;               // m/s to mph
         public const float RPS_TO_RPM = 9.549f;                 // radians per second to rpm
         public const float KN_TO_N = 1000f;                     // KN to N
         public const float KW_TO_W = 1000f;                     // KW to W
-        public const float LINKAGE_K = 1000000.0f;              // vehicle linkage spring tension
-        public const float LINKAGE_D = 500000.0f;               // vehicle linkage damping
-        public const float LINKAGE_H = 0.075f;                  // vehicle linkage damping
+        public const float LINKAGE_K = 5000000.0f;              // vehicle linkage spring tension
+        public const float LINKAGE_D = 4000000.0f;              // vehicle linkage damping
+        public const float LINKAGE_A = 10.0f;                   // vehicle angle limit
 
         public enum TRACTIONCTL_LEVEL
         {

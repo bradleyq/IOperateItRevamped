@@ -175,8 +175,8 @@ namespace DriveIt.Vehicles
                 Vector3 originWheelBottom = vehicle.GetRigidbody().transform.TransformPoint(this.origin + Vector3.down * this.radius);
                 float compression = Mathf.Max(Vector3.Dot(this.heightSample - originWheelBottom, this.normal) / normDotUp, 0.0f);
                 float springVel = (compression - this.compression) / Time.fixedDeltaTime;
-                float deltaVel = -vehicle.springStiffness * Mathf.Exp(-vehicle.springStiffness * Time.fixedDeltaTime) * (compression + springVel * Time.fixedDeltaTime) 
-                    + springVel * Mathf.Exp(-vehicle.springStiffness * Time.fixedDeltaTime) - springVel;
+                float deltaVel = -vehicle.springDamp * Mathf.Exp(-vehicle.springDamp * Time.fixedDeltaTime) * (compression + springVel * Time.fixedDeltaTime) 
+                    + springVel * Mathf.Exp(-vehicle.springDamp * Time.fixedDeltaTime) - springVel;
 
                 this.gameObject.transform.localPosition = new Vector3(this.origin.x, this.origin.y + compression, this.origin.z);
                 this.compression = compression;

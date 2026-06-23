@@ -20,13 +20,14 @@ namespace DriveIt.Vehicles
 
         private bool m_constrained = false;
 
+        public override float springDamp { get => ModSettings.CarSpringDamp; }
+        public override float springOffset { get => ModSettings.CarSpringOffset; }
+
         protected override float enginePower { get => ModSettings.CarEnginePower; }
         protected override float brakingForce { get => ModSettings.CarBrakingForce; }
         protected override float downForce { get => ModSettings.CarDownForce; }
         protected override float driveBias { get => ModSettings.CarDriveBias; }
         protected override float brakeBias { get => ModSettings.CarBrakeBias; }
-        protected override float springDamp { get => ModSettings.CarSpringDamp; }
-        protected override float springOffset { get => ModSettings.CarSpringOffset; }
         protected override float springSwayBar { get => ModSettings.CarSpringSwayBar; }
         protected override float massCenterHeight { get => ModSettings.CarMassCenterHeight; }
         protected override float massCenterBias { get => ModSettings.CarMassCenterBias; }

@@ -5,6 +5,7 @@ using DriveIt.Utils;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using static ParadeGroupInfo;
 
 namespace DriveIt.Vehicles
 {
@@ -52,6 +53,7 @@ namespace DriveIt.Vehicles
         private static float s_drag_wheel_powered;
         private static float s_drag_wheel;
         private static VehicleGeneric s_primaryVehicle = null;
+        private static ConfigurableJoint s_joint = null;
 
         protected const int ENGINE_MODE_REVERSE = -1;
         protected const int ENGINE_MODE_NEUTRAL = 0;
@@ -89,33 +91,6 @@ namespace DriveIt.Vehicles
         protected float m_radpsTrans = 0.0f;
         protected float m_groundY = 0.0f;
         protected List<Wheel> m_wheelObjects = new List<Wheel>();
-
-        public float odometer { get => m_distanceTravelled; }
-        public float speedometer { get => m_vehicleRigidBody.velocity.magnitude * DriveCommon.MS_TO_KMPH / ModSettings.MaxVelocity; }
-        public float tachometer { get => m_radps / enginePeakRPS; }
-        public float steer { get => m_steer * steerMax; }
-        public float brake { get => m_brake; }
-        public float handbrake { get => m_handbrake; }
-        public float throttle { get => m_throttle; }
-        public string gear { get => m_gearNames[m_gear]; }
-        public float speed { get => m_vehicleRigidBody.velocity.magnitude; }
-        public Vector3 velocity { get => m_vehicleRigidBody.velocity; }
-        public Vector3 acceleration { get => (m_prevVelocity - m_prevPrevVelocity) / Time.fixedDeltaTime; }
-        public float rpm { get => m_radps * DriveCommon.RPS_TO_RPM; }
-        public float radps { get => m_radps; }
-        public float angularAcceleration { get => (m_radps - m_prevRadps) / Time.fixedDeltaTime; }
-        public List<Wheel> wheels { get => m_wheelObjects; }
-        public Vehicle.Flags vehicleFlags { get => m_vehicleFlags; }
-        public uint variationMaskInv { get => m_variationMaskInv; }
-        public int wheelCount { get => m_wheelCount; }
-        public int frontCount { get => m_frontWheels; }
-        public int rearCount { get => m_wheelCount - m_frontWheels; }
-        public int rightCount { get => m_rightWheels; }
-        public int leftCount { get => m_wheelCount - m_rightWheels; }
-        public bool inlineWheels { get => rightCount == 0 || leftCount == 0; }
-        public bool parallelWheels { get => rearCount == 0 || frontCount == 0; }
-        public float springHeight { get => springOffset; }
-        public float springStiffness { get => springDamp; }
         
         public enum VehicleType
         {
@@ -216,6 +191,12 @@ namespace DriveIt.Vehicles
             return m_vehicleCollider;
         }
 
+        public ConfigurableJoint ConfigureJoint()
+        {
+            s_joint = ConfigureJointInternal();
+            return s_joint;
+        }
+
         public void Initialize(Vector3 position, Quaternion rotation, VehicleInfo vehicleInfo, Vehicle.Flags vehicleFlags, int variation, Color vehicleColor, bool setColor, bool setPrimary = false)
         {
             if (setPrimary) s_primaryVehicle = this;
@@ -242,7 +223,7 @@ namespace DriveIt.Vehicles
             Vector3 adjustedBounds = m_vehicleInfo.m_lodMesh.bounds.size;
             float adjustedY = Mathf.Min(m_vehicleInfo.m_mesh.bounds.min.y, m_vehicleInfo.m_lodMesh.bounds.min.y);
             float adjustedZ = m_vehicleInfo.m_lodMesh.bounds.min.z;
-            float groundY = adjustedY + springHeight;
+            float groundY = adjustedY + springOffset;
             float frontTorque = 0.0f;
             float rearTorque = 0.0f;
             float frontBraking = 0.0f;
@@ -283,10 +264,21 @@ namespace DriveIt.Vehicles
                 m_gearNeutral = ENGINE_GEAR_NEUTRAL_T;
                 frontTorque = 0.0f;
                 rearTorque = 0.0f;
-                frontBraking = 0.0f;
-                rearBraking = 1.0f;
-                frontEBraking = 0.0f;
-                rearEBraking = 1.0f;
+
+                if (rearCount > 0)
+                {
+                    frontBraking = 0.0f;
+                    frontEBraking = 0.0f;
+                    rearBraking = brakingForce * DriveCommon.KN_TO_N / rearCount;
+                    rearEBraking = brakingForce * DriveCommon.KN_TO_N / rearCount;
+                }
+                else if (frontCount > 0)
+                {
+                    frontBraking = brakingForce * DriveCommon.KN_TO_N / rearCount;
+                    frontEBraking = brakingForce * DriveCommon.KN_TO_N / rearCount;
+                    rearBraking = 0.0f;
+                    rearEBraking = 0.0f;
+                }
             }
 
             InitializeAdjust(ref frontTorque, ref rearTorque, ref frontBraking, ref rearBraking, ref frontEBraking, ref rearEBraking);
@@ -405,13 +397,40 @@ namespace DriveIt.Vehicles
             }
         }
 
+        public virtual float odometer { get => m_distanceTravelled; }
+        public virtual float speedometer { get => m_vehicleRigidBody.velocity.magnitude * DriveCommon.MS_TO_KMPH / ModSettings.MaxVelocity; }
+        public virtual float tachometer { get => m_radps / enginePeakRPS; }
+        public virtual float steer { get => m_steer * steerMax; }
+        public virtual float brake { get => m_brake; }
+        public virtual float handbrake { get => m_handbrake; }
+        public virtual float throttle { get => m_throttle; }
+        public virtual string gear { get => m_gearNames[m_gear]; }
+        public virtual float speed { get => m_vehicleRigidBody.velocity.magnitude; }
+        public virtual Vector3 velocity { get => m_vehicleRigidBody.velocity; }
+        public virtual Vector3 acceleration { get => (m_prevVelocity - m_prevPrevVelocity) / Time.fixedDeltaTime; }
+        public virtual float rpm { get => m_radps * DriveCommon.RPS_TO_RPM; }
+        public virtual float radps { get => m_radps; }
+        public virtual float angularAcceleration { get => (m_radps - m_prevRadps) / Time.fixedDeltaTime; }
+        public virtual List<Wheel> wheels { get => m_wheelObjects; }
+        public virtual Vehicle.Flags vehicleFlags { get => m_vehicleFlags; }
+        public virtual uint variationMaskInv { get => m_variationMaskInv; }
+        public virtual int wheelCount { get => m_wheelCount; }
+        public virtual int frontCount { get => m_frontWheels; }
+        public virtual int rearCount { get => m_wheelCount - m_frontWheels; }
+        public virtual int rightCount { get => m_rightWheels; }
+        public virtual int leftCount { get => m_wheelCount - m_rightWheels; }
+        public virtual bool inlineWheels { get => rightCount == 0 || leftCount == 0; }
+        public virtual bool parallelWheels { get => rearCount == 0 || frontCount == 0; }
+        public virtual float springOffset { get => ModSettings.SpringOffset; }
+        public virtual float springDamp { get => ModSettings.SpringDamp; }
+        public virtual Vector3 frontLink { get => Vector3.forward * (0.5f * m_vehicleInfo.m_generatedInfo.m_size.z - m_vehicleInfo.m_attachOffsetFront) + Vector3.up * s_primaryVehicle.m_vehicleInfo.m_generatedInfo.m_tyres[0].w; }
+        public virtual Vector3 backLink { get => Vector3.back * (0.5f * m_vehicleInfo.m_generatedInfo.m_size.z - m_vehicleInfo.m_attachOffsetBack) + Vector3.up * s_primaryVehicle.m_vehicleInfo.m_generatedInfo.m_tyres[0].w; }
+
         protected virtual float enginePower { get => ModSettings.EnginePower; }
         protected virtual float brakingForce { get => ModSettings.BrakingForce; }
         protected virtual float downForce { get => ModSettings.DownForce; }
         protected virtual float driveBias { get => ModSettings.DriveBias; }
         protected virtual float brakeBias { get => ModSettings.BrakeBias; }
-        protected virtual float springDamp {  get => ModSettings.SpringDamp; }
-        protected virtual float springOffset { get => ModSettings.SpringOffset; }
         protected virtual float springSwayBar { get=> ModSettings.SpringSwayBar; }
         protected virtual float massCenterHeight {  get => ModSettings.MassCenterHeight; }
         protected virtual float massCenterBias {  get => ModSettings.MassCenterBias; }
@@ -430,6 +449,36 @@ namespace DriveIt.Vehicles
         protected virtual float massCenterBiasTrailer { get => ModSettings.TrailerMassCenterBias; }
         protected virtual float massFactorTrailer { get => MASS_FACTOR_TRAILER; }
         protected virtual float massBiasTrailer { get => MASS_BIAS; }
+
+        protected virtual ConfigurableJoint ConfigureJointInternal()
+        {
+            SoftJointLimitSpring limit = new SoftJointLimitSpring();
+            limit.spring = DriveCommon.LINKAGE_K;
+            limit.damper = DriveCommon.LINKAGE_D;
+
+            SoftJointLimit low = new SoftJointLimit();
+            low.limit = -DriveCommon.LINKAGE_A;
+
+            SoftJointLimit high = new SoftJointLimit();
+            high.limit = DriveCommon.LINKAGE_A;
+
+            ConfigurableJoint joint = gameObject.AddComponent<ConfigurableJoint>();
+            joint.anchor = backLink;
+            joint.autoConfigureConnectedAnchor = true;
+            joint.breakForce = Mathf.Infinity;
+            joint.breakTorque = Mathf.Infinity;
+            joint.xMotion = ConfigurableJointMotion.Locked;
+            joint.yMotion = ConfigurableJointMotion.Locked;
+            joint.zMotion = ConfigurableJointMotion.Locked;
+            joint.angularXMotion = ConfigurableJointMotion.Limited;
+            joint.angularYMotion = ConfigurableJointMotion.Free;
+            joint.angularZMotion = ConfigurableJointMotion.Locked;
+            joint.lowAngularXLimit = low;
+            joint.highAngularXLimit = high;
+            joint.angularXLimitSpring = limit;
+            joint.enableCollision = false;
+            return joint;
+        }
 
         // Initialize the vehicle wheel configuration, calculate hitbox parameters, and configure constriants
         protected virtual void InitializeInternal(ref Vector3 adjustedBounds, ref float adjustedY, ref float adjustedZ, ref float groundY, ref RigidbodyConstraints constraints)
@@ -577,6 +626,10 @@ namespace DriveIt.Vehicles
             m_prevRadps = m_radps;
             radpsTrans = Mathf.Clamp(radpsTrans, 0.0f, engineOverRPS);
             m_radps = Mathf.Lerp(radpsTrans, m_radps, s_engine_inertia);
+            if (s_primaryVehicle.m_prevVelocity.magnitude < m_prevVelocity.magnitude)
+            {
+                m_handbrake = Mathf.Max(m_handbrake, Mathf.Clamp01(m_prevVelocity.magnitude - s_primaryVehicle.m_prevVelocity.magnitude));
+            }
         }
 
         // Torque curve.
